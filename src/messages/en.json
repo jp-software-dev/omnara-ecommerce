@@ -1,0 +1,13 @@
+{
+  "common": {
+    "brand": "Omnara",
+    "search": "Search",
+    "cart": "Cart",
+    "account": "Account",
+    "wishlist": "Wishlist"
+  },
+  "home": {
+    "title": "Welcome to Omnara",
+    "subtitle": "Everything in one place."
+  }
+}
