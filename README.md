@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Omnara — E-Commerce
 
-## Getting Started
+Plataforma de e-commerce multi-categoría (demo de portafolio para el paquete
+"E-Commerce de Alto Rendimiento"). Catálogo con variantes, roles admin/vendedor,
+checkout con Stripe, bilingüe (ES/EN) y multi-moneda (MXN/USD).
 
-First, run the development server:
+## Stack
+
+- **Frontend:** Next.js 16 (App Router) + TypeScript + Tailwind CSS + shadcn/ui
+- **Backend:** Supabase (Postgres, Auth, Storage, Row Level Security, Edge Functions)
+- **Pagos:** Stripe (modo test)
+- **i18n:** next-intl (`/es`, `/en`)
+- **Estado:** TanStack Query + Zustand
+- **Hosting:** Vercel + Supabase
+
+## Desarrollo local
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Copia `.env.example` a `.env.local` y completa las variables de Supabase antes
+de correr el proyecto:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
 
-## Learn More
+## Estructura
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+  app/[locale]/(shop)/     rutas públicas: home, categoría, producto, carrito, checkout
+  app/[locale]/(account)/  cuenta del usuario
+  app/[locale]/(admin)/    panel de administración
+  app/[locale]/login|signup
+  app/api/webhooks/stripe/ webhook de Stripe
+  components/ui/           primitivos shadcn/ui
+  components/auth/         formularios de login/signup
+  i18n/                    configuración de next-intl
+  lib/supabase/            clientes de Supabase + tipos generados
+  messages/                textos ES/EN
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Base de datos
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+El esquema (16 tablas con Row Level Security) vive en el proyecto Supabase
+`omnara-ecommerce`. Los tipos de TypeScript en `src/lib/supabase/types.ts` se
+generan desde ese esquema real.
