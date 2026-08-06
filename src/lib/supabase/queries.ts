@@ -66,6 +66,23 @@ export async function getProductBySlug(slug: string) {
   return data;
 }
 
+export async function getWishlistProducts(userId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("wishlists")
+    .select(
+      "product_id, products(id, slug, name, base_price_mxn_cents, status, product_images(url, position))"
+    )
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data
+    .map((row) => row.products)
+    .filter((product): product is NonNullable<typeof product> => Boolean(product))
+    .filter((product) => product.status === "active");
+}
+
 export async function getAppSettings() {
   const supabase = await createClient();
   const { data, error } = await supabase
