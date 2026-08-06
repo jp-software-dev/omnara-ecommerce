@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,13 +23,36 @@ import {
 import { Input } from "@/components/ui/input";
 
 export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    toast("La autenticación se conecta en la siguiente fase.");
+    const form = new FormData(event.currentTarget);
+    const email = String(form.get("email"));
+    const password = String(form.get("password"));
+
+    setLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+
+    if (error) {
+      toast.error(
+        error.message === "Invalid login credentials"
+          ? "Correo o contraseña incorrectos."
+          : error.message
+      );
+      return;
+    }
+
+    toast.success("Sesión iniciada.");
+    router.push("/");
+    router.refresh();
   }
 
   function handleGoogleClick() {
-    toast("La autenticación se conecta en la siguiente fase.");
+    toast("El inicio de sesión con Google se conecta en la siguiente fase.");
   }
 
   return (
@@ -55,7 +81,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
               </FieldSeparator>
               <Field>
                 <FieldLabel htmlFor="email">Correo electrónico</FieldLabel>
-                <Input id="email" type="email" placeholder="tu@correo.com" required />
+                <Input id="email" name="email" type="email" placeholder="tu@correo.com" required />
               </Field>
               <Field>
                 <div className="flex items-center">
@@ -67,10 +93,12 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
                     ¿Olvidaste tu contraseña?
                   </a>
                 </div>
-                <Input id="password" type="password" required />
+                <Input id="password" name="password" type="password" required />
               </Field>
               <Field>
-                <Button type="submit">Iniciar sesión</Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Iniciando sesión…" : "Iniciar sesión"}
+                </Button>
                 <FieldDescription className="text-center">
                   ¿No tienes cuenta? <a href="../signup">Regístrate</a>
                 </FieldDescription>
