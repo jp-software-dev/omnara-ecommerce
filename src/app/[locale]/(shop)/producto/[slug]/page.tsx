@@ -3,6 +3,7 @@ import { getProductBySlug } from "@/lib/supabase/queries";
 import { formatPrice, pickLocale } from "@/lib/format";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { ProductActions } from "@/components/shop/product-actions";
+import { WishlistButton } from "@/components/shop/wishlist-button";
 import {
   Accordion,
   AccordionContent,
@@ -72,9 +73,16 @@ export default async function ProductPage({
 
         <div className="space-y-6">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {pickLocale(product.name, locale)}
-            </h1>
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {pickLocale(product.name, locale)}
+              </h1>
+              <WishlistButton
+                productId={product.id}
+                locale={locale}
+                className="shrink-0 border"
+              />
+            </div>
             <p className="mt-1 text-muted-foreground">
               {pickLocale(product.description_short, locale)}
             </p>
@@ -83,7 +91,17 @@ export default async function ProductPage({
             </p>
           </div>
 
-          <ProductActions variants={product.product_variants} locale={locale} />
+          <ProductActions
+            variants={product.product_variants}
+            locale={locale}
+            productSlug={product.slug}
+            productName={pickLocale(product.name, locale)}
+            productImage={
+              [...product.product_images].sort((a, b) => a.position - b.position)[0]?.url ??
+              null
+            }
+            unitPriceMxnCents={product.base_price_mxn_cents}
+          />
 
           <Accordion defaultValue={["description"]}>
             <AccordionItem value="description">
