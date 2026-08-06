@@ -1,11 +1,11 @@
 import { getTranslations } from "next-intl/server";
-import { ShoppingBag, Heart, User, ShoppingCart, Menu } from "lucide-react";
+import { ShoppingBag, Heart, Menu } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { getCategories } from "@/lib/supabase/queries";
+import { createClient } from "@/lib/supabase/server";
 import { pickLocale } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
@@ -14,10 +14,16 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { LocaleSwitcher } from "@/components/shop/locale-switcher";
+import { CartButton } from "@/components/shop/cart-button";
+import { AccountMenu } from "@/components/shop/account-menu";
 
 export async function Header({ locale }: { locale: string }) {
   const t = await getTranslations("common");
   const categories = await getCategories();
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -79,32 +85,8 @@ export async function Header({ locale }: { locale: string }) {
               </Link>
             }
           />
-          <Button
-            variant="ghost"
-            size="icon"
-            nativeButton={false}
-            aria-label={t("account")}
-            render={
-              <Link href="/login">
-                <User className="size-5" />
-              </Link>
-            }
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative"
-            nativeButton={false}
-            aria-label={t("cart")}
-            render={
-              <Link href="/carrito">
-                <ShoppingCart className="size-5" />
-                <Badge className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full p-0 text-[10px]">
-                  0
-                </Badge>
-              </Link>
-            }
-          />
+          <AccountMenu email={user?.email ?? null} locale={locale} />
+          <CartButton label={t("cart")} />
         </div>
       </div>
     </header>

@@ -2,8 +2,10 @@ import Image from "next/image";
 import { Link } from "@/i18n/navigation";
 import type { Json } from "@/lib/supabase/types";
 import { formatPrice, pickLocale } from "@/lib/format";
+import { WishlistButton } from "@/components/shop/wishlist-button";
 
 export type ProductCardData = {
+  id: string;
   slug: string;
   name: Json;
   base_price_mxn_cents: number;
@@ -34,6 +36,11 @@ export function ProductCard({
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : null}
+        <WishlistButton
+          productId={product.id}
+          locale={locale}
+          className="absolute right-2 top-2"
+        />
       </div>
       <div className="space-y-0.5">
         <p className="text-sm font-medium">{pickLocale(product.name, locale)}</p>
