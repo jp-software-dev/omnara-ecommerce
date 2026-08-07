@@ -1,8 +1,8 @@
-import { redirect } from "@/i18n/navigation";
+import { Link, redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getWishlistProducts } from "@/lib/supabase/queries";
 import { ProductCard } from "@/components/shop/product-card";
-import { Heart } from "lucide-react";
+import { Heart, Package } from "lucide-react";
 
 export default async function AccountPage({
   params,
@@ -37,6 +37,14 @@ export default async function AccountPage({
         {profile?.full_name ? `${profile.full_name} · ` : ""}
         {user.email}
       </p>
+
+      <Link
+        href="/cuenta/pedidos"
+        className="mt-4 inline-flex items-center gap-2 text-sm font-medium underline underline-offset-4"
+      >
+        <Package className="size-4" />
+        {locale === "en" ? "My orders" : "Mis pedidos"}
+      </Link>
 
       <section className="mt-10">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
