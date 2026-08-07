@@ -1,7 +1,10 @@
+"use client";
+
 import Image from "next/image";
 import { Link } from "@/i18n/navigation";
 import type { Json } from "@/lib/supabase/types";
-import { formatPrice, pickLocale } from "@/lib/format";
+import { pickLocale } from "@/lib/format";
+import { useDisplayPrice } from "@/hooks/use-display-price";
 import { WishlistButton } from "@/components/shop/wishlist-button";
 
 export type ProductCardData = {
@@ -20,6 +23,7 @@ export function ProductCard({
   locale: string;
 }) {
   const image = [...product.product_images].sort((a, b) => a.position - b.position)[0];
+  const price = useDisplayPrice(product.base_price_mxn_cents, locale);
 
   return (
     <Link
@@ -44,9 +48,7 @@ export function ProductCard({
       </div>
       <div className="space-y-0.5">
         <p className="text-sm font-medium">{pickLocale(product.name, locale)}</p>
-        <p className="text-sm text-muted-foreground">
-          {formatPrice(product.base_price_mxn_cents, "MXN", locale)}
-        </p>
+        <p className="text-sm text-muted-foreground">{price}</p>
       </div>
     </Link>
   );

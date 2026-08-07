@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import { ShoppingBag, Heart, Menu } from "lucide-react";
+import { ShoppingBag, Heart, Menu, Search } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { getCategories } from "@/lib/supabase/queries";
 import { createClient } from "@/lib/supabase/server";
@@ -16,6 +16,8 @@ import {
 import { LocaleSwitcher } from "@/components/shop/locale-switcher";
 import { CartButton } from "@/components/shop/cart-button";
 import { AccountMenu } from "@/components/shop/account-menu";
+import { SearchBar } from "@/components/shop/search-bar";
+import { CurrencySwitcher } from "@/components/shop/currency-switcher";
 
 export async function Header({ locale }: { locale: string }) {
   const t = await getTranslations("common");
@@ -72,7 +74,22 @@ export async function Header({ locale }: { locale: string }) {
           ))}
         </nav>
 
+        <SearchBar locale={locale} />
+
         <div className="ml-auto flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            nativeButton={false}
+            aria-label={locale === "en" ? "Search" : "Buscar"}
+            className="md:hidden"
+            render={
+              <Link href="/buscar">
+                <Search className="size-5" />
+              </Link>
+            }
+          />
+          <CurrencySwitcher />
           <LocaleSwitcher />
           <Button
             variant="ghost"
