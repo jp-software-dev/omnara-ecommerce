@@ -1,6 +1,6 @@
 import { SiteChrome } from "@/components/shop/site-chrome";
 
-export default async function ShopLayout({
+export default async function AccountLayout({
   children,
   params,
 }: {
