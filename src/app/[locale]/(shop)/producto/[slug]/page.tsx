@@ -1,9 +1,12 @@
 import { notFound } from "next/navigation";
-import { getProductBySlug } from "@/lib/supabase/queries";
-import { formatPrice, pickLocale } from "@/lib/format";
+import { getProductBySlug, getProductReviews } from "@/lib/supabase/queries";
+import { pickLocale } from "@/lib/format";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { ProductActions } from "@/components/shop/product-actions";
 import { WishlistButton } from "@/components/shop/wishlist-button";
+import { ProductPrice } from "@/components/shop/product-price";
+import { ProductReviews } from "@/components/shop/product-reviews";
+import { ReviewForm } from "@/components/shop/review-form";
 import {
   Accordion,
   AccordionContent,
@@ -34,6 +37,7 @@ export default async function ProductPage({
   }
 
   const category = product.categories;
+  const reviews = await getProductReviews(product.id);
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
@@ -87,7 +91,7 @@ export default async function ProductPage({
               {pickLocale(product.description_short, locale)}
             </p>
             <p className="mt-3 text-2xl font-semibold">
-              {formatPrice(product.base_price_mxn_cents, "MXN", locale)}
+              <ProductPrice mxnCents={product.base_price_mxn_cents} locale={locale} />
             </p>
           </div>
 
@@ -123,6 +127,11 @@ export default async function ProductPage({
               </AccordionContent>
             </AccordionItem>
           </Accordion>
+
+          <div className="border-t pt-6">
+            <ProductReviews reviews={reviews} locale={locale} />
+            <ReviewForm productId={product.id} locale={locale} />
+          </div>
         </div>
       </div>
     </main>

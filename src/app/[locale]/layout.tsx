@@ -6,6 +6,7 @@ import { hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { Providers } from "@/components/providers";
+import { getAppSettings } from "@/lib/supabase/queries";
 import "../globals.css";
 
 const geistSans = Geist({
@@ -37,6 +38,7 @@ export default async function LocaleLayout({
   }
 
   const messages = await getMessages();
+  const appSettings = await getAppSettings();
 
   return (
     <html
@@ -46,7 +48,7 @@ export default async function LocaleLayout({
     >
       <body className="min-h-full flex flex-col">
         <NextIntlClientProvider messages={messages}>
-          <Providers>{children}</Providers>
+          <Providers usdExchangeRate={appSettings.usd_exchange_rate}>{children}</Providers>
         </NextIntlClientProvider>
       </body>
     </html>

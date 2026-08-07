@@ -3,10 +3,10 @@
 import { use } from "react";
 import Image from "next/image";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
-import { toast } from "sonner";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, convertToUsd } from "@/lib/format";
+import { useCurrencyStore } from "@/stores/currency-store";
 import { cartSubtotalMxnCents, useCartHydrated, useCartStore } from "@/stores/cart-store";
 
 export default function CartPage({
@@ -15,9 +15,18 @@ export default function CartPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = use(params);
+  const router = useRouter();
   const items = useCartStore((state) => state.items);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const removeItem = useCartStore((state) => state.removeItem);
+  const currency = useCurrencyStore((state) => state.currency);
+  const usdExchangeRate = useCurrencyStore((state) => state.usdExchangeRate);
+  const display = (mxnCents: number) =>
+    formatPrice(
+      currency === "USD" ? convertToUsd(mxnCents, usdExchangeRate) : mxnCents,
+      currency,
+      locale
+    );
 
   // Avoids a hydration flash: localStorage isn't available on the server.
   const hydrated = useCartHydrated();
@@ -41,11 +50,7 @@ export default function CartPage({
   };
 
   function handleCheckout() {
-    toast(
-      locale === "en"
-        ? "Checkout connects with Stripe in the next phase."
-        : "El checkout se conecta con Stripe en la siguiente fase."
-    );
+    router.push("/checkout");
   }
 
   if (!hydrated) {
@@ -85,9 +90,7 @@ export default function CartPage({
                   <p className="text-sm text-muted-foreground">
                     {[item.color, item.size].filter(Boolean).join(" · ")}
                   </p>
-                  <p className="mt-1 text-sm font-medium">
-                    {formatPrice(item.unitPriceMxnCents, "MXN", locale)}
-                  </p>
+                  <p className="mt-1 text-sm font-medium">{display(item.unitPriceMxnCents)}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center rounded-md border">
@@ -130,7 +133,7 @@ export default function CartPage({
         <aside className="h-fit space-y-4 rounded-lg border p-5">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{t.subtotal}</span>
-            <span className="font-medium">{formatPrice(subtotal, "MXN", locale)}</span>
+            <span className="font-medium">{display(subtotal)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{t.shipping}</span>
@@ -138,7 +141,7 @@ export default function CartPage({
           </div>
           <div className="flex justify-between border-t pt-4 text-base font-semibold">
             <span>{t.total}</span>
-            <span>{formatPrice(subtotal, "MXN", locale)}</span>
+            <span>{display(subtotal)}</span>
           </div>
           <Button size="lg" className="w-full" onClick={handleCheckout}>
             {t.checkout}
