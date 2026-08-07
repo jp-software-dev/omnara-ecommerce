@@ -83,6 +83,66 @@ export async function getWishlistProducts(userId: string) {
     .filter((product) => product.status === "active");
 }
 
+export async function getVariantsForCheckout(variantIds: string[]) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("product_variants")
+    .select(
+      "id, size, color, stock_quantity, price_override_mxn_cents, product_id, products(name, base_price_mxn_cents, status)"
+    )
+    .in("id", variantIds);
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getProductReviews(productId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("id, rating, title, comment, is_verified_purchase, created_at, profiles(full_name)")
+    .eq("product_id", productId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function searchProducts(query: string) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, slug, name, base_price_mxn_cents, product_images(url, position)")
+    .eq("status", "active");
+
+  if (error) throw error;
+
+  // The catalog is small enough that filtering in JS (matching either
+  // locale's name) is simpler and more forgiving than fighting Postgres
+  // JSONB operators through the query builder for a couple dozen rows.
+  return data.filter((product) => {
+    const name = product.name as { es?: string; en?: string } | null;
+    const es = name?.es?.toLowerCase() ?? "";
+    const en = name?.en?.toLowerCase() ?? "";
+    return es.includes(q) || en.includes(q);
+  });
+}
+
+export async function getUserOrders(userId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("id, order_number, status, currency, total_cents, created_at, order_items(quantity)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
 export async function getAppSettings() {
   const supabase = await createClient();
   const { data, error } = await supabase
