@@ -475,6 +475,7 @@ export type Database = {
       }
       products: {
         Row: {
+          attributes: Json
           base_price_mxn_cents: number
           category_id: string | null
           created_at: string
@@ -489,6 +490,7 @@ export type Database = {
           vendor_id: string | null
         }
         Insert: {
+          attributes?: Json
           base_price_mxn_cents: number
           category_id?: string | null
           created_at?: string
@@ -503,6 +505,7 @@ export type Database = {
           vendor_id?: string | null
         }
         Update: {
+          attributes?: Json
           base_price_mxn_cents?: number
           category_id?: string | null
           created_at?: string

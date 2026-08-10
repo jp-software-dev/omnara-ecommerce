@@ -56,11 +56,32 @@ export async function getProductBySlug(slug: string) {
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id, slug, name, description_short, description_long, base_price_mxn_cents, category_id, categories(slug, name), product_images(id, url, alt_text, position, variant_id), product_variants(id, sku, size, color, stock_quantity, low_stock_threshold, price_override_mxn_cents)"
+      "id, slug, name, description_short, description_long, base_price_mxn_cents, category_id, attributes, categories(slug, name), product_images(id, url, alt_text, position, variant_id), product_variants(id, sku, size, color, stock_quantity, low_stock_threshold, price_override_mxn_cents)"
     )
     .eq("slug", slug)
     .eq("status", "active")
     .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getRelatedProducts(
+  categoryId: string | null,
+  excludeProductId: string,
+  limit = 4
+) {
+  if (!categoryId) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, slug, name, base_price_mxn_cents, product_images(url, position)")
+    .eq("category_id", categoryId)
+    .eq("status", "active")
+    .neq("id", excludeProductId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
 
   if (error) throw error;
   return data;
