@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Rubik, Nunito_Sans, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { hasLocale } from "next-intl";
@@ -9,8 +9,13 @@ import { Providers } from "@/components/providers";
 import { getAppSettings } from "@/lib/supabase/queries";
 import "../globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const rubik = Rubik({
+  variable: "--font-rubik",
+  subsets: ["latin"],
+});
+
+const nunitoSans = Nunito_Sans({
+  variable: "--font-nunito-sans",
   subsets: ["latin"],
 });
 
@@ -44,7 +49,7 @@ export default async function LocaleLayout({
     <html
       lang={locale}
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${rubik.variable} ${nunitoSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <NextIntlClientProvider messages={messages}>
