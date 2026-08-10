@@ -14,10 +14,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { pickLocale } from "@/lib/format";
+import { getCategoryAttributeFields } from "@/lib/category-attributes";
 import type { Json } from "@/lib/supabase/types";
 import { createProduct, updateProduct } from "../actions";
 
-type Category = { id: string; name: Json };
+type Category = { id: string; slug: string; name: Json };
 
 const STATUS_VALUES = ["active", "draft", "archived"] as const;
 
@@ -36,6 +37,7 @@ export function ProductForm({
     basePriceMxnCents: number;
     categoryId: string | null;
     status: string;
+    attributes: Record<string, string>;
   };
 }) {
   const router = useRouter();
@@ -49,6 +51,9 @@ export function ProductForm({
     initial?.categoryId ?? categories[0]?.id ?? ""
   );
   const [status, setStatus] = useState(initial?.status ?? "active");
+  const [attributes, setAttributes] = useState<Record<string, string>>(
+    initial?.attributes ?? {}
+  );
   const [loading, setLoading] = useState(false);
 
   const statusLabels: Record<(typeof STATUS_VALUES)[number], string> = {
@@ -68,7 +73,8 @@ export function ProductForm({
     saving: locale === "en" ? "Saving..." : "Guardando...",
   };
 
-  const selectedCategoryName = categories.find((c) => c.id === categoryId)?.name;
+  const selectedCategory = categories.find((c) => c.id === categoryId);
+  const attributeFields = getCategoryAttributeFields(selectedCategory?.slug);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -79,6 +85,15 @@ export function ProductForm({
         throw new Error(locale === "en" ? "Enter a valid price." : "Ingresa un precio válido.");
       }
 
+      // Only keep values for fields that still apply to the current category
+      // (e.g. switching from "ropa" to "electronica" shouldn't leave a
+      // stray "material" value behind under a key that page no longer shows).
+      const relevantAttributes = Object.fromEntries(
+        attributeFields
+          .map((field) => [field.key, attributes[field.key]?.trim() ?? ""])
+          .filter(([, value]) => value !== "")
+      );
+
       if (productId) {
         await updateProduct(productId, {
           nameEs,
@@ -86,6 +101,7 @@ export function ProductForm({
           basePriceMxnCents,
           categoryId: categoryId || null,
           status,
+          attributes: relevantAttributes,
         });
       } else {
         if (!slug.trim()) {
@@ -98,6 +114,7 @@ export function ProductForm({
           basePriceMxnCents,
           categoryId: categoryId || null,
           status,
+          attributes: relevantAttributes,
         });
       }
       toast.success(locale === "en" ? "Saved." : "Guardado.");
@@ -160,7 +177,7 @@ export function ProductForm({
           <Select value={categoryId} onValueChange={(value) => setCategoryId(value as string)}>
             <SelectTrigger className="w-full">
               <SelectValue>
-                {() => (selectedCategoryName ? pickLocale(selectedCategoryName, locale) : "")}
+                {() => (selectedCategory ? pickLocale(selectedCategory.name, locale) : "")}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -172,6 +189,40 @@ export function ProductForm({
             </SelectContent>
           </Select>
         </Field>
+        {attributeFields.map((field) => (
+          <Field key={field.key}>
+            <FieldLabel htmlFor={`attr-${field.key}`}>
+              {field.label[locale === "en" ? "en" : "es"]}
+            </FieldLabel>
+            {field.type === "select" && field.options ? (
+              <Select
+                value={attributes[field.key] ?? ""}
+                onValueChange={(value) =>
+                  setAttributes((prev) => ({ ...prev, [field.key]: (value as string) ?? "" }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue>{(value: string) => value}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {field.options.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                id={`attr-${field.key}`}
+                value={attributes[field.key] ?? ""}
+                onChange={(event) =>
+                  setAttributes((prev) => ({ ...prev, [field.key]: event.target.value }))
+                }
+              />
+            )}
+          </Field>
+        ))}
         <Field>
           <FieldLabel>{t.status}</FieldLabel>
           <Select value={status} onValueChange={(value) => setStatus(value as string)}>

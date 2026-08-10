@@ -32,6 +32,7 @@ export async function createProduct(input: {
   basePriceMxnCents: number;
   categoryId: string | null;
   status: string;
+  attributes: Record<string, string>;
 }) {
   const supabase = await createClient();
   const {
@@ -52,6 +53,7 @@ export async function createProduct(input: {
       base_price_mxn_cents: input.basePriceMxnCents,
       category_id: input.categoryId,
       status: input.status,
+      attributes: input.attributes,
       vendor_id: profile?.role === "vendor" ? user!.id : null,
     })
     .select("id")
@@ -70,6 +72,7 @@ export async function updateProduct(
     basePriceMxnCents: number;
     categoryId: string | null;
     status: string;
+    attributes: Record<string, string>;
   }
 ) {
   const supabase = await createClient();
@@ -80,6 +83,7 @@ export async function updateProduct(
       base_price_mxn_cents: input.basePriceMxnCents,
       category_id: input.categoryId,
       status: input.status,
+      attributes: input.attributes,
     })
     .eq("id", productId);
 

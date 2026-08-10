@@ -37,6 +37,7 @@ export default async function EditProductPage({
             basePriceMxnCents: product.base_price_mxn_cents,
             categoryId: product.category_id,
             status: product.status,
+            attributes: (product.attributes as Record<string, string> | null) ?? {},
           }}
         />
       </div>
