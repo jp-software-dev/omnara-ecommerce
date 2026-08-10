@@ -1,12 +1,18 @@
 import { notFound } from "next/navigation";
-import { getProductBySlug, getProductReviews } from "@/lib/supabase/queries";
+import {
+  getProductBySlug,
+  getProductReviews,
+  getRelatedProducts,
+} from "@/lib/supabase/queries";
 import { pickLocale } from "@/lib/format";
+import { getCategoryAttributeFields } from "@/lib/category-attributes";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { ProductActions } from "@/components/shop/product-actions";
 import { WishlistButton } from "@/components/shop/wishlist-button";
 import { ProductPrice } from "@/components/shop/product-price";
 import { ProductReviews } from "@/components/shop/product-reviews";
 import { ReviewForm } from "@/components/shop/review-form";
+import { RelatedProducts } from "@/components/shop/related-products";
 import {
   Accordion,
   AccordionContent,
@@ -37,7 +43,15 @@ export default async function ProductPage({
   }
 
   const category = product.categories;
-  const reviews = await getProductReviews(product.id);
+  const [reviews, relatedProducts] = await Promise.all([
+    getProductReviews(product.id),
+    getRelatedProducts(product.category_id, product.id),
+  ]);
+
+  const attributeValues = (product.attributes as Record<string, string> | null) ?? {};
+  const attributeFields = getCategoryAttributeFields(category?.slug).filter(
+    (field) => attributeValues[field.key]
+  );
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
@@ -126,6 +140,25 @@ export default async function ProductPage({
                   : "Envío estándar, la fecha estimada se muestra en el checkout."}
               </AccordionContent>
             </AccordionItem>
+            {attributeFields.length > 0 ? (
+              <AccordionItem value="specs">
+                <AccordionTrigger>
+                  {locale === "en" ? "Specifications" : "Características"}
+                </AccordionTrigger>
+                <AccordionContent>
+                  <dl className="divide-y">
+                    {attributeFields.map((field) => (
+                      <div key={field.key} className="flex justify-between gap-4 py-2 text-sm">
+                        <dt className="text-muted-foreground">
+                          {field.label[locale === "en" ? "en" : "es"]}
+                        </dt>
+                        <dd className="font-medium">{attributeValues[field.key]}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </AccordionContent>
+              </AccordionItem>
+            ) : null}
           </Accordion>
 
           <div className="border-t pt-6">
@@ -133,6 +166,10 @@ export default async function ProductPage({
             <ReviewForm productId={product.id} locale={locale} />
           </div>
         </div>
+      </div>
+
+      <div className="mt-12">
+        <RelatedProducts products={relatedProducts} locale={locale} />
       </div>
     </main>
   );
