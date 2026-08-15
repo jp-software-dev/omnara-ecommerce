@@ -5,6 +5,12 @@ import type { Json } from "@/lib/supabase/types";
 import { ProductCard, type ProductCardData } from "@/components/shop/product-card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -108,49 +114,57 @@ export function CategoryFilters({
           </SelectContent>
         </Select>
 
-        {colors.length > 0 ? (
-          <div>
-            <p className="mb-2 text-sm font-medium">
-              {locale === "en" ? "Color" : "Color"}
-            </p>
-            <div className="space-y-2">
-              {colors.map((color) => (
-                <label key={color} className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={selectedColors.includes(color)}
-                    onCheckedChange={() => toggle(selectedColors, color, setSelectedColors)}
-                  />
-                  {color}
-                </label>
-              ))}
-            </div>
-          </div>
-        ) : null}
+        <Accordion
+          multiple
+          defaultValue={[
+            ...(colors.length > 0 ? ["color"] : []),
+            ...(sizes.length > 0 ? ["size"] : []),
+          ]}
+        >
+          {colors.length > 0 ? (
+            <AccordionItem value="color">
+              <AccordionTrigger>{locale === "en" ? "Color" : "Color"}</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2">
+                  {colors.map((color) => (
+                    <label key={color} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={selectedColors.includes(color)}
+                        onCheckedChange={() => toggle(selectedColors, color, setSelectedColors)}
+                      />
+                      {color}
+                    </label>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ) : null}
 
-        {sizes.length > 0 ? (
-          <div>
-            <p className="mb-2 text-sm font-medium">
-              {locale === "en" ? "Size" : "Talla"}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {sizes.map((size) => {
-                const active = selectedSizes.includes(size);
-                return (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => toggle(selectedSizes, size, setSelectedSizes)}
-                    className={`rounded-md border px-3 py-1 text-sm ${
-                      active ? "border-foreground bg-foreground text-background" : ""
-                    }`}
-                  >
-                    {size}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
+          {sizes.length > 0 ? (
+            <AccordionItem value="size">
+              <AccordionTrigger>{locale === "en" ? "Size" : "Talla"}</AccordionTrigger>
+              <AccordionContent>
+                <div className="flex flex-wrap gap-2">
+                  {sizes.map((size) => {
+                    const active = selectedSizes.includes(size);
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => toggle(selectedSizes, size, setSelectedSizes)}
+                        className={`rounded-md border px-3 py-1 text-sm ${
+                          active ? "border-foreground bg-foreground text-background" : ""
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ) : null}
+        </Accordion>
       </aside>
 
       <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
