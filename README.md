@@ -1,53 +1,56 @@
 # Omnara — E-Commerce
 
-Plataforma de e-commerce multi-categoría (demo de portafolio para el paquete
-"E-Commerce de Alto Rendimiento"). Catálogo con variantes, roles admin/vendedor,
-checkout con Stripe, bilingüe (ES/EN) y multi-moneda (MXN/USD).
+![Next.js](https://img.shields.io/badge/next.js-%23000000.svg?style=for-the-badge&logo=next.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
+![Supabase](https://img.shields.io/badge/supabase-%233ECF8E.svg?style=for-the-badge&logo=supabase&logoColor=white)
+![Stripe](https://img.shields.io/badge/stripe-%23635BFF.svg?style=for-the-badge&logo=stripe&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2306B6D4.svg?style=for-the-badge&logo=tailwindcss&logoColor=white)
+![Vercel](https://img.shields.io/badge/vercel-%23000000.svg?style=for-the-badge&logo=vercel&logoColor=white)
 
-## Stack
+This repository is the full-stack architecture behind **Omnara**, a multi-category e-commerce platform (portfolio demo for the "E-Commerce de Alto Rendimiento" package). Built with Next.js and Supabase, it models a real production catalog — clothing, footwear, electronics, accessories and home goods — each with its own type-specific attributes, behind a role-based admin/vendor panel and a Stripe checkout that is architecturally guaranteed to never process a real charge.
 
-- **Frontend:** Next.js 16 (App Router) + TypeScript + Tailwind CSS + shadcn/ui
-- **Backend:** Supabase (Postgres, Auth, Storage, Row Level Security, Edge Functions)
-- **Pagos:** Stripe (modo test)
-- **i18n:** next-intl (`/es`, `/en`)
-- **Estado:** TanStack Query + Zustand
-- **Hosting:** Vercel + Supabase
+## ✨ Features
 
-## Desarrollo local
+* **Category-Aware Product Architecture:** Products carry type-specific specifications (brand/model for electronics, material/size for apparel, dimensions for home goods) stored as JSONB and rendered dynamically in both the admin form and the product page — not a one-size-fits-all schema.
+* **Fail-Safe Stripe Checkout:** The Stripe client refuses to boot with anything but a test-mode key, orders are only ever written from a signature-verified webhook (never trusted from the client), and every price is re-computed server-side against the database before a session is created.
+* **Row-Level Security, Not UI Tricks:** Admin, vendor and customer roles are enforced at the Postgres layer via Row Level Security — a vendor querying the database directly gets the same scoping as the UI shows, because the database is the one enforcing it.
+* **Admin/Vendor Operations Panel:** Product CRUD, per-variant inventory adjustment with low-stock alerts, and order management, all gated by the same RLS policies that protect the public storefront.
+* **Bilingual & Multi-Currency:** Full ES/EN interface via next-intl and a live MXN/USD switcher that recalculates every displayed price from a single exchange-rate source of truth.
+* **Original Visual Identity:** A warm stone-and-gold design system (Rubik/Nunito Sans) with accessible interaction details — skip-to-content link, visible focus states, reduced-motion support.
 
-```bash
-npm install
-npm run dev
-```
+## 🛠 Technologies Used
 
-Abre [http://localhost:3000](http://localhost:3000).
+* **Core Framework:** Next.js 16 (App Router), React 19
+* **Language:** TypeScript
+* **Styling:** Tailwind CSS v4, shadcn/ui (Base UI primitives)
+* **Backend:** Supabase (Postgres, Auth, Storage, Row Level Security)
+* **Payments:** Stripe (test mode, safety-locked)
+* **State & Data:** Zustand, TanStack Query
+* **i18n:** next-intl (`/es`, `/en`)
+* **Hosting:** Vercel + Supabase
 
-Copia `.env.example` a `.env.local` y completa las variables de Supabase antes
-de correr el proyecto:
+## 🚀 Installation & Setup
 
-```bash
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-```
+Follow these steps to run the development server locally. Ensure you have Node.js installed on your system.
 
-## Estructura
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/jp-software-dev/omnara-ecommerce.git
+   ```
 
-```
-src/
-  app/[locale]/(shop)/     rutas públicas: home, categoría, producto, carrito, checkout
-  app/[locale]/(account)/  cuenta del usuario
-  app/[locale]/(admin)/    panel de administración
-  app/[locale]/login|signup
-  app/api/webhooks/stripe/ webhook de Stripe
-  components/ui/           primitivos shadcn/ui
-  components/auth/         formularios de login/signup
-  i18n/                    configuración de next-intl
-  lib/supabase/            clientes de Supabase + tipos generados
-  messages/                textos ES/EN
-```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-## Base de datos
+3. Copy the environment template and fill in your Supabase project credentials:
+   ```bash
+   cp .env.example .env.local
+   ```
 
-El esquema (16 tablas con Row Level Security) vive en el proyecto Supabase
-`omnara-ecommerce`. Los tipos de TypeScript en `src/lib/supabase/types.ts` se
-generan desde ese esquema real.
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
