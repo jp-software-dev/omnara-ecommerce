@@ -11,6 +11,34 @@ export async function getCategories() {
   return data;
 }
 
+export async function getCategoryShowcases() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("categories")
+    .select(
+      "id, slug, name, position, products(status, created_at, product_images(url, position))"
+    )
+    .order("position");
+
+  if (error) throw error;
+
+  return data.map((category) => {
+    const activeProducts = category.products
+      .filter((product) => product.status === "active")
+      .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    const image = activeProducts[0]?.product_images
+      ?.slice()
+      .sort((a, b) => a.position - b.position)[0];
+
+    return {
+      id: category.id,
+      slug: category.slug,
+      name: category.name,
+      imageUrl: image?.url ?? null,
+    };
+  });
+}
+
 export async function getFeaturedProducts(limit = 8) {
   const supabase = await createClient();
   const { data, error } = await supabase
