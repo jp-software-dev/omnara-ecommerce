@@ -89,10 +89,15 @@ export default async function ProductPage({
           productName={pickLocale(product.name, locale)}
         />
 
-        <div className="space-y-6">
+        <div className="space-y-8">
           <div>
-            <div className="flex items-start justify-between gap-4">
-              <h1 className="text-2xl font-semibold tracking-tight">
+            {category ? (
+              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                {pickLocale(category.name, locale)}
+              </p>
+            ) : null}
+            <div className="mt-1 flex items-start justify-between gap-4">
+              <h1 className="text-3xl font-semibold tracking-tight text-balance">
                 {pickLocale(product.name, locale)}
               </h1>
               <WishlistButton
@@ -101,10 +106,10 @@ export default async function ProductPage({
                 className="shrink-0 border"
               />
             </div>
-            <p className="mt-1 text-muted-foreground">
+            <p className="mt-2 text-base text-muted-foreground">
               {pickLocale(product.description_short, locale)}
             </p>
-            <p className="mt-3 text-2xl font-semibold">
+            <p className="mt-4 text-3xl font-heading font-semibold">
               <ProductPrice mxnCents={product.base_price_mxn_cents} locale={locale} />
             </p>
           </div>
@@ -119,6 +124,7 @@ export default async function ProductPage({
               null
             }
             unitPriceMxnCents={product.base_price_mxn_cents}
+            categorySlug={category?.slug}
           />
 
           <Accordion defaultValue={["description"]}>
@@ -161,14 +167,14 @@ export default async function ProductPage({
             ) : null}
           </Accordion>
 
-          <div className="border-t pt-6">
+          <div className="border-t pt-8">
             <ProductReviews reviews={reviews} locale={locale} />
             <ReviewForm productId={product.id} locale={locale} />
           </div>
         </div>
       </div>
 
-      <div className="mt-12">
+      <div className="mt-16">
         <RelatedProducts products={relatedProducts} locale={locale} />
       </div>
     </main>

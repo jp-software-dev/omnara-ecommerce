@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/stores/cart-store";
+import { AddToCartModal } from "@/components/shop/add-to-cart-modal";
 
 type Variant = {
   id: string;
@@ -22,6 +22,7 @@ export function ProductActions({
   productName,
   productImage,
   unitPriceMxnCents,
+  categorySlug,
 }: {
   variants: Variant[];
   locale: string;
@@ -29,7 +30,10 @@ export function ProductActions({
   productName: string;
   productImage: string | null;
   unitPriceMxnCents: number;
+  categorySlug?: string | null;
 }) {
+  const isFootwear = categorySlug === "calzado";
+
   const sizes = useMemo(
     () => [...new Set(variants.map((v) => v.size).filter((s): s is string => Boolean(s)))],
     [variants]
@@ -41,6 +45,17 @@ export function ProductActions({
 
   const [selectedSize, setSelectedSize] = useState<string | null>(sizes[0] ?? null);
   const [selectedColor, setSelectedColor] = useState<string | null>(colors[0] ?? null);
+
+  const sizeStock = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const size of sizes) {
+      const variant = variants.find(
+        (v) => v.size === size && (selectedColor ? v.color === selectedColor : true)
+      );
+      map.set(size, variant?.stock_quantity ?? 0);
+    }
+    return map;
+  }, [sizes, variants, selectedColor]);
 
   const selectedVariant = useMemo(
     () =>
@@ -60,6 +75,7 @@ export function ProductActions({
 
   const addItem = useCartStore((state) => state.addItem);
   const [justAdded, setJustAdded] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   function handleAddToCart() {
     if (!selectedVariant || outOfStock) return;
@@ -77,12 +93,7 @@ export function ProductActions({
 
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1200);
-
-    toast(
-      locale === "en"
-        ? `${productName} added to your bag.`
-        : `${productName} se agregó al carrito.`
-    );
+    setConfirmOpen(true);
   }
 
   return (
@@ -97,7 +108,7 @@ export function ProductActions({
                 type="button"
                 onClick={() => setSelectedColor(color)}
                 className={cn(
-                  "rounded-md border px-3 py-1.5 text-sm",
+                  "rounded-md border px-3 py-1.5 text-sm transition-colors",
                   selectedColor === color && "border-foreground bg-foreground text-background"
                 )}
               >
@@ -110,22 +121,64 @@ export function ProductActions({
 
       {sizes.length > 0 ? (
         <div>
-          <p className="mb-2 text-sm font-medium">{locale === "en" ? "Size" : "Talla"}</p>
-          <div className="flex flex-wrap gap-2">
-            {sizes.map((size) => (
-              <button
-                key={size}
-                type="button"
-                onClick={() => setSelectedSize(size)}
-                className={cn(
-                  "size-10 rounded-md border text-sm",
-                  selectedSize === size && "border-foreground bg-foreground text-background"
-                )}
-              >
-                {size}
-              </button>
-            ))}
-          </div>
+          <p className="mb-2 text-sm font-medium">
+            {locale === "en" ? "Size" : "Talla"}
+            {isFootwear && selectedSize ? (
+              <span className="ml-1.5 font-normal text-muted-foreground">
+                {locale === "en" ? "· selected: " : "· seleccionada: "}
+                {selectedSize}
+              </span>
+            ) : null}
+          </p>
+
+          {isFootwear ? (
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+              {sizes.map((size) => {
+                const available = (sizeStock.get(size) ?? 0) > 0;
+                const selected = selectedSize === size;
+                return (
+                  <button
+                    key={size}
+                    type="button"
+                    disabled={!available}
+                    onClick={() => setSelectedSize(size)}
+                    aria-pressed={selected}
+                    aria-label={
+                      available
+                        ? size
+                        : `${size} — ${locale === "en" ? "out of stock" : "agotado"}`
+                    }
+                    className={cn(
+                      "relative h-11 rounded-lg border text-sm font-medium transition-all",
+                      available
+                        ? selected
+                          ? "border-transparent bg-brand-gradient text-white shadow-sm"
+                          : "border-border hover:border-foreground/60"
+                        : "cursor-not-allowed border-border/50 text-muted-foreground/50 line-through"
+                    )}
+                  >
+                    {size}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {sizes.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => setSelectedSize(size)}
+                  className={cn(
+                    "size-10 rounded-md border text-sm transition-colors",
+                    selectedSize === size && "border-foreground bg-foreground text-background"
+                  )}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       ) : null}
 
@@ -160,6 +213,19 @@ export function ProductActions({
           "Agregar al carrito"
         )}
       </Button>
+
+      {selectedVariant ? (
+        <AddToCartModal
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          locale={locale}
+          productName={productName}
+          productImage={productImage}
+          size={selectedVariant.size}
+          color={selectedVariant.color}
+          unitPriceMxnCents={unitPriceMxnCents}
+        />
+      ) : null}
     </div>
   );
 }

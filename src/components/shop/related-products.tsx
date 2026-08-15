@@ -11,10 +11,10 @@ export function RelatedProducts({
 
   return (
     <section className="border-t pt-8">
-      <h2 className="text-lg font-semibold">
+      <h2 className="text-xl font-heading font-semibold tracking-tight">
         {locale === "en" ? "You might also like" : "También te puede interesar"}
       </h2>
-      <div className="mt-4 grid grid-cols-2 gap-6 sm:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} locale={locale} />
         ))}

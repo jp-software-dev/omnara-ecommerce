@@ -28,7 +28,7 @@ export function ProductCard({
   return (
     <Link
       href={`/producto/${product.slug}`}
-      className="group flex flex-col gap-2"
+      className="group flex flex-col gap-3 rounded-xl border border-transparent p-2 transition-all duration-200 hover:border-border hover:bg-card hover:shadow-lg hover:shadow-foreground/5"
     >
       <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
         {image ? (
@@ -46,9 +46,9 @@ export function ProductCard({
           className="absolute right-2 top-2"
         />
       </div>
-      <div className="space-y-0.5">
-        <p className="text-sm font-medium">{pickLocale(product.name, locale)}</p>
-        <p className="text-sm text-muted-foreground">{price}</p>
+      <div className="space-y-1 px-0.5">
+        <p className="truncate text-sm font-medium">{pickLocale(product.name, locale)}</p>
+        <p className="text-sm font-semibold text-foreground">{price}</p>
       </div>
     </Link>
   );
