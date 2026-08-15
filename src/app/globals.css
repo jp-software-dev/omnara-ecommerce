@@ -51,6 +51,16 @@
 }
 
 :root {
+  /* Motion tokens — 3 durations, 2 easings, reused instead of ad-hoc
+     values per component (pattern verified against nike.com/mx's own
+     design tokens: functional UI stays fast/subtle, expressive easing
+     is reserved for hero/banner content, never transactional UI). */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-expressive: 400ms;
+  --ease-functional: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-expressive: cubic-bezier(0.6, 0, 0.1, 1);
+
   --brand-red: oklch(0.577 0.215 27);
   --brand-purple: oklch(0.52 0.22 307);
   --background: oklch(0.985 0.001 106.423);

@@ -102,19 +102,25 @@ export function ProductActions({
         <div>
           <p className="mb-2 text-sm font-medium">{locale === "en" ? "Color" : "Color"}</p>
           <div className="flex flex-wrap gap-2">
-            {colors.map((color) => (
-              <button
-                key={color}
-                type="button"
-                onClick={() => setSelectedColor(color)}
-                className={cn(
-                  "rounded-md border px-3 py-1.5 text-sm transition-colors",
-                  selectedColor === color && "border-foreground bg-foreground text-background"
-                )}
-              >
-                {color}
-              </button>
-            ))}
+            {colors.map((color) => {
+              const selected = selectedColor === color;
+              return (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setSelectedColor(color)}
+                  aria-pressed={selected}
+                  className={cn(
+                    "rounded-lg border px-3 py-1.5 text-sm font-medium transition-[border-color,color] duration-(--duration-fast) ease-(--ease-functional)",
+                    selected
+                      ? "border-2 border-foreground py-[calc(0.375rem-1px)]"
+                      : "border-border hover:border-foreground/60"
+                  )}
+                >
+                  {color}
+                </button>
+              );
+            })}
           </div>
         </div>
       ) : null}
@@ -149,10 +155,10 @@ export function ProductActions({
                         : `${size} — ${locale === "en" ? "out of stock" : "agotado"}`
                     }
                     className={cn(
-                      "relative h-11 rounded-lg border text-sm font-medium transition-all",
+                      "relative h-11 rounded-lg border text-sm font-medium transition-[border-color,color] duration-(--duration-fast) ease-(--ease-functional)",
                       available
                         ? selected
-                          ? "border-transparent bg-brand-gradient text-white shadow-sm"
+                          ? "border-2 border-foreground"
                           : "border-border hover:border-foreground/60"
                         : "cursor-not-allowed border-border/50 text-muted-foreground/50 line-through"
                     )}
@@ -164,19 +170,34 @@ export function ProductActions({
             </div>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {sizes.map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  onClick={() => setSelectedSize(size)}
-                  className={cn(
-                    "size-10 rounded-md border text-sm transition-colors",
-                    selectedSize === size && "border-foreground bg-foreground text-background"
-                  )}
-                >
-                  {size}
-                </button>
-              ))}
+              {sizes.map((size) => {
+                const available = (sizeStock.get(size) ?? 0) > 0;
+                const selected = selectedSize === size;
+                return (
+                  <button
+                    key={size}
+                    type="button"
+                    disabled={!available}
+                    onClick={() => setSelectedSize(size)}
+                    aria-pressed={selected}
+                    aria-label={
+                      available
+                        ? size
+                        : `${size} — ${locale === "en" ? "out of stock" : "agotado"}`
+                    }
+                    className={cn(
+                      "size-10 rounded-lg border text-sm font-medium transition-[border-color,color] duration-(--duration-fast) ease-(--ease-functional)",
+                      available
+                        ? selected
+                          ? "border-2 border-foreground"
+                          : "border-border hover:border-foreground/60"
+                        : "cursor-not-allowed border-border/50 text-muted-foreground/50 line-through"
+                    )}
+                  >
+                    {size}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
