@@ -1,8 +1,13 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { getCategories, getFeaturedProducts } from "@/lib/supabase/queries";
+import {
+  getCategories,
+  getCategoryShowcases,
+  getFeaturedProducts,
+} from "@/lib/supabase/queries";
 import { pickLocale } from "@/lib/format";
 import { ProductCard } from "@/components/shop/product-card";
+import { HeroCarousel } from "@/components/shop/hero-carousel";
 
 export default async function HomePage({
   params,
@@ -11,13 +16,16 @@ export default async function HomePage({
 }) {
   const { locale } = await params;
   const t = await getTranslations("home");
-  const [categories, featuredProducts] = await Promise.all([
+  const [categories, featuredProducts, showcases] = await Promise.all([
     getCategories(),
     getFeaturedProducts(8),
+    getCategoryShowcases(),
   ]);
 
   return (
     <main className="flex flex-1 flex-col">
+      <HeroCarousel slides={showcases} locale={locale} />
+
       <section className="border-b bg-muted/30">
         <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-4 py-16 text-center">
           <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
