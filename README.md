@@ -37,20 +37,3 @@ Follow these steps to run the development server locally. Ensure you have Node.j
    ```bash
    git clone https://github.com/jp-software-dev/omnara-ecommerce.git
    ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Copy the environment template and fill in your Supabase project credentials:
-   ```bash
-   cp .env.example .env.local
-   ```
-
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
