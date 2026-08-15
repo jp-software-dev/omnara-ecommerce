@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Hourglass } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/stores/cart-store";
 import { AddToCartModal } from "@/components/shop/add-to-cart-modal";
+import { getColorSwatch } from "@/lib/color-swatches";
 
 type Variant = {
   id: string;
@@ -100,8 +101,15 @@ export function ProductActions({
     <div className="space-y-5">
       {colors.length > 0 ? (
         <div>
-          <p className="mb-2 text-sm font-medium">{locale === "en" ? "Color" : "Color"}</p>
-          <div className="flex flex-wrap gap-2">
+          <p className="mb-2 text-sm font-medium">
+            {locale === "en" ? "Color" : "Color"}
+            {selectedColor ? (
+              <span className="ml-1.5 font-normal text-muted-foreground">
+                · {selectedColor}
+              </span>
+            ) : null}
+          </p>
+          <div className="flex flex-wrap gap-3">
             {colors.map((color) => {
               const selected = selectedColor === color;
               return (
@@ -110,19 +118,31 @@ export function ProductActions({
                   type="button"
                   onClick={() => setSelectedColor(color)}
                   aria-pressed={selected}
+                  aria-label={color}
+                  title={color}
                   className={cn(
-                    "rounded-lg border px-3 py-1.5 text-sm font-medium transition-[border-color,color] duration-(--duration-fast) ease-(--ease-functional)",
-                    selected
-                      ? "border-2 border-foreground py-[calc(0.375rem-1px)]"
-                      : "border-border hover:border-foreground/60"
+                    "size-9 rounded-full border-2 p-0.5 transition-[border-color] duration-(--duration-fast) ease-(--ease-functional)",
+                    selected ? "border-foreground" : "border-transparent hover:border-border"
                   )}
                 >
-                  {color}
+                  <span
+                    className="block size-full rounded-full ring-1 ring-border"
+                    style={{ backgroundColor: getColorSwatch(color) }}
+                  />
                 </button>
               );
             })}
           </div>
         </div>
+      ) : null}
+
+      {lowStock ? (
+        <p className="flex items-center gap-1.5 text-sm font-medium text-amber-600 dark:text-amber-500">
+          <Hourglass className="size-4" />
+          {locale === "en"
+            ? `Only ${selectedVariant.stock_quantity} left in stock`
+            : `Solo quedan ${selectedVariant.stock_quantity} disponibles`}
+        </p>
       ) : null}
 
       {sizes.length > 0 ? (
@@ -201,14 +221,6 @@ export function ProductActions({
             </div>
           )}
         </div>
-      ) : null}
-
-      {lowStock ? (
-        <p className="text-sm font-medium text-destructive">
-          {locale === "en"
-            ? `Only ${selectedVariant.stock_quantity} left in stock`
-            : `Solo quedan ${selectedVariant.stock_quantity} disponibles`}
-        </p>
       ) : null}
 
       <Button
