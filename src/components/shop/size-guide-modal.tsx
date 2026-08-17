@@ -10,6 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { FOOTWEAR_SIZE_CHART } from "@/lib/size-charts";
 
 const CLOTHING_ROWS = [
   { size: "XS", chest: "82–86", waist: "66–70" },
@@ -17,14 +18,6 @@ const CLOTHING_ROWS = [
   { size: "M", chest: "92–97", waist: "76–81" },
   { size: "L", chest: "98–104", waist: "82–88" },
   { size: "XL", chest: "105–111", waist: "89–95" },
-];
-
-const FOOTWEAR_ROWS = [
-  { cm: "24", mx: "25", us: "6.5" },
-  { cm: "24.5", mx: "25.5", us: "7" },
-  { cm: "25", mx: "26", us: "7.5" },
-  { cm: "26", mx: "27", us: "8.5" },
-  { cm: "27", mx: "28", us: "9.5" },
 ];
 
 export function SizeGuideModal({
@@ -78,7 +71,7 @@ export function SizeGuideModal({
           </TableHeader>
           <TableBody>
             {isFootwear
-              ? FOOTWEAR_ROWS.map((row) => (
+              ? FOOTWEAR_SIZE_CHART.map((row) => (
                   <TableRow key={row.cm}>
                     <TableCell>{row.cm}</TableCell>
                     <TableCell>{row.mx}</TableCell>
