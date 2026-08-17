@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 export async function getCategories() {
   const supabase = await createClient();
@@ -68,7 +69,7 @@ export async function getProductsByCategory(categorySlug: string) {
   const { data: products, error: productsError } = await supabase
     .from("products")
     .select(
-      "id, slug, name, description_short, base_price_mxn_cents, product_images(url, position), product_variants(id, size, color, stock_quantity)"
+      "id, slug, name, description_short, base_price_mxn_cents, attributes, created_at, product_images(url, position), product_variants(id, size, color, stock_quantity)"
     )
     .eq("category_id", category.id)
     .eq("status", "active")
@@ -77,6 +78,66 @@ export async function getProductsByCategory(categorySlug: string) {
   if (productsError) throw productsError;
 
   return { category, products };
+}
+
+export async function getNewArrivals(limit = 8) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, slug, name, base_price_mxn_cents, product_images(url, position)")
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getBestSellers(limit = 8) {
+  // order_items is RLS-scoped to buyer/vendor/admin, so a normal storefront
+  // visitor can't see enough rows to compute a sitewide aggregate — this is
+  // a read-only sales-count rollup (no order/customer details returned),
+  // the same class of exception the Stripe webhook already uses.
+  let db;
+  try {
+    db = createServiceRoleClient();
+  } catch {
+    // SUPABASE_SERVICE_ROLE_KEY not configured in this environment yet —
+    // hide the section rather than crash the homepage.
+    return [];
+  }
+
+  const { data: items, error } = await db
+    .from("order_items")
+    .select("quantity, product_variants(product_id)");
+
+  if (error) throw error;
+
+  const totals = new Map<string, number>();
+  for (const item of items) {
+    const productId = item.product_variants?.product_id;
+    if (!productId) continue;
+    totals.set(productId, (totals.get(productId) ?? 0) + item.quantity);
+  }
+
+  const topProductIds = [...totals.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id]) => id);
+
+  if (topProductIds.length === 0) return [];
+
+  const supabase = await createClient();
+  const { data: products, error: productsError } = await supabase
+    .from("products")
+    .select("id, slug, name, base_price_mxn_cents, product_images(url, position)")
+    .in("id", topProductIds)
+    .eq("status", "active");
+
+  if (productsError) throw productsError;
+
+  const order = new Map(topProductIds.map((id, index) => [id, index]));
+  return [...products].sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }
 
 export async function getProductBySlug(slug: string) {
