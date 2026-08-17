@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Expand } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,17 @@ export function ProductGallery({
     setActive((i) => (i + 1) % total);
   }
 
+  useEffect(() => {
+    if (lightboxOpen || total <= 1) return;
+    function handleKeydown(event: KeyboardEvent) {
+      if (event.key === "ArrowLeft") goPrev();
+      if (event.key === "ArrowRight") goNext();
+    }
+    window.addEventListener("keydown", handleKeydown);
+    return () => window.removeEventListener("keydown", handleKeydown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightboxOpen, total]);
+
   return (
     <div className="flex flex-col-reverse gap-3 sm:flex-row">
       <div className="flex gap-2.5 overflow-x-auto pb-1 sm:max-h-[560px] sm:flex-col sm:overflow-y-auto sm:overflow-x-visible sm:pb-0 sm:pr-1">
@@ -36,6 +47,7 @@ export function ProductGallery({
             key={image.url}
             type="button"
             onClick={() => setActive(index)}
+            onMouseEnter={() => setActive(index)}
             aria-label={`${productName} — vista ${index + 1}`}
             aria-current={index === active}
             className={cn(
@@ -75,24 +87,7 @@ export function ProductGallery({
 
         {total > 1 ? (
           <>
-            <button
-              type="button"
-              onClick={goPrev}
-              aria-label="Imagen anterior"
-              className="absolute left-3 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-background/85 text-foreground opacity-0 shadow-md backdrop-blur transition-all duration-200 hover:scale-105 hover:border-transparent hover:bg-brand-gradient hover:text-white active:scale-95 group-hover:opacity-100"
-            >
-              <ChevronLeft className="size-5" />
-            </button>
-            <button
-              type="button"
-              onClick={goNext}
-              aria-label="Siguiente imagen"
-              className="absolute right-3 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-background/85 text-foreground opacity-0 shadow-md backdrop-blur transition-all duration-200 hover:scale-105 hover:border-transparent hover:bg-brand-gradient hover:text-white active:scale-95 group-hover:opacity-100"
-            >
-              <ChevronRight className="size-5" />
-            </button>
-
-            <div className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+            <div className="pointer-events-none absolute bottom-3 left-3 flex gap-1.5">
               {sorted.map((image, index) => (
                 <span
                   key={image.url}
@@ -102,6 +97,25 @@ export function ProductGallery({
                   )}
                 />
               ))}
+            </div>
+
+            <div className="absolute right-3 bottom-3 flex gap-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+              <button
+                type="button"
+                onClick={goPrev}
+                aria-label="Imagen anterior"
+                className="flex size-9 items-center justify-center rounded-full border border-border/60 bg-background/85 text-foreground shadow-md backdrop-blur transition-all duration-200 hover:scale-105 hover:border-transparent hover:bg-brand-gradient hover:text-white active:scale-95"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={goNext}
+                aria-label="Siguiente imagen"
+                className="flex size-9 items-center justify-center rounded-full border border-border/60 bg-background/85 text-foreground shadow-md backdrop-blur transition-all duration-200 hover:scale-105 hover:border-transparent hover:bg-brand-gradient hover:text-white active:scale-95"
+              >
+                <ChevronRight className="size-4" />
+              </button>
             </div>
           </>
         ) : null}
