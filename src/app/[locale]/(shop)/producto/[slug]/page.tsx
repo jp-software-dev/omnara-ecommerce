@@ -45,7 +45,7 @@ export default async function ProductPage({
   const category = product.categories;
   const [reviews, relatedProducts] = await Promise.all([
     getProductReviews(product.id),
-    getRelatedProducts(product.category_id, product.id),
+    getRelatedProducts(product.category_id, product.id, 10),
   ]);
 
   const attributeValues = (product.attributes as Record<string, string> | null) ?? {};
@@ -127,7 +127,7 @@ export default async function ProductPage({
             categorySlug={category?.slug}
           />
 
-          <Accordion defaultValue={["description"]}>
+          <Accordion multiple defaultValue={["description", "shipping", "specs"]}>
             <AccordionItem value="description">
               <AccordionTrigger>
                 {locale === "en" ? "Description" : "Descripción"}
