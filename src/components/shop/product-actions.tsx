@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 import { Check, Hourglass } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useCartStore } from "@/stores/cart-store";
+import { cartItemCount, useCartStore } from "@/stores/cart-store";
 import { AddToCartModal } from "@/components/shop/add-to-cart-modal";
+import { SizeGuideModal } from "@/components/shop/size-guide-modal";
 import { getColorSwatch } from "@/lib/color-swatches";
 
 type Variant = {
@@ -75,6 +76,7 @@ export function ProductActions({
     selectedVariant.stock_quantity <= selectedVariant.low_stock_threshold;
 
   const addItem = useCartStore((state) => state.addItem);
+  const cartItems = useCartStore((state) => state.items);
   const [justAdded, setJustAdded] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -147,15 +149,18 @@ export function ProductActions({
 
       {sizes.length > 0 ? (
         <div>
-          <p className="mb-2 text-sm font-medium">
-            {locale === "en" ? "Size" : "Talla"}
-            {isFootwear && selectedSize ? (
-              <span className="ml-1.5 font-normal text-muted-foreground">
-                {locale === "en" ? "· selected: " : "· seleccionada: "}
-                {selectedSize}
-              </span>
-            ) : null}
-          </p>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-medium">
+              {locale === "en" ? "Size" : "Talla"}
+              {isFootwear && selectedSize ? (
+                <span className="ml-1.5 font-normal text-muted-foreground">
+                  {locale === "en" ? "· selected: " : "· seleccionada: "}
+                  {selectedSize}
+                </span>
+              ) : null}
+            </p>
+            <SizeGuideModal categorySlug={categorySlug} locale={locale} />
+          </div>
 
           {isFootwear ? (
             <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
@@ -257,6 +262,7 @@ export function ProductActions({
           size={selectedVariant.size}
           color={selectedVariant.color}
           unitPriceMxnCents={unitPriceMxnCents}
+          cartItemCount={cartItemCount(cartItems)}
         />
       ) : null}
     </div>
