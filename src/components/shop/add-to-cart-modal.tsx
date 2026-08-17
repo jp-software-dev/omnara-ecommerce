@@ -21,6 +21,7 @@ export function AddToCartModal({
   size,
   color,
   unitPriceMxnCents,
+  cartItemCount,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,6 +31,7 @@ export function AddToCartModal({
   size: string | null;
   color: string | null;
   unitPriceMxnCents: number;
+  cartItemCount: number;
 }) {
   const price = useDisplayPrice(unitPriceMxnCents, locale);
 
@@ -80,7 +82,9 @@ export function AddToCartModal({
             className="w-full"
             render={
               <Link href="/carrito" onClick={() => onOpenChange(false)}>
-                {locale === "en" ? "View bag" : "Ver bolsa de compra"}
+                {locale === "en"
+                  ? `View bag (${cartItemCount})`
+                  : `Ver bolsa de compra (${cartItemCount})`}
               </Link>
             }
           />
