@@ -8,6 +8,7 @@ import { cartItemCount, useCartStore } from "@/stores/cart-store";
 import { AddToCartModal } from "@/components/shop/add-to-cart-modal";
 import { SizeGuideModal } from "@/components/shop/size-guide-modal";
 import { getColorSwatch } from "@/lib/color-swatches";
+import { CLOTHING_SIZES, FOOTWEAR_SIZES } from "@/lib/size-charts";
 
 type Variant = {
   id: string;
@@ -36,16 +37,24 @@ export function ProductActions({
 }) {
   const isFootwear = categorySlug === "calzado";
 
+  // Show the full canonical size range (matching real footwear/apparel
+  // retailers) rather than only the sizes this product happens to have
+  // variants for — anything without a matching variant renders disabled
+  // instead of being omitted, so shoppers see the whole range a product
+  // line comes in, not just what's currently stocked.
+  const hasSizeVariants = variants.some((v) => v.size !== null);
   const sizes = useMemo(
-    () => [...new Set(variants.map((v) => v.size).filter((s): s is string => Boolean(s)))],
-    [variants]
+    () => (hasSizeVariants ? (isFootwear ? [...FOOTWEAR_SIZES] : [...CLOTHING_SIZES]) : []),
+    [hasSizeVariants, isFootwear]
   );
   const colors = useMemo(
     () => [...new Set(variants.map((v) => v.color).filter((c): c is string => Boolean(c)))],
     [variants]
   );
 
-  const [selectedSize, setSelectedSize] = useState<string | null>(sizes[0] ?? null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(
+    () => variants.find((v) => v.size !== null)?.size ?? null
+  );
   const [selectedColor, setSelectedColor] = useState<string | null>(colors[0] ?? null);
 
   const sizeStock = useMemo(() => {
