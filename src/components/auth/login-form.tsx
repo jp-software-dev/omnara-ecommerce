@@ -87,7 +87,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
                 <div className="flex items-center">
                   <FieldLabel htmlFor="password">Contraseña</FieldLabel>
                   <a
-                    href="#"
+                    href="../recuperar"
                     className="ml-auto text-sm underline-offset-4 hover:underline"
                   >
                     ¿Olvidaste tu contraseña?
@@ -108,8 +108,8 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
         </CardContent>
       </Card>
       <FieldDescription className="px-6 text-center">
-        Al continuar, aceptas nuestros <a href="#">Términos de servicio</a> y{" "}
-        <a href="#">Aviso de privacidad</a>.
+        Al continuar, aceptas nuestros <a href="../terminos">Términos de servicio</a> y{" "}
+        <a href="../privacidad">Aviso de privacidad</a>.
       </FieldDescription>
     </div>
   );

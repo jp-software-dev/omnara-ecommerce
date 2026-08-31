@@ -7,8 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -204,6 +206,36 @@ export type Database = {
           },
         ]
       }
+      contact_messages: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          message: string
+          name: string
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          message: string
+          name: string
+          status?: string
+          subject?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+          status?: string
+          subject?: string | null
+        }
+        Relationships: []
+      }
       inventory_movements: {
         Row: {
           created_at: string
@@ -316,15 +348,19 @@ export type Database = {
           billing_address_id: string | null
           created_at: string
           currency: string
+          discount_cents: number
           id: string
           order_number: string
           payment_method: string | null
+          promo_code: string | null
           shipping_address_id: string | null
+          shipping_address_snapshot: Json | null
           shipping_cents: number
           status: string
           stripe_payment_intent_id: string | null
           subtotal_cents: number
           total_cents: number
+          tracking_number: string | null
           updated_at: string
           user_id: string | null
         }
@@ -332,15 +368,19 @@ export type Database = {
           billing_address_id?: string | null
           created_at?: string
           currency?: string
+          discount_cents?: number
           id?: string
           order_number: string
           payment_method?: string | null
+          promo_code?: string | null
           shipping_address_id?: string | null
+          shipping_address_snapshot?: Json | null
           shipping_cents?: number
           status?: string
           stripe_payment_intent_id?: string | null
           subtotal_cents?: number
           total_cents?: number
+          tracking_number?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -348,15 +388,19 @@ export type Database = {
           billing_address_id?: string | null
           created_at?: string
           currency?: string
+          discount_cents?: number
           id?: string
           order_number?: string
           payment_method?: string | null
+          promo_code?: string | null
           shipping_address_id?: string | null
+          shipping_address_snapshot?: Json | null
           shipping_cents?: number
           status?: string
           stripe_payment_intent_id?: string | null
           subtotal_cents?: number
           total_cents?: number
+          tracking_number?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -813,6 +857,40 @@ export type TablesUpdate<
       }
       ? U
       : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {

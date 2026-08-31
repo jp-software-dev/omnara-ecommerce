@@ -68,6 +68,23 @@ export async function POST(request: NextRequest) {
 
   const subtotalCents = cartItems.reduce((sum, item) => sum + item.p * item.q, 0);
   const orderNumber = `ORD-${session.id.slice(-8).toUpperCase()}`;
+  const shippingCents = Number(session.metadata?.shipping_cents ?? 0);
+  const discountCents = Number(session.metadata?.discount_cents ?? 0);
+  const promoCode = session.metadata?.promo_code || null;
+  const shippingDetails = session.collected_information?.shipping_details ?? null;
+  const shippingSnapshot = shippingDetails
+    ? {
+        name: shippingDetails.name,
+        address: {
+          line1: shippingDetails.address.line1,
+          line2: shippingDetails.address.line2,
+          city: shippingDetails.address.city,
+          state: shippingDetails.address.state,
+          postal_code: shippingDetails.address.postal_code,
+          country: shippingDetails.address.country,
+        },
+      }
+    : null;
 
   const { data: order, error: orderError } = await db
     .from("orders")
@@ -77,7 +94,10 @@ export async function POST(request: NextRequest) {
       status: "paid",
       currency: session.currency?.toUpperCase() ?? "MXN",
       subtotal_cents: subtotalCents,
-      shipping_cents: 0,
+      shipping_cents: shippingCents,
+      discount_cents: discountCents,
+      promo_code: promoCode,
+      shipping_address_snapshot: shippingSnapshot,
       total_cents: session.amount_total ?? subtotalCents,
       payment_method: "card",
       stripe_payment_intent_id: paymentIntentId,
@@ -87,6 +107,22 @@ export async function POST(request: NextRequest) {
 
   if (orderError || !order) {
     return NextResponse.json({ error: "Could not create order." }, { status: 500 });
+  }
+
+  if (promoCode) {
+    // Best-effort usage counter — a lost increment under a race is an
+    // acceptable trade-off for not blocking order creation on it.
+    const { data: promo } = await db
+      .from("promo_codes")
+      .select("times_used")
+      .eq("code", promoCode)
+      .maybeSingle();
+    if (promo) {
+      await db
+        .from("promo_codes")
+        .update({ times_used: promo.times_used + 1 })
+        .eq("code", promoCode);
+    }
   }
 
   const { data: defaultWarehouse } = await db

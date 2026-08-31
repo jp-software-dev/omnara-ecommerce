@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import type { Database } from "@/lib/supabase/types";
 
 export async function getCategories() {
   const supabase = await createClient();
@@ -264,3 +265,68 @@ export async function getAppSettings() {
   if (error) throw error;
   return data;
 }
+
+export type PromoCodeValidation =
+  | { valid: true; discountCents: number; discountType: "percentage" | "fixed" }
+  | { valid: false; reason: "not_found" | "expired" | "limit_reached" | "min_order" };
+
+// promo_codes is admin-only under RLS (see promo_codes_admin_all), so validating a
+// customer-entered code has to go through the service-role client — same exception
+// getBestSellers already relies on for a public, read-only, non-sensitive lookup.
+// Convention: discount_value is 0-100 for "percentage", and MXN cents for "fixed"
+// (matching every other *_cents column in this schema).
+export async function validatePromoCode(
+  rawCode: string,
+  subtotalMxnCents: number
+): Promise<PromoCodeValidation> {
+  let db;
+  try {
+    db = createServiceRoleClient();
+  } catch {
+    return { valid: false, reason: "not_found" };
+  }
+
+  const code = rawCode.trim().toUpperCase();
+  const { data: promo } = await db
+    .from("promo_codes")
+    .select("discount_type, discount_value, min_order_cents, expires_at, usage_limit, times_used, is_active")
+    .eq("code", code)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!promo) return { valid: false, reason: "not_found" };
+  if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
+    return { valid: false, reason: "expired" };
+  }
+  if (promo.usage_limit !== null && promo.times_used >= promo.usage_limit) {
+    return { valid: false, reason: "limit_reached" };
+  }
+  if (subtotalMxnCents < promo.min_order_cents) {
+    return { valid: false, reason: "min_order" };
+  }
+
+  const discountType = promo.discount_type as "percentage" | "fixed";
+  const discountCents =
+    discountType === "percentage"
+      ? Math.round((subtotalMxnCents * promo.discount_value) / 100)
+      : Math.round(promo.discount_value);
+
+  return { valid: true, discountCents: Math.min(discountCents, subtotalMxnCents), discountType };
+}
+
+export async function getOrderDetail(orderId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select(
+      "id, order_number, status, currency, subtotal_cents, shipping_cents, discount_cents, promo_code, total_cents, shipping_address_snapshot, tracking_number, created_at, user_id, order_items(id, quantity, unit_price_cents, product_name_snapshot, variant_attrs_snapshot, product_variants(product_id, products(slug)))"
+    )
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export type OrderDetail = NonNullable<Awaited<ReturnType<typeof getOrderDetail>>>;
+export type ContactMessage = Database["public"]["Tables"]["contact_messages"]["Row"];
