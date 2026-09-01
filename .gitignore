@@ -22,7 +22,16 @@
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# secrets, keys & certificates
 *.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.der
+.env.vault
 
 # editor
 .vscode/
