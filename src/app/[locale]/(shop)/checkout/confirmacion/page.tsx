@@ -3,7 +3,7 @@ import { Link, redirect } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { DemoBanner } from "@/components/shop/demo-banner";
 import { ClearCartOnMount } from "@/components/shop/clear-cart-on-mount";
-import { formatPrice } from "@/lib/format";
+import { OrderInvoice } from "@/components/shop/order-invoice";
 import { getOrderBySessionId } from "./actions";
 
 function sleep(ms: number) {
@@ -37,7 +37,6 @@ export default async function CheckoutConfirmationPage({
       locale === "en"
         ? "We're finishing up your order — refresh this page in a few seconds."
         : "Estamos terminando de procesar tu pedido — actualiza esta página en unos segundos.",
-    orderNumber: locale === "en" ? "Order number" : "Número de pedido",
     continueShopping: locale === "en" ? "Continue shopping" : "Seguir comprando",
     viewOrders: locale === "en" ? "View my orders" : "Ver mis pedidos",
   };
@@ -51,19 +50,19 @@ export default async function CheckoutConfirmationPage({
   }
 
   return (
-    <main className="mx-auto w-full max-w-xl flex-1 px-4 py-16 text-center">
+    <main className="mx-auto w-full max-w-xl flex-1 px-4 py-16">
       <ClearCartOnMount />
-      <CheckCircle2 className="mx-auto size-12 text-green-600" />
-      <h1 className="mt-4 text-2xl font-semibold tracking-tight">{t.title}</h1>
-      <p className="mt-1 text-muted-foreground">
-        {t.orderNumber}: <span className="font-mono">{order.order_number}</span>
-      </p>
-      <p className="mt-1 text-lg font-semibold">
-        {formatPrice(order.total_cents, order.currency === "USD" ? "USD" : "MXN", locale)}
-      </p>
+      <div className="text-center">
+        <CheckCircle2 className="mx-auto size-12 text-green-600" />
+        <h1 className="mt-4 text-2xl font-semibold tracking-tight">{t.title}</h1>
+      </div>
 
       <div className="mt-6">
         <DemoBanner locale={locale} />
+      </div>
+
+      <div className="mt-6">
+        <OrderInvoice order={order} locale={locale} />
       </div>
 
       <div className="mt-8 flex justify-center gap-3">

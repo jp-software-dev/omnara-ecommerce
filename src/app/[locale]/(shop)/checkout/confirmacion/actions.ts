@@ -20,7 +20,9 @@ export async function getOrderBySessionId(sessionId: string) {
   const db = createServiceRoleClient();
   const { data: order } = await db
     .from("orders")
-    .select("id, order_number, total_cents, currency, created_at")
+    .select(
+      "id, order_number, status, total_cents, subtotal_cents, shipping_cents, discount_cents, promo_code, shipping_address_snapshot, currency, created_at, order_items(id, quantity, unit_price_cents, product_name_snapshot)"
+    )
     .eq("stripe_payment_intent_id", paymentIntentId)
     .maybeSingle();
 

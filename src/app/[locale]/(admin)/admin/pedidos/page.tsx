@@ -6,6 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Link } from "@/i18n/navigation";
 import { getOrdersForRole } from "@/lib/supabase/admin-queries";
 import { createClient } from "@/lib/supabase/server";
 import { formatPrice } from "@/lib/format";
@@ -73,7 +74,11 @@ export default async function AdminOrdersPage({
                 const itemCount = order.order_items.reduce((sum, item) => sum + item.quantity, 0);
                 return (
                   <TableRow key={order.id}>
-                    <TableCell className="font-medium">{order.order_number}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link href={`/admin/pedidos/${order.id}`} className="hover:underline">
+                        {order.order_number}
+                      </Link>
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{itemCount}</TableCell>
                     <TableCell>
                       {formatPrice(order.total_cents, order.currency === "USD" ? "USD" : "MXN", locale)}
