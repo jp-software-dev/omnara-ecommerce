@@ -98,6 +98,45 @@ export async function deleteProduct(productId: string) {
   revalidatePath("/[locale]/(admin)/admin/productos", "page");
 }
 
+export async function updateOrderTracking(orderId: string, trackingNumber: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("orders")
+    .update({ tracking_number: trackingNumber || null })
+    .eq("id", orderId);
+  if (error) throw error;
+  revalidatePath("/[locale]/(admin)/admin/pedidos/[id]", "page");
+}
+
+export async function markMessageRead(messageId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("contact_messages")
+    .update({ status: "read" })
+    .eq("id", messageId);
+  if (error) throw error;
+  revalidatePath("/[locale]/(admin)/admin/mensajes", "page");
+}
+
+export async function createPromoCode(input: {
+  code: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  minOrderCents: number;
+  usageLimit: number | null;
+}) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("promo_codes").insert({
+    code: input.code.trim().toUpperCase(),
+    discount_type: input.discountType,
+    discount_value: input.discountValue,
+    min_order_cents: input.minOrderCents,
+    usage_limit: input.usageLimit,
+  });
+  if (error) throw error;
+  revalidatePath("/[locale]/(admin)/admin/promociones", "page");
+}
+
 const USER_ROLES = ["admin", "vendor", "customer"] as const;
 
 export async function updateUserRole(userId: string, role: string) {

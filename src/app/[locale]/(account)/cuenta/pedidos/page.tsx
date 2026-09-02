@@ -56,23 +56,28 @@ export default async function OrdersPage({
             const label = STATUS_LABELS[order.status];
             const itemCount = order.order_items.reduce((sum, item) => sum + item.quantity, 0);
             return (
-              <li key={order.id} className="flex items-center justify-between gap-4 py-4">
-                <div>
-                  <p className="font-medium">{order.order_number}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(order.created_at).toLocaleDateString(locale === "en" ? "en-US" : "es-MX")}
-                    {" · "}
-                    {t.items(itemCount)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge variant="secondary">
-                    {label ? label[locale === "en" ? "en" : "es"] : order.status}
-                  </Badge>
-                  <span className="font-medium">
-                    {formatPrice(order.total_cents, order.currency === "USD" ? "USD" : "MXN", locale)}
-                  </span>
-                </div>
+              <li key={order.id}>
+                <Link
+                  href={`/cuenta/pedidos/${order.id}`}
+                  className="flex items-center justify-between gap-4 py-4 hover:opacity-80"
+                >
+                  <div>
+                    <p className="font-medium">{order.order_number}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(order.created_at).toLocaleDateString(locale === "en" ? "en-US" : "es-MX")}
+                      {" · "}
+                      {t.items(itemCount)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge variant="secondary">
+                      {label ? label[locale === "en" ? "en" : "es"] : order.status}
+                    </Badge>
+                    <span className="font-medium">
+                      {formatPrice(order.total_cents, order.currency === "USD" ? "USD" : "MXN", locale)}
+                    </span>
+                  </div>
+                </Link>
               </li>
             );
           })}

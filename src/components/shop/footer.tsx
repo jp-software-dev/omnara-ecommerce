@@ -16,13 +16,14 @@ export async function Footer() {
           <div className="flex gap-10">
             <div className="flex flex-col gap-2">
               <span className="font-medium text-foreground">Ayuda</span>
-              <Link href="/">Preguntas frecuentes</Link>
-              <Link href="/">Envíos y devoluciones</Link>
+              <Link href="/ayuda">Preguntas frecuentes</Link>
+              <Link href="/ayuda#envios">Envíos y devoluciones</Link>
+              <Link href="/contacto">Contacto</Link>
             </div>
             <div className="flex flex-col gap-2">
               <span className="font-medium text-foreground">Legal</span>
-              <Link href="/">Términos de servicio</Link>
-              <Link href="/">Aviso de privacidad</Link>
+              <Link href="/terminos">Términos de servicio</Link>
+              <Link href="/privacidad">Aviso de privacidad</Link>
             </div>
           </div>
         </div>
