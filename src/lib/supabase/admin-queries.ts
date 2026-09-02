@@ -162,3 +162,15 @@ export async function getOrderStatusCounts() {
   }
   return counts;
 }
+
+// admin_list_users() is a SECURITY DEFINER function (profiles has no email —
+// that lives in auth.users, which isn't exposed to PostgREST directly) that
+// returns rows itself only when the caller is an admin, so no service-role
+// key is needed here.
+export async function getAdminUsers() {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_list_users");
+
+  if (error) throw error;
+  return data;
+}

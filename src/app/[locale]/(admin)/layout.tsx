@@ -6,6 +6,7 @@ import {
   BarChart3,
   Mail,
   Tag,
+  Users,
 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { requireRole } from "@/lib/supabase/auth-helpers";
@@ -34,6 +35,7 @@ export default async function AdminLayout({
             label: locale === "en" ? "Promo codes" : "Promociones",
             icon: Tag,
           },
+          { href: "/admin/usuarios", label: locale === "en" ? "Users" : "Usuarios", icon: Users },
         ]
       : []),
   ];
