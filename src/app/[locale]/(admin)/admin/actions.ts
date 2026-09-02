@@ -97,3 +97,21 @@ export async function deleteProduct(productId: string) {
   if (error) throw error;
   revalidatePath("/[locale]/(admin)/admin/productos", "page");
 }
+
+const USER_ROLES = ["admin", "vendor", "customer"] as const;
+
+export async function updateUserRole(userId: string, role: string) {
+  if (!USER_ROLES.includes(role as (typeof USER_ROLES)[number])) {
+    throw new Error("Rol inválido.");
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user?.id === userId) {
+    throw new Error("No puedes cambiar tu propio rol.");
+  }
+  const { error } = await supabase.from("profiles").update({ role }).eq("id", userId);
+  if (error) throw error;
+  revalidatePath("/[locale]/(admin)/admin/usuarios", "page");
+}

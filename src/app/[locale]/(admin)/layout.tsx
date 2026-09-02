@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Boxes, ClipboardList } from "lucide-react";
+import { LayoutDashboard, Package, Boxes, ClipboardList, Users } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { requireRole } from "@/lib/supabase/auth-helpers";
 
@@ -17,6 +17,9 @@ export default async function AdminLayout({
     { href: "/admin/productos", label: locale === "en" ? "Products" : "Productos", icon: Package },
     { href: "/admin/inventario", label: locale === "en" ? "Inventory" : "Inventario", icon: Boxes },
     { href: "/admin/pedidos", label: locale === "en" ? "Orders" : "Pedidos", icon: ClipboardList },
+    ...(role === "admin"
+      ? [{ href: "/admin/usuarios", label: locale === "en" ? "Users" : "Usuarios", icon: Users }]
+      : []),
   ];
 
   return (
