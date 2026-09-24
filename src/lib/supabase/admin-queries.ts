@@ -174,3 +174,26 @@ export async function getAdminUsers() {
   if (error) throw error;
   return data;
 }
+
+export async function getBusinesses() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("businesses")
+    .select("id, slug, name, description, logo_url, banner_url, is_active, created_at, owner_id, profiles(full_name)")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getBusinessById(id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("businesses")
+    .select("id, slug, name, description, logo_url, banner_url, is_active, owner_id, profiles(full_name)")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}

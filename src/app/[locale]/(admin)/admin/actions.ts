@@ -154,3 +154,98 @@ export async function updateUserRole(userId: string, role: string) {
   if (error) throw error;
   revalidatePath("/[locale]/(admin)/admin/usuarios", "page");
 }
+
+const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+function assertValidSlug(slug: string) {
+  if (!SLUG_PATTERN.test(slug)) {
+    throw new Error("El slug solo puede tener minúsculas, números y guiones.");
+  }
+}
+
+export async function createBusiness(input: {
+  ownerId: string;
+  slug: string;
+  name: string;
+  description: string;
+  logoUrl: string;
+  bannerUrl: string;
+}) {
+  assertValidSlug(input.slug);
+  const supabase = await createClient();
+
+  const { error: businessError } = await supabase.from("businesses").insert({
+    owner_id: input.ownerId,
+    slug: input.slug,
+    name: input.name,
+    description: input.description || null,
+    logo_url: input.logoUrl || null,
+    banner_url: input.bannerUrl || null,
+  });
+  if (businessError) throw businessError;
+
+  // Owner becomes a vendor the moment their business exists — a business
+  // without vendor-scoped access to products/inventory/orders is useless.
+  const { error: roleError } = await supabase
+    .from("profiles")
+    .update({ role: "vendor" })
+    .eq("id", input.ownerId)
+    .neq("role", "vendor");
+  if (roleError) throw roleError;
+
+  revalidatePath("/[locale]/(admin)/admin/negocios", "page");
+  revalidatePath("/[locale]/(admin)/admin/usuarios", "page");
+}
+
+export async function updateBusiness(
+  businessId: string,
+  input: {
+    name: string;
+    description: string;
+    logoUrl: string;
+    bannerUrl: string;
+    isActive: boolean;
+  }
+) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("businesses")
+    .update({
+      name: input.name,
+      description: input.description || null,
+      logo_url: input.logoUrl || null,
+      banner_url: input.bannerUrl || null,
+      is_active: input.isActive,
+    })
+    .eq("id", businessId);
+  if (error) throw error;
+  revalidatePath("/[locale]/(admin)/admin/negocios", "page");
+  revalidatePath("/[locale]/(admin)/admin/mi-negocio", "page");
+}
+
+export async function updateMyBusiness(input: {
+  name: string;
+  description: string;
+  logoUrl: string;
+  bannerUrl: string;
+}) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error("Debes iniciar sesión.");
+  }
+
+  const { error } = await supabase
+    .from("businesses")
+    .update({
+      name: input.name,
+      description: input.description || null,
+      logo_url: input.logoUrl || null,
+      banner_url: input.bannerUrl || null,
+    })
+    .eq("owner_id", user.id);
+  if (error) throw error;
+  revalidatePath("/[locale]/(admin)/admin/mi-negocio", "page");
+}

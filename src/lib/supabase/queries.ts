@@ -146,7 +146,7 @@ export async function getProductBySlug(slug: string) {
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id, slug, name, description_short, description_long, base_price_mxn_cents, category_id, attributes, categories(slug, name), product_images(id, url, alt_text, position, variant_id), product_variants(id, sku, size, color, stock_quantity, low_stock_threshold, price_override_mxn_cents)"
+      "id, slug, name, description_short, description_long, base_price_mxn_cents, category_id, vendor_id, attributes, categories(slug, name), product_images(id, url, alt_text, position, variant_id), product_variants(id, sku, size, color, stock_quantity, low_stock_threshold, price_override_mxn_cents)"
     )
     .eq("slug", slug)
     .eq("status", "active")
@@ -330,3 +330,76 @@ export async function getOrderDetail(orderId: string) {
 
 export type OrderDetail = NonNullable<Awaited<ReturnType<typeof getOrderDetail>>>;
 export type ContactMessage = Database["public"]["Tables"]["contact_messages"]["Row"];
+
+export async function getActiveBusinesses() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("businesses")
+    .select("id, slug, name, description, logo_url, banner_url")
+    .eq("is_active", true)
+    .order("name");
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getBusinessBySlug(slug: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("businesses")
+    .select("id, owner_id, slug, name, description, logo_url, banner_url")
+    .eq("slug", slug)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+// Cheap enough to call per PDP render — a single-row lookup by the unique
+// owner_id FK, not a join, so it stays a separate call instead of bloating
+// every product query with a business join most products don't have.
+export async function getBusinessByOwnerId(ownerId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("businesses")
+    .select("slug, name")
+    .eq("owner_id", ownerId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getProductsByBusiness(vendorId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select(
+      "id, slug, name, base_price_mxn_cents, product_images(url, position)"
+    )
+    .eq("vendor_id", vendorId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getMyBusiness() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("businesses")
+    .select("id, slug, name, description, logo_url, banner_url, is_active")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
