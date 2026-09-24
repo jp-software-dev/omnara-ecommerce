@@ -174,6 +174,29 @@ export async function createBusiness(input: {
   assertValidSlug(input.slug);
   const supabase = await createClient();
 
+  const { data: ownerProfile, error: ownerError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", input.ownerId)
+    .single();
+  if (ownerError) throw ownerError;
+  if (ownerProfile.role === "admin") {
+    throw new Error("No puedes convertir a un admin en dueño de negocio.");
+  }
+
+  // Promote first: if the business insert below fails (duplicate slug, etc.),
+  // the owner is left as a vendor with no business yet — a state the app
+  // already handles gracefully (/admin/mi-negocio shows "no business"), and
+  // createBusiness can simply be retried. Inserting first would instead risk
+  // an orphaned business row with no owner-role fix-up path, since owner_id
+  // is unique and a retry would fail on the duplicate key.
+  const { error: roleError } = await supabase
+    .from("profiles")
+    .update({ role: "vendor" })
+    .eq("id", input.ownerId)
+    .neq("role", "vendor");
+  if (roleError) throw roleError;
+
   const { error: businessError } = await supabase.from("businesses").insert({
     owner_id: input.ownerId,
     slug: input.slug,
@@ -183,15 +206,6 @@ export async function createBusiness(input: {
     banner_url: input.bannerUrl || null,
   });
   if (businessError) throw businessError;
-
-  // Owner becomes a vendor the moment their business exists — a business
-  // without vendor-scoped access to products/inventory/orders is useless.
-  const { error: roleError } = await supabase
-    .from("profiles")
-    .update({ role: "vendor" })
-    .eq("id", input.ownerId)
-    .neq("role", "vendor");
-  if (roleError) throw roleError;
 
   revalidatePath("/[locale]/(admin)/admin/negocios", "page");
   revalidatePath("/[locale]/(admin)/admin/usuarios", "page");
@@ -237,7 +251,7 @@ export async function updateMyBusiness(input: {
     throw new Error("Debes iniciar sesión.");
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("businesses")
     .update({
       name: input.name,
@@ -245,7 +259,11 @@ export async function updateMyBusiness(input: {
       logo_url: input.logoUrl || null,
       banner_url: input.bannerUrl || null,
     })
-    .eq("owner_id", user.id);
+    .eq("owner_id", user.id)
+    .select("id");
   if (error) throw error;
+  if (data.length === 0) {
+    throw new Error("No se encontró un negocio asociado a tu cuenta.");
+  }
   revalidatePath("/[locale]/(admin)/admin/mi-negocio", "page");
 }

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
   Select,
@@ -131,11 +132,10 @@ export function BusinessForm({ locale, users }: { locale: string; users: User[] 
         </Field>
         <Field>
           <FieldLabel htmlFor="business-description">{t.description}</FieldLabel>
-          <textarea
+          <Textarea
             id="business-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="min-h-20 w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           />
         </Field>
         <Field>

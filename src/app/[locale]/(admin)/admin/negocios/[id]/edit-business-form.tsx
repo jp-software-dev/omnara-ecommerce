@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { updateBusiness } from "../../actions";
 
@@ -65,11 +67,10 @@ export function EditBusinessForm({
         </Field>
         <Field>
           <FieldLabel htmlFor="edit-business-description">{t.description}</FieldLabel>
-          <textarea
+          <Textarea
             id="edit-business-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="min-h-20 w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           />
         </Field>
         <Field>
@@ -80,18 +81,10 @@ export function EditBusinessForm({
           <FieldLabel htmlFor="edit-business-banner">{t.bannerUrl}</FieldLabel>
           <Input id="edit-business-banner" value={bannerUrl} onChange={(e) => setBannerUrl(e.target.value)} />
         </Field>
-        <Field orientation="horizontal">
-          <input
-            id="edit-business-active"
-            type="checkbox"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-            className="size-4"
-          />
-          <FieldLabel htmlFor="edit-business-active" className="font-normal">
-            {t.active}
-          </FieldLabel>
-        </Field>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox checked={isActive} onCheckedChange={(checked) => setIsActive(checked === true)} />
+          {t.active}
+        </label>
         <Button type="submit" disabled={loading}>
           {loading ? t.saving : t.save}
         </Button>

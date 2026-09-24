@@ -20,7 +20,10 @@ export default async function AdminBusinessesPage({
   const { locale } = await params;
   await requireRole(["admin"], locale);
 
-  const [businesses, users] = await Promise.all([getBusinesses(), getAdminUsers()]);
+  const [businesses, allUsers] = await Promise.all([getBusinesses(), getAdminUsers()]);
+  // Admins can't be picked as a business owner — createBusiness would
+  // otherwise silently demote them to vendor.
+  const users = allUsers.filter((u) => u.role !== "admin");
 
   const t = {
     title: locale === "en" ? "Businesses" : "Negocios",
