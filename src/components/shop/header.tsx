@@ -51,6 +51,9 @@ export async function Header({ locale }: { locale: string }) {
                   {pickLocale(category.name, locale)}
                 </Link>
               ))}
+              <Link href="/negocios" className="rounded-md px-2 py-2 text-sm hover:bg-muted">
+                {locale === "en" ? "Businesses" : "Negocios"}
+              </Link>
             </nav>
           </SheetContent>
         </Sheet>
@@ -72,6 +75,9 @@ export async function Header({ locale }: { locale: string }) {
               {pickLocale(category.name, locale)}
             </Link>
           ))}
+          <Link href="/negocios" className="rounded-md px-3 py-2 text-sm font-medium hover:bg-muted">
+            {locale === "en" ? "Businesses" : "Negocios"}
+          </Link>
         </nav>
 
         <SearchBar locale={locale} />

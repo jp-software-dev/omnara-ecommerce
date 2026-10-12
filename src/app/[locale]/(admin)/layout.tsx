@@ -7,6 +7,7 @@ import {
   Mail,
   Tag,
   Users,
+  Store,
 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { requireRole } from "@/lib/supabase/auth-helpers";
@@ -27,6 +28,9 @@ export default async function AdminLayout({
     { href: "/admin/inventario", label: locale === "en" ? "Inventory" : "Inventario", icon: Boxes },
     { href: "/admin/pedidos", label: locale === "en" ? "Orders" : "Pedidos", icon: ClipboardList },
     { href: "/admin/analitica", label: locale === "en" ? "Analytics" : "Analítica", icon: BarChart3 },
+    ...(role === "vendor"
+      ? [{ href: "/admin/mi-negocio", label: locale === "en" ? "My business" : "Mi negocio", icon: Store }]
+      : []),
     ...(role === "admin"
       ? [
           { href: "/admin/mensajes", label: locale === "en" ? "Messages" : "Mensajes", icon: Mail },
@@ -36,6 +40,7 @@ export default async function AdminLayout({
             icon: Tag,
           },
           { href: "/admin/usuarios", label: locale === "en" ? "Users" : "Usuarios", icon: Users },
+          { href: "/admin/negocios", label: locale === "en" ? "Businesses" : "Negocios", icon: Store },
         ]
       : []),
   ];

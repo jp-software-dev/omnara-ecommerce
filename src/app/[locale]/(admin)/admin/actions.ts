@@ -154,3 +154,116 @@ export async function updateUserRole(userId: string, role: string) {
   if (error) throw error;
   revalidatePath("/[locale]/(admin)/admin/usuarios", "page");
 }
+
+const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+function assertValidSlug(slug: string) {
+  if (!SLUG_PATTERN.test(slug)) {
+    throw new Error("El slug solo puede tener minúsculas, números y guiones.");
+  }
+}
+
+export async function createBusiness(input: {
+  ownerId: string;
+  slug: string;
+  name: string;
+  description: string;
+  logoUrl: string;
+  bannerUrl: string;
+}) {
+  assertValidSlug(input.slug);
+  const supabase = await createClient();
+
+  const { data: ownerProfile, error: ownerError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", input.ownerId)
+    .single();
+  if (ownerError) throw ownerError;
+  if (ownerProfile.role === "admin") {
+    throw new Error("No puedes convertir a un admin en dueño de negocio.");
+  }
+
+  // Promote first: if the business insert below fails (duplicate slug, etc.),
+  // the owner is left as a vendor with no business yet — a state the app
+  // already handles gracefully (/admin/mi-negocio shows "no business"), and
+  // createBusiness can simply be retried. Inserting first would instead risk
+  // an orphaned business row with no owner-role fix-up path, since owner_id
+  // is unique and a retry would fail on the duplicate key.
+  const { error: roleError } = await supabase
+    .from("profiles")
+    .update({ role: "vendor" })
+    .eq("id", input.ownerId)
+    .neq("role", "vendor");
+  if (roleError) throw roleError;
+
+  const { error: businessError } = await supabase.from("businesses").insert({
+    owner_id: input.ownerId,
+    slug: input.slug,
+    name: input.name,
+    description: input.description || null,
+    logo_url: input.logoUrl || null,
+    banner_url: input.bannerUrl || null,
+  });
+  if (businessError) throw businessError;
+
+  revalidatePath("/[locale]/(admin)/admin/negocios", "page");
+  revalidatePath("/[locale]/(admin)/admin/usuarios", "page");
+}
+
+export async function updateBusiness(
+  businessId: string,
+  input: {
+    name: string;
+    description: string;
+    logoUrl: string;
+    bannerUrl: string;
+    isActive: boolean;
+  }
+) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("businesses")
+    .update({
+      name: input.name,
+      description: input.description || null,
+      logo_url: input.logoUrl || null,
+      banner_url: input.bannerUrl || null,
+      is_active: input.isActive,
+    })
+    .eq("id", businessId);
+  if (error) throw error;
+  revalidatePath("/[locale]/(admin)/admin/negocios", "page");
+  revalidatePath("/[locale]/(admin)/admin/mi-negocio", "page");
+}
+
+export async function updateMyBusiness(input: {
+  name: string;
+  description: string;
+  logoUrl: string;
+  bannerUrl: string;
+}) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error("Debes iniciar sesión.");
+  }
+
+  const { data, error } = await supabase
+    .from("businesses")
+    .update({
+      name: input.name,
+      description: input.description || null,
+      logo_url: input.logoUrl || null,
+      banner_url: input.bannerUrl || null,
+    })
+    .eq("owner_id", user.id)
+    .select("id");
+  if (error) throw error;
+  if (data.length === 0) {
+    throw new Error("No se encontró un negocio asociado a tu cuenta.");
+  }
+  revalidatePath("/[locale]/(admin)/admin/mi-negocio", "page");
+}

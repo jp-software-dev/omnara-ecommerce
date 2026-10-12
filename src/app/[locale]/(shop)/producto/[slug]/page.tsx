@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
+import { Store } from "lucide-react";
 import {
+  getBusinessByOwnerId,
   getProductBySlug,
   getProductReviews,
   getRelatedProducts,
@@ -43,9 +45,10 @@ export default async function ProductPage({
   }
 
   const category = product.categories;
-  const [reviews, relatedProducts] = await Promise.all([
+  const [reviews, relatedProducts, business] = await Promise.all([
     getProductReviews(product.id),
     getRelatedProducts(product.category_id, product.id, 10),
+    product.vendor_id ? getBusinessByOwnerId(product.vendor_id) : Promise.resolve(null),
   ]);
 
   const attributeValues = (product.attributes as Record<string, string> | null) ?? {};
@@ -112,6 +115,15 @@ export default async function ProductPage({
             <p className="mt-4 text-3xl font-heading font-semibold">
               <ProductPrice mxnCents={product.base_price_mxn_cents} locale={locale} />
             </p>
+            {business ? (
+              <Link
+                href={`/negocio/${business.slug}`}
+                className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:underline"
+              >
+                <Store className="size-3.5" />
+                {locale === "en" ? "Sold by" : "Vendido por"} {business.name}
+              </Link>
+            ) : null}
           </div>
 
           <ProductActions

@@ -1,6 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type { Database } from "@/lib/supabase/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+// Deactivating a business ("Activo" off in /admin/negocios) is the only
+// pause control an admin has over a seller — it has to actually hide that
+// vendor's products from every general listing, not just their storefront
+// page, or the checkbox lies about what it does. businesses is publicly
+// readable, so this needs no service-role client.
+async function getInactiveVendorIds(supabase: SupabaseClient<Database>) {
+  const { data, error } = await supabase.from("businesses").select("owner_id").eq("is_active", false);
+  if (error) throw error;
+  return data.map((b) => b.owner_id);
+}
+
+// PostgREST's `in` filter (and its negation) needs a non-empty list, so every
+// call site guards on inactiveVendorIds.length before applying this.
+function inactiveVendorFilter(inactiveVendorIds: string[]) {
+  return `(${inactiveVendorIds.join(",")})`;
+}
 
 export async function getCategories() {
   const supabase = await createClient();
@@ -43,15 +61,20 @@ export async function getCategoryShowcases() {
 
 export async function getFeaturedProducts(limit = 8) {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const inactiveVendorIds = await getInactiveVendorIds(supabase);
+
+  let query = supabase
     .from("products")
     .select(
       "id, slug, name, base_price_mxn_cents, category_id, product_images(url, position)"
     )
     .eq("status", "active")
-    .eq("is_featured", true)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .eq("is_featured", true);
+  if (inactiveVendorIds.length > 0) {
+    query = query.not("vendor_id", "in", inactiveVendorFilter(inactiveVendorIds));
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(limit);
 
   if (error) throw error;
   return data;
@@ -67,14 +90,21 @@ export async function getProductsByCategory(categorySlug: string) {
 
   if (categoryError) throw categoryError;
 
-  const { data: products, error: productsError } = await supabase
+  const inactiveVendorIds = await getInactiveVendorIds(supabase);
+  let productsQuery = supabase
     .from("products")
     .select(
       "id, slug, name, description_short, base_price_mxn_cents, attributes, created_at, product_images(url, position), product_variants(id, size, color, stock_quantity)"
     )
     .eq("category_id", category.id)
-    .eq("status", "active")
-    .order("created_at", { ascending: false });
+    .eq("status", "active");
+  if (inactiveVendorIds.length > 0) {
+    productsQuery = productsQuery.not("vendor_id", "in", inactiveVendorFilter(inactiveVendorIds));
+  }
+
+  const { data: products, error: productsError } = await productsQuery.order("created_at", {
+    ascending: false,
+  });
 
   if (productsError) throw productsError;
 
@@ -83,12 +113,17 @@ export async function getProductsByCategory(categorySlug: string) {
 
 export async function getNewArrivals(limit = 8) {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const inactiveVendorIds = await getInactiveVendorIds(supabase);
+
+  let query = supabase
     .from("products")
     .select("id, slug, name, base_price_mxn_cents, product_images(url, position)")
-    .eq("status", "active")
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .eq("status", "active");
+  if (inactiveVendorIds.length > 0) {
+    query = query.not("vendor_id", "in", inactiveVendorFilter(inactiveVendorIds));
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(limit);
 
   if (error) throw error;
   return data;
@@ -129,11 +164,17 @@ export async function getBestSellers(limit = 8) {
   if (topProductIds.length === 0) return [];
 
   const supabase = await createClient();
-  const { data: products, error: productsError } = await supabase
+  const inactiveVendorIds = await getInactiveVendorIds(supabase);
+  let productsQuery = supabase
     .from("products")
     .select("id, slug, name, base_price_mxn_cents, product_images(url, position)")
     .in("id", topProductIds)
     .eq("status", "active");
+  if (inactiveVendorIds.length > 0) {
+    productsQuery = productsQuery.not("vendor_id", "in", inactiveVendorFilter(inactiveVendorIds));
+  }
+
+  const { data: products, error: productsError } = await productsQuery;
 
   if (productsError) throw productsError;
 
@@ -146,7 +187,7 @@ export async function getProductBySlug(slug: string) {
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id, slug, name, description_short, description_long, base_price_mxn_cents, category_id, attributes, categories(slug, name), product_images(id, url, alt_text, position, variant_id), product_variants(id, sku, size, color, stock_quantity, low_stock_threshold, price_override_mxn_cents)"
+      "id, slug, name, description_short, description_long, base_price_mxn_cents, category_id, vendor_id, attributes, categories(slug, name), product_images(id, url, alt_text, position, variant_id), product_variants(id, sku, size, color, stock_quantity, low_stock_threshold, price_override_mxn_cents)"
     )
     .eq("slug", slug)
     .eq("status", "active")
@@ -224,10 +265,13 @@ export async function searchProducts(query: string) {
   if (!q) return [];
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select("id, slug, name, base_price_mxn_cents, product_images(url, position)")
-    .eq("status", "active");
+  const [{ data, error }, inactiveVendorIds] = await Promise.all([
+    supabase
+      .from("products")
+      .select("id, slug, name, base_price_mxn_cents, vendor_id, product_images(url, position)")
+      .eq("status", "active"),
+    getInactiveVendorIds(supabase),
+  ]);
 
   if (error) throw error;
 
@@ -235,6 +279,7 @@ export async function searchProducts(query: string) {
   // locale's name) is simpler and more forgiving than fighting Postgres
   // JSONB operators through the query builder for a couple dozen rows.
   return data.filter((product) => {
+    if (product.vendor_id && inactiveVendorIds.includes(product.vendor_id)) return false;
     const name = product.name as { es?: string; en?: string } | null;
     const es = name?.es?.toLowerCase() ?? "";
     const en = name?.en?.toLowerCase() ?? "";
@@ -330,3 +375,76 @@ export async function getOrderDetail(orderId: string) {
 
 export type OrderDetail = NonNullable<Awaited<ReturnType<typeof getOrderDetail>>>;
 export type ContactMessage = Database["public"]["Tables"]["contact_messages"]["Row"];
+
+export async function getActiveBusinesses() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("businesses")
+    .select("id, slug, name, description, logo_url, banner_url")
+    .eq("is_active", true)
+    .order("name");
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getBusinessBySlug(slug: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("businesses")
+    .select("id, owner_id, slug, name, description, logo_url, banner_url")
+    .eq("slug", slug)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+// Cheap enough to call per PDP render — a single-row lookup by the unique
+// owner_id FK, not a join, so it stays a separate call instead of bloating
+// every product query with a business join most products don't have.
+export async function getBusinessByOwnerId(ownerId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("businesses")
+    .select("slug, name")
+    .eq("owner_id", ownerId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getProductsByBusiness(vendorId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select(
+      "id, slug, name, base_price_mxn_cents, product_images(url, position)"
+    )
+    .eq("vendor_id", vendorId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getMyBusiness() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("businesses")
+    .select("id, slug, name, description, logo_url, banner_url, is_active")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
