@@ -4,6 +4,7 @@ import { getOrderDetail } from "@/lib/supabase/queries";
 import { requireRole } from "@/lib/supabase/auth-helpers";
 import { OrderInvoice } from "@/components/shop/order-invoice";
 import { TrackingInput } from "./tracking-input";
+import { ShipMyItems } from "./ship-my-items";
 
 export default async function AdminOrderDetailPage({
   params,
@@ -11,13 +12,15 @@ export default async function AdminOrderDetailPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
-  const { role } = await requireRole(["admin", "vendor"], locale);
+  const { role, user } = await requireRole(["admin", "vendor"], locale);
 
   const order = await getOrderDetail(id);
   if (!order) {
     redirect({ href: "/admin/pedidos", locale });
     return null;
   }
+
+  const myItems = order.order_items.filter((item) => item.vendor_id === user.id);
 
   const t = {
     back: locale === "en" ? "Back to orders" : "Volver a pedidos",
@@ -48,6 +51,16 @@ export default async function AdminOrderDetailPage({
             ) : undefined
           }
         />
+
+        {role === "vendor" ? (
+          <ShipMyItems
+            locale={locale}
+            orderId={order.id}
+            orderStatus={order.status}
+            shipped={myItems.length > 0 && myItems.every((item) => item.shipped_at)}
+            initialTracking={myItems.find((item) => item.tracking_number)?.tracking_number ?? ""}
+          />
+        ) : null}
       </div>
     </main>
   );
