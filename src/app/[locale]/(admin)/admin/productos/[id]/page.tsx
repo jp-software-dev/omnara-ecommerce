@@ -4,6 +4,8 @@ import { getCategories } from "@/lib/supabase/queries";
 import { getAdminProduct } from "@/lib/supabase/admin-queries";
 import { pickLocale } from "@/lib/format";
 import { ProductForm } from "../product-form";
+import { ImagesManager } from "./images-manager";
+import { VariantsManager } from "./variants-manager";
 
 export default async function EditProductPage({
   params,
@@ -42,33 +44,21 @@ export default async function EditProductPage({
         />
       </div>
 
-      {product.product_variants.length > 0 ? (
-        <div className="mt-10 max-w-xl">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">
-              {locale === "en" ? "Variants" : "Variantes"}
-            </h2>
-            <Link
-              href="/admin/inventario"
-              className="text-sm font-medium underline underline-offset-4"
-            >
-              {locale === "en" ? "Manage stock" : "Gestionar inventario"}
-            </Link>
-          </div>
-          <ul className="mt-3 divide-y rounded-lg border">
-            {product.product_variants.map((variant) => (
-              <li key={variant.id} className="flex items-center justify-between px-4 py-2 text-sm">
-                <span>
-                  {[variant.sku, variant.size, variant.color].filter(Boolean).join(" · ")}
-                </span>
-                <span className="text-muted-foreground">
-                  {locale === "en" ? "Stock" : "Inventario"}: {variant.stock_quantity}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      <ImagesManager
+        locale={locale}
+        productId={product.id}
+        productName={pickLocale(product.name, locale)}
+        images={product.product_images}
+      />
+
+      <VariantsManager locale={locale} productId={product.id} variants={product.product_variants} />
+
+      <Link
+        href="/admin/inventario"
+        className="mt-4 inline-block text-sm font-medium underline underline-offset-4"
+      >
+        {locale === "en" ? "Manage stock" : "Gestionar inventario"}
+      </Link>
     </main>
   );
 }
