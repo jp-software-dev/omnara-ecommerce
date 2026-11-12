@@ -5,6 +5,7 @@ import {
   getProductBySlug,
   getProductReviews,
   getReviewEligibility,
+  getSimilarFromOtherBusinesses,
   getRelatedProducts,
 } from "@/lib/supabase/queries";
 import { pickLocale } from "@/lib/format";
@@ -12,6 +13,7 @@ import { getCategoryAttributeFields } from "@/lib/category-attributes";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { ProductActions } from "@/components/shop/product-actions";
 import { WishlistButton } from "@/components/shop/wishlist-button";
+import { CompareToggle } from "@/components/shop/compare-toggle";
 import { ProductPrice } from "@/components/shop/product-price";
 import { ProductReviews } from "@/components/shop/product-reviews";
 import { ReviewForm } from "@/components/shop/review-form";
@@ -31,6 +33,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Link } from "@/i18n/navigation";
+import { ProductCard } from "@/components/shop/product-card";
 
 export default async function ProductPage({
   params,
@@ -46,9 +49,10 @@ export default async function ProductPage({
   }
 
   const category = product.categories;
-  const [reviews, eligibility, relatedProducts, business] = await Promise.all([
+  const [reviews, eligibility, similarElsewhere, relatedProducts, business] = await Promise.all([
     getProductReviews(product.id),
     getReviewEligibility(product.id),
+    getSimilarFromOtherBusinesses(product.category_id, product.id, product.vendor_id),
     getRelatedProducts(product.category_id, product.id, 10),
     product.vendor_id ? getBusinessByOwnerId(product.vendor_id) : Promise.resolve(null),
   ]);
@@ -111,6 +115,7 @@ export default async function ProductPage({
                 className="shrink-0 border"
               />
             </div>
+            <CompareToggle productId={product.id} locale={locale} className="mt-3" />
             <p className="mt-2 text-base text-muted-foreground">
               {pickLocale(product.description_short, locale)}
             </p>
@@ -208,6 +213,34 @@ export default async function ProductPage({
           </div>
         </div>
       </div>
+
+      {similarElsewhere.length > 0 ? (
+        <section className="mt-16">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight">
+                {locale === "en" ? "Compare with other businesses" : "Compara con otros negocios"}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {locale === "en"
+                  ? "Similar products in this category sold by other businesses, cheapest first."
+                  : "Productos similares de esta categoría vendidos por otros negocios, del más barato al más caro."}
+              </p>
+            </div>
+            <Link
+              href={`/comparar?ids=${[product.id, ...similarElsewhere.map((p) => p.id)].join(",")}`}
+              className="text-sm font-medium underline underline-offset-4"
+            >
+              {locale === "en" ? "Compare all side by side" : "Comparar todos lado a lado"}
+            </Link>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {similarElsewhere.map((item) => (
+              <ProductCard key={item.id} product={item} locale={locale} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <div className="mt-16">
         <RelatedProducts products={relatedProducts} locale={locale} />
