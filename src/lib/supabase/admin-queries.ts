@@ -23,7 +23,7 @@ export async function getAdminProduct(id: string) {
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id, slug, name, description_short, description_long, base_price_mxn_cents, status, category_id, vendor_id, attributes, product_variants(id, sku, size, color, stock_quantity, low_stock_threshold, price_override_mxn_cents)"
+      "id, slug, name, description_short, description_long, base_price_mxn_cents, status, category_id, vendor_id, attributes, product_images(id, url, position), product_variants(id, sku, size, color, stock_quantity, low_stock_threshold, price_override_mxn_cents)"
     )
     .eq("id", id)
     .single();
