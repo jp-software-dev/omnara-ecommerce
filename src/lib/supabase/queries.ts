@@ -260,6 +260,38 @@ export async function getProductReviews(productId: string) {
   return data;
 }
 
+export type ReviewEligibility = "anonymous" | "already_reviewed" | "not_purchased" | "can_review";
+
+// Whether the current visitor may review this product. The database enforces the
+// same rule on insert (reviews_insert_buyers); this only decides what to show.
+// Both lookups go through RLS: a user can read their own orders and public reviews.
+export async function getReviewEligibility(productId: string): Promise<ReviewEligibility> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return "anonymous";
+
+  const [{ data: existing }, { data: purchases }] = await Promise.all([
+    supabase
+      .from("reviews")
+      .select("id")
+      .eq("product_id", productId)
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("order_items")
+      .select("id, orders!inner(user_id, status), product_variants!inner(product_id)")
+      .eq("product_variants.product_id", productId)
+      .eq("orders.user_id", user.id)
+      .in("orders.status", ["paid", "fulfilled"])
+      .limit(1),
+  ]);
+
+  if (existing) return "already_reviewed";
+  return purchases && purchases.length > 0 ? "can_review" : "not_purchased";
+}
+
 export async function searchProducts(query: string) {
   const q = query.trim().toLowerCase();
   if (!q) return [];

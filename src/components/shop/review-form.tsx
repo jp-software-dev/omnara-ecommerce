@@ -25,6 +25,10 @@ export function ReviewForm({ productId, locale }: { productId: string; locale: s
     needRating: locale === "en" ? "Choose a rating first." : "Elige una calificación primero.",
     success: locale === "en" ? "Thanks for your review!" : "¡Gracias por tu reseña!",
     duplicate: locale === "en" ? "You already reviewed this product." : "Ya reseñaste este producto.",
+    notBuyer:
+      locale === "en"
+        ? "Only customers who bought this product can review it."
+        : "Solo quienes compraron este producto pueden reseñarlo.",
     loginRequired: locale === "en" ? "Sign in to leave a review." : "Inicia sesión para dejar una reseña.",
   };
 
@@ -57,7 +61,10 @@ export function ReviewForm({ productId, locale }: { productId: string; locale: s
     setLoading(false);
 
     if (error) {
-      toast.error(error.code === "23505" ? t.duplicate : error.message);
+      // 23505 = already reviewed; 42501 = row-level security (didn't buy it)
+      toast.error(
+        error.code === "23505" ? t.duplicate : error.code === "42501" ? t.notBuyer : error.message
+      );
       return;
     }
 

@@ -4,6 +4,7 @@ import {
   getBusinessByOwnerId,
   getProductBySlug,
   getProductReviews,
+  getReviewEligibility,
   getRelatedProducts,
 } from "@/lib/supabase/queries";
 import { pickLocale } from "@/lib/format";
@@ -45,8 +46,9 @@ export default async function ProductPage({
   }
 
   const category = product.categories;
-  const [reviews, relatedProducts, business] = await Promise.all([
+  const [reviews, eligibility, relatedProducts, business] = await Promise.all([
     getProductReviews(product.id),
+    getReviewEligibility(product.id),
     getRelatedProducts(product.category_id, product.id, 10),
     product.vendor_id ? getBusinessByOwnerId(product.vendor_id) : Promise.resolve(null),
   ]);
@@ -181,7 +183,28 @@ export default async function ProductPage({
 
           <div className="border-t pt-8">
             <ProductReviews reviews={reviews} locale={locale} />
-            <ReviewForm productId={product.id} locale={locale} />
+            {eligibility === "can_review" ? (
+              <ReviewForm productId={product.id} locale={locale} />
+            ) : (
+              <p className="mt-6 rounded-lg border p-4 text-sm text-muted-foreground">
+                {eligibility === "anonymous" ? (
+                  <>
+                    {locale === "en"
+                      ? "Only customers who bought this product can review it. "
+                      : "Solo quienes compraron este producto pueden reseñarlo. "}
+                    <Link href="/login" className="font-medium text-foreground underline underline-offset-4">
+                      {locale === "en" ? "Sign in" : "Inicia sesión"}
+                    </Link>
+                  </>
+                ) : eligibility === "already_reviewed" ? (
+                  locale === "en" ? "You already reviewed this product." : "Ya reseñaste este producto."
+                ) : locale === "en" ? (
+                  "Only customers who bought this product can review it. Reviews from buyers carry the Verified purchase badge."
+                ) : (
+                  "Solo quienes compraron este producto pueden reseñarlo. Las reseñas de compradores llevan la marca de compra verificada."
+                )}
+              </p>
+            )}
           </div>
         </div>
       </div>
