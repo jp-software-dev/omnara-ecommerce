@@ -194,7 +194,7 @@ RLS está **habilitado en todas las tablas** de `public`. No hay ninguna tabla d
 - Supabase Auth (email + contraseña). Flujo de registro con confirmación por correo (`signUp` -> mensaje "revisa tu correo").
 - Recuperación de contraseña: `resetPasswordForEmail` -> `/recuperar`, enlace de correo lleva a `/restablecer` -> `updateUser({ password })`. Flujo cliente-only, sin ruta de callback en servidor (implica que el proyecto de Supabase usa el flujo implícito de detección de sesión en URL, no PKCE con code exchange).
 - Sesión mantenida vía cookies HTTP-only, refrescada en cada request por `updateSession()` (`src/lib/supabase/middleware.ts`), invocada desde `src/proxy.ts`.
-- **Login con Google:** implementado con `signInWithOAuth` y la ruta `/api/auth/callback` (intercambia el código por una sesión y redirige a un destino fijo, sin parámetro `next`). Está apagado por defecto: el botón solo aparece con `NEXT_PUBLIC_GOOGLE_AUTH=true`, después de configurar el proveedor en Supabase y Google Cloud.
+- **Login con Google:** no se usa en este despliegue. El botón se retiró (antes era un marcador) y el inicio de sesión es solo con correo y contraseña.
 - `requireRole(allowedRoles, locale)` (`src/lib/supabase/auth-helpers.ts`) — guard de servidor usado en todas las páginas de `(admin)`: redirige a `/login` si no hay sesión, a `/` si el rol no matchea.
 
 ## 8. Pagos (Stripe) — flujo completo
@@ -275,7 +275,7 @@ Los negocios pausados se excluyen del home, categorías, búsqueda y más vendid
 - Cuenta: `/cuenta/direcciones`, `/cuenta/devoluciones`, `/cuenta/devoluciones/[id]`, `/cuenta/privacidad`.
 - Panel (admin y vendedor): `/admin/devoluciones`, `/admin/devoluciones/[id]`, `/admin/preguntas`, `/admin/mi-negocio` (vendedor).
 - Panel (solo admin): `/admin/solicitudes`, `/admin/negocios`, `/admin/resenas`, `/admin/correos`, `/admin/bitacora`, `/admin/privacidad`.
-- API: `GET /api/account/export` (descarga de datos del usuario), `GET|POST /api/cron/send-emails` (protegida con `CRON_SECRET`). `GET /api/auth/callback` (retorno de OAuth).
+- API: `GET /api/account/export` (descarga de datos del usuario), `GET|POST /api/cron/send-emails` (protegida con `CRON_SECRET`).
 
 
 ### API
@@ -300,8 +300,6 @@ Todas las rutas anteriores existen bajo `/es/...` y `/en/...` (prefijo de locale
 | `RESEND_API_KEY`, `EMAIL_FROM` | Envío de correos (sin ellos quedan en cola) | No |
 | `CRON_SECRET` | Protege `/api/cron/send-emails` | No |
 | `NEXT_PUBLIC_SITE_URL` | Enlaces dentro de los correos | No |
-| `NEXT_PUBLIC_GOOGLE_AUTH` | `true` muestra el botón de Google (tras configurarlo en Supabase) | No |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | CAPTCHA (Cloudflare Turnstile); activar también en el panel de Supabase | No |
 
 `.env.example` documenta las 5. Ni `.env.local` ni `.env.example` están versionados en git (`.gitignore`: `.env*`).
 
@@ -338,9 +336,8 @@ Todas las rutas anteriores existen bajo `/es/...` y `/en/...` (prefijo de locale
 ## 17. Seguridad y privacidad añadidas
 
 - **Validación en servidor** con zod (`src/lib/validation.ts`, `src/lib/addresses.ts`) en productos, negocios, códigos promocionales, variantes, direcciones, devoluciones, preguntas y contacto.
-- **Contacto:** sin INSERT público directo; `submit_contact_message` valida y limita a 3 mensajes por correo y 40 en total por hora; la acción del servidor añade un campo trampa y, si hay claves, verifica el CAPTCHA.
-- **CAPTCHA** (Cloudflare Turnstile): el componente no hace nada sin `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; la política CSP solo permite el dominio de Cloudflare cuando hay clave.
+- **Contacto:** sin INSERT público directo; `submit_contact_message` valida y limita a 3 mensajes por correo y 40 en total por hora; la acción del servidor añade un campo trampa contra bots.
 - **Bitácora de administradores:** disparadores que registran quién cambió qué columnas, solo para acciones de administradores, sin copiar datos personales y sin posibilidad de editar o borrar.
 - **Almacenamiento:** el bucket `product-images` limita tamaño (5 MB) y tipos, y cada vendedor solo escribe en su carpeta; `seller-documents` es privado y solo lo leen administradores.
 - **Privacidad:** aviso y términos reales, exportación de datos del usuario y solicitudes de eliminación atendidas por un administrador.
-- **Ajustes que solo se hacen en el panel de Supabase:** protección contra contraseñas filtradas y CAPTCHA de autenticación.
+- **Ajuste que solo se hace en el panel de Supabase:** la protección contra contraseñas filtradas (puede requerir un plan de pago).

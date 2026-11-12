@@ -193,7 +193,6 @@ Acceso restringido por rol; un vendedor ve el mismo panel pero **solo sus propio
 
 ## 19. Fuera de alcance / pendiente (transparencia)
 
-- **Login con Google:** está construido pero apagado hasta que se creen las credenciales de Google Cloud y Supabase y se active `NEXT_PUBLIC_GOOGLE_AUTH`; no se ha probado con credenciales reales.
 - **Reparto de pagos por vendedor (Stripe Connect):** un carrito es un pedido y el dinero no se divide entre vendedores.
 - **Paqueterías** y envío por vendedor o por peso.
 - **Reposición automática de inventario** al aprobar una devolución: hoy es una acción manual del vendedor o del administrador (un artículo devuelto puede llegar dañado).
