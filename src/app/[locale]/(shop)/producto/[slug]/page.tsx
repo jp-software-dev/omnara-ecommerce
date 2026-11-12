@@ -4,6 +4,7 @@ import {
   getBusinessByOwnerId,
   getProductBySlug,
   getProductReviews,
+  getBusinessRatings,
   getReviewEligibility,
   getSimilarFromOtherBusinesses,
   getRelatedProducts,
@@ -14,6 +15,7 @@ import { ProductGallery } from "@/components/shop/product-gallery";
 import { ProductActions } from "@/components/shop/product-actions";
 import { WishlistButton } from "@/components/shop/wishlist-button";
 import { CompareToggle } from "@/components/shop/compare-toggle";
+import { BusinessRatingBadge } from "@/components/shop/business-rating";
 import { ProductPrice } from "@/components/shop/product-price";
 import { ProductReviews } from "@/components/shop/product-reviews";
 import { ReviewForm } from "@/components/shop/review-form";
@@ -56,6 +58,8 @@ export default async function ProductPage({
     getRelatedProducts(product.category_id, product.id, 10),
     product.vendor_id ? getBusinessByOwnerId(product.vendor_id) : Promise.resolve(null),
   ]);
+
+  const sellerRating = business ? (await getBusinessRatings([business.id])).get(business.id) : undefined;
 
   const attributeValues = (product.attributes as Record<string, string> | null) ?? {};
   const attributeFields = getCategoryAttributeFields(category?.slug).filter(
@@ -131,6 +135,7 @@ export default async function ProductPage({
                 {locale === "en" ? "Sold by" : "Vendido por"} {business.name}
               </Link>
             ) : null}
+            {business ? <BusinessRatingBadge rating={sellerRating} locale={locale} className="mt-1 block" /> : null}
           </div>
 
           <ProductActions
