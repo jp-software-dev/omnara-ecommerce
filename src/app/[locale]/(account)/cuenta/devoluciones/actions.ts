@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { RETURN_REASONS, returnErrorMessage } from "@/lib/returns";
+import { flushEmailsSoon } from "@/lib/email-outbox";
 
 const requestSchema = z.object({
   orderItemId: z.string().uuid(),
@@ -15,6 +16,8 @@ function revalidateReturns() {
   revalidatePath("/[locale]/(account)/cuenta/devoluciones", "layout");
   revalidatePath("/[locale]/(account)/cuenta/pedidos", "layout");
   revalidatePath("/[locale]/(admin)/admin/devoluciones", "layout");
+  // A new return or a dispute queues emails for the seller / admins.
+  flushEmailsSoon();
 }
 
 export async function requestReturn(input: z.input<typeof requestSchema>, locale: string) {

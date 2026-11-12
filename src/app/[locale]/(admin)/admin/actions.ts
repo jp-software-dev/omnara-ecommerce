@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { returnErrorMessage } from "@/lib/returns";
 import { getStripe } from "@/lib/stripe";
+import { flushEmailsSoon } from "@/lib/email-outbox";
 import { createClient } from "@/lib/supabase/server";
 
 const ORDER_STATUSES = ["pending", "paid", "fulfilled", "cancelled", "refunded"] as const;
@@ -256,6 +257,7 @@ export async function shipMyItems(orderId: string, trackingNumber: string) {
     if (error.message.includes("no items")) throw new Error("No tienes artículos en este pedido.");
     throw error;
   }
+  flushEmailsSoon();
   revalidatePath("/[locale]/(admin)/admin/pedidos", "layout");
 }
 
@@ -280,6 +282,7 @@ export async function approveApplication(applicationId: string, slug: string) {
     }
     throw error;
   }
+  flushEmailsSoon();
   revalidatePath("/[locale]/(admin)/admin/solicitudes", "page");
   revalidatePath("/[locale]/(admin)/admin/negocios", "page");
   revalidatePath("/[locale]/(admin)/admin/usuarios", "page");
@@ -297,6 +300,7 @@ export async function rejectApplication(applicationId: string, reason: string) {
     }
     throw error;
   }
+  flushEmailsSoon();
   revalidatePath("/[locale]/(admin)/admin/solicitudes", "page");
 }
 
@@ -306,6 +310,8 @@ export async function rejectApplication(applicationId: string, reason: string) {
 function revalidateReturns() {
   revalidatePath("/[locale]/(admin)/admin/devoluciones", "layout");
   revalidatePath("/[locale]/(account)/cuenta/devoluciones", "layout");
+  // The database queued an email for the decision that was just made.
+  flushEmailsSoon();
 }
 
 // The item's seller approves or rejects a new return request.
