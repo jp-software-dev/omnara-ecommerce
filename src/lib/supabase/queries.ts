@@ -706,3 +706,17 @@ export async function getQuestionsForRole(role: "admin" | "vendor", userId: stri
   if (error) throw error;
   return [...data].sort((a, b) => Number(!!a.answer) - Number(!!b.answer));
 }
+
+// The signed-in user's shipping addresses, default first (RLS: own rows only).
+export async function getMyAddresses(userId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("addresses")
+    .select("id, label, recipient_name, phone, line1, line2, city, state, postal_code, country, is_default")
+    .eq("user_id", userId)
+    .eq("type", "shipping")
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
