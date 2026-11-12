@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { returnErrorMessage } from "@/lib/returns";
+import { getStripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
 
 const ORDER_STATUSES = ["pending", "paid", "fulfilled", "cancelled", "refunded"] as const;
@@ -288,6 +290,98 @@ export async function rejectApplication(applicationId: string, reason: string) {
     throw error;
   }
   revalidatePath("/[locale]/(admin)/admin/solicitudes", "page");
+}
+
+// ---- Returns --------------------------------------------------------------
+// Thin wrappers over the database functions, which re-check who is calling.
+
+function revalidateReturns() {
+  revalidatePath("/[locale]/(admin)/admin/devoluciones", "layout");
+  revalidatePath("/[locale]/(account)/cuenta/devoluciones", "layout");
+}
+
+// The item's seller approves or rejects a new return request.
+export async function decideReturn(returnId: string, approve: boolean, note: string, locale: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("decide_return", {
+    p_id: returnId,
+    p_approve: approve,
+    p_note: note,
+  });
+  if (error) throw new Error(returnErrorMessage(error.message, locale));
+  revalidateReturns();
+}
+
+// Admin settles an escalated (or stuck) request: approve it or close it.
+export async function resolveReturn(returnId: string, approve: boolean, note: string, locale: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_resolve_return", {
+    p_id: returnId,
+    p_approve: approve,
+    p_note: note,
+  });
+  if (error) throw new Error(returnErrorMessage(error.message, locale));
+  revalidateReturns();
+}
+
+// Sends an approved return's money back through Stripe, then records it. Only
+// admins: the platform holds the funds (no Stripe Connect), so the refund is
+// issued from the platform account.
+//
+// The idempotency key makes a retry safe: if Stripe accepted the refund but
+// recording it in the database failed, clicking again returns the SAME refund
+// from Stripe instead of refunding twice, and then finishes the bookkeeping.
+export async function refundReturn(returnId: string, locale: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Debes iniciar sesión.");
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if (profile?.role !== "admin") throw new Error("Solo un administrador puede reembolsar.");
+
+  const { data: request, error } = await supabase
+    .from("return_requests")
+    .select("id, status, refund_amount_cents, currency, order_id, orders(stripe_payment_intent_id)")
+    .eq("id", returnId)
+    .single();
+  if (error) throw error;
+  if (request.status !== "approved") {
+    throw new Error(returnErrorMessage("not approved", locale));
+  }
+  const paymentIntentId = request.orders?.stripe_payment_intent_id;
+  if (!paymentIntentId) {
+    throw new Error("Este pedido no tiene un pago de Stripe asociado, no se puede reembolsar.");
+  }
+
+  let stripe;
+  try {
+    stripe = getStripe();
+  } catch {
+    throw new Error("Stripe no está configurado en el servidor (falta STRIPE_SECRET_KEY de prueba).");
+  }
+
+  const refund = await stripe.refunds.create(
+    {
+      payment_intent: paymentIntentId,
+      amount: request.refund_amount_cents,
+      reason: "requested_by_customer",
+      metadata: { return_id: request.id, order_id: request.order_id },
+    },
+    { idempotencyKey: `return-refund-${request.id}` }
+  );
+  if (refund.status === "failed" || refund.status === "canceled") {
+    throw new Error("Stripe no pudo procesar el reembolso. Revisa el pago en el panel de Stripe.");
+  }
+
+  const { error: markError } = await supabase.rpc("mark_return_refunded", {
+    p_id: request.id,
+    p_refund_id: refund.id,
+  });
+  if (markError) throw new Error(returnErrorMessage(markError.message, locale));
+
+  revalidateReturns();
+  revalidatePath("/[locale]/(admin)/admin/pedidos", "layout");
 }
 
 export async function markMessageRead(messageId: string) {

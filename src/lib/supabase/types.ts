@@ -777,6 +777,124 @@ export type Database = {
         }
         Relationships: []
       }
+      return_messages: {
+        Row: {
+          author_id: string
+          author_role: string
+          body: string
+          created_at: string
+          id: string
+          return_id: string
+        }
+        Insert: {
+          author_id: string
+          author_role: string
+          body: string
+          created_at?: string
+          id?: string
+          return_id: string
+        }
+        Update: {
+          author_id?: string
+          author_role?: string
+          body?: string
+          created_at?: string
+          id?: string
+          return_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "return_messages_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "return_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      return_requests: {
+        Row: {
+          created_at: string
+          currency: string
+          decision_note: string | null
+          details: string | null
+          id: string
+          order_id: string
+          order_item_id: string
+          reason: string
+          refund_amount_cents: number
+          resolved_at: string | null
+          status: string
+          stripe_refund_id: string | null
+          updated_at: string
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency: string
+          decision_note?: string | null
+          details?: string | null
+          id?: string
+          order_id: string
+          order_item_id: string
+          reason: string
+          refund_amount_cents: number
+          resolved_at?: string | null
+          status?: string
+          stripe_refund_id?: string | null
+          updated_at?: string
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          decision_note?: string | null
+          details?: string | null
+          id?: string
+          order_id?: string
+          order_item_id?: string
+          reason?: string
+          refund_amount_cents?: number
+          resolved_at?: string | null
+          status?: string
+          stripe_refund_id?: string | null
+          updated_at?: string
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "return_requests_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: true
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seller_applications: {
         Row: {
           business_name: string
@@ -884,6 +1002,30 @@ export type Database = {
           id: string
           role: string
         }[]
+      }
+      request_return: {
+        Args: { p_order_item_id: string; p_reason: string; p_details: string }
+        Returns: string
+      }
+      decide_return: {
+        Args: { p_id: string; p_approve: boolean; p_note: string }
+        Returns: undefined
+      }
+      escalate_return: {
+        Args: { p_id: string; p_note: string }
+        Returns: undefined
+      }
+      admin_resolve_return: {
+        Args: { p_id: string; p_approve: boolean; p_note: string }
+        Returns: undefined
+      }
+      mark_return_refunded: {
+        Args: { p_id: string; p_refund_id: string }
+        Returns: undefined
+      }
+      add_return_message: {
+        Args: { p_id: string; p_body: string }
+        Returns: undefined
       }
       approve_seller_application: {
         Args: { p_id: string; p_slug: string }

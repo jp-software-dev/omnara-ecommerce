@@ -2,7 +2,7 @@ import { Link, redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getWishlistProducts } from "@/lib/supabase/queries";
 import { ProductCard } from "@/components/shop/product-card";
-import { Heart, Package } from "lucide-react";
+import { Heart, Package, Undo2 } from "lucide-react";
 
 export default async function AccountPage({
   params,
@@ -44,6 +44,13 @@ export default async function AccountPage({
       >
         <Package className="size-4" />
         {locale === "en" ? "My orders" : "Mis pedidos"}
+      </Link>
+      <Link
+        href="/cuenta/devoluciones"
+        className="mt-3 inline-flex items-center gap-2 text-sm font-medium underline underline-offset-4"
+      >
+        <Undo2 className="size-4" />
+        {locale === "en" ? "My returns" : "Mis devoluciones"}
       </Link>
 
       <section className="mt-10">
