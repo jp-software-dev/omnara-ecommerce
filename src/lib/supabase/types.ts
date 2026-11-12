@@ -780,6 +780,64 @@ export type Database = {
         }
         Relationships: []
       }
+      product_questions: {
+        Row: {
+          answer: string | null
+          answered_at: string | null
+          answered_by: string | null
+          created_at: string
+          id: string
+          is_hidden: boolean
+          product_id: string
+          question: string
+          user_id: string
+        }
+        Insert: {
+          answer?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          product_id: string
+          question: string
+          user_id: string
+        }
+        Update: {
+          answer?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          product_id?: string
+          question?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_questions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_questions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_questions_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       return_messages: {
         Row: {
           author_id: string
@@ -1031,6 +1089,18 @@ export type Database = {
       }
       mark_return_refunded: {
         Args: { p_id: string; p_refund_id: string }
+        Returns: undefined
+      }
+      ask_question: {
+        Args: { p_product_id: string; p_question: string }
+        Returns: string
+      }
+      answer_question: {
+        Args: { p_id: string; p_answer: string }
+        Returns: undefined
+      }
+      moderate_question: {
+        Args: { p_id: string; p_hidden: boolean }
         Returns: undefined
       }
       moderate_review: {
