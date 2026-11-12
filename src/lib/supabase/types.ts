@@ -341,6 +341,8 @@ export type Database = {
           order_id: string
           product_name_snapshot: Json
           quantity: number
+          shipped_at: string | null
+          tracking_number: string | null
           unit_price_cents: number
           variant_attrs_snapshot: Json
           variant_id: string | null
@@ -351,6 +353,8 @@ export type Database = {
           order_id: string
           product_name_snapshot: Json
           quantity: number
+          shipped_at?: string | null
+          tracking_number?: string | null
           unit_price_cents: number
           variant_attrs_snapshot?: Json
           variant_id?: string | null
@@ -361,6 +365,8 @@ export type Database = {
           order_id?: string
           product_name_snapshot?: Json
           quantity?: number
+          shipped_at?: string | null
+          tracking_number?: string | null
           unit_price_cents?: number
           variant_attrs_snapshot?: Json
           variant_id?: string | null
@@ -821,6 +827,10 @@ export type Database = {
           id: string
           role: string
         }[]
+      }
+      vendor_ship_items: {
+        Args: { p_order_id: string; p_tracking: string }
+        Returns: undefined
       }
     }
     Enums: {
