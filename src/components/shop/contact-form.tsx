@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { captchaEnabled, Turnstile } from "@/components/auth/turnstile";
 import { sendContactMessage } from "@/app/[locale]/(shop)/contacto/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,8 +14,6 @@ export function ContactForm({ locale }: { locale: string }) {
   const [message, setMessage] = useState("");
   const [website, setWebsite] = useState(""); // honeypot, see the hidden input below
   const [loading, setLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [captchaReset, setCaptchaReset] = useState(0);
 
   const t = {
     name: locale === "en" ? "Name" : "Nombre",
@@ -32,13 +29,9 @@ export function ContactForm({ locale }: { locale: string }) {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (captchaEnabled && !captchaToken) {
-      toast.error(locale === "en" ? "Complete the security check." : "Completa la verificación de seguridad.");
-      return;
-    }
     setLoading(true);
     try {
-      await sendContactMessage({ name, email, subject, message, website, captchaToken: captchaToken ?? undefined }, locale);
+      await sendContactMessage({ name, email, subject, message, website }, locale);
       toast.success(t.success);
       setName("");
       setEmail("");
@@ -48,7 +41,6 @@ export function ContactForm({ locale }: { locale: string }) {
       toast.error(error instanceof Error ? error.message : "Error");
     } finally {
       setLoading(false);
-      setCaptchaReset((n) => n + 1);
     }
   }
 
@@ -99,7 +91,6 @@ export function ContactForm({ locale }: { locale: string }) {
             className="min-h-32 w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           />
         </Field>
-        <Turnstile onToken={setCaptchaToken} resetKey={captchaReset} />
         <Button type="submit" disabled={loading}>
           {loading ? t.sending : t.send}
         </Button>

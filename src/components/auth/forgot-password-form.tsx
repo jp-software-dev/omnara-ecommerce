@@ -1,6 +1,5 @@
 "use client";
 
-import { captchaEnabled, Turnstile } from "@/components/auth/turnstile";
 import { useState } from "react";
 import { useLocale } from "next-intl";
 import { toast } from "sonner";
@@ -21,7 +20,6 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
   const [loading, setLoading] = useState(false);
   const en = useLocale() === "en";
   const t = {
-    securityCheck: en ? "Complete the security check." : "Completa la verificación de seguridad.",
     title: en ? "Recover your password" : "Recupera tu contraseña",
     subtitle: en ? "We'll email you a link to reset it" : "Te enviaremos un enlace para restablecerla",
     sent: en
@@ -33,8 +31,6 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
     send: en ? "Send link" : "Enviar enlace",
     back: en ? "Back to sign in" : "Volver a iniciar sesión",
   };
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [captchaReset, setCaptchaReset] = useState(0);
   const [sent, setSent] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -42,10 +38,6 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email"));
 
-    if (captchaEnabled && !captchaToken) {
-      toast.error(t.securityCheck);
-      return;
-    }
     setLoading(true);
     const supabase = createClient();
     // Auth pages aren't locale-prefixed in the redirect chosen here (matching
@@ -54,10 +46,8 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
     const locale = window.location.pathname.split("/")[1] || "es";
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/${locale}/restablecer`,
-      captchaToken: captchaToken ?? undefined,
     });
     setLoading(false);
-    setCaptchaReset((n) => n + 1);
 
     if (error) {
       toast.error(error.message);
@@ -87,7 +77,6 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
                   <Input id="email" name="email" type="email" placeholder={t.emailPlaceholder} required />
                 </Field>
                 <Field>
-                  <Turnstile onToken={setCaptchaToken} resetKey={captchaReset} />
                   <Button type="submit" disabled={loading}>
                     {loading ? t.sending : t.send}
                   </Button>

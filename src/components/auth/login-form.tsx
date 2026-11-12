@@ -1,7 +1,6 @@
 "use client";
 
-import { captchaEnabled, Turnstile } from "@/components/auth/turnstile";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocale } from "next-intl";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -20,26 +19,17 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
-  FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-
-// The Google button only exists once Google is configured in Supabase and this flag is set.
-const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH === "true";
 
 export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const router = useRouter();
   const en = useLocale() === "en";
   const t = {
-    securityCheck: en ? "Complete the security check." : "Completa la verificación de seguridad.",
     wrongCredentials: en ? "Incorrect email or password." : "Correo o contraseña incorrectos.",
     signedIn: en ? "Signed in." : "Sesión iniciada.",
-    googleFailed: en ? "Google sign-in failed. Please try again." : "No se pudo iniciar sesión con Google. Intenta de nuevo.",
     emailSubtitle: en ? "Sign in with your email" : "Inicia sesión con tu correo electrónico",
     welcome: en ? "Welcome back" : "Bienvenido de nuevo",
-    googleSubtitle: en ? "Sign in with your Google account" : "Inicia sesión con tu cuenta de Google",
-    google: en ? "Continue with Google" : "Continuar con Google",
-    orContinue: en ? "Or continue with" : "O continúa con",
     email: en ? "Email" : "Correo electrónico",
     emailPlaceholder: en ? "you@email.com" : "tu@correo.com",
     password: en ? "Password" : "Contraseña",
@@ -54,8 +44,6 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
     privacy: en ? "Privacy notice" : "Aviso de privacidad",
   };
   const [loading, setLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [captchaReset, setCaptchaReset] = useState(0);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,19 +51,13 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
     const email = String(form.get("email"));
     const password = String(form.get("password"));
 
-    if (captchaEnabled && !captchaToken) {
-      toast.error(t.securityCheck);
-      return;
-    }
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
-      options: { captchaToken: captchaToken ?? undefined },
     });
     setLoading(false);
-    setCaptchaReset((n) => n + 1);
 
     if (error) {
       toast.error(
@@ -91,51 +73,16 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
     router.refresh();
   }
 
-  // Back from a failed Google round trip (see /api/auth/callback).
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("error") === "oauth") {
-      toast.error(t.googleFailed);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function handleGoogleClick() {
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/api/auth/callback?locale=${en ? "en" : "es"}` },
-    });
-    if (error) toast.error(t.googleFailed);
-  }
-
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="text-xl">{t.welcome}</CardTitle>
-          <CardDescription>{googleEnabled ? t.googleSubtitle : t.emailSubtitle}</CardDescription>
+          <CardDescription>{t.emailSubtitle}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
             <FieldGroup>
-              {googleEnabled ? (
-                <>
-              <Field>
-                <Button variant="outline" type="button" onClick={handleGoogleClick}>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path
-                      d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                  {t.google}
-                </Button>
-              </Field>
-              <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
-                {t.orContinue}
-              </FieldSeparator>
-                </>
-              ) : null}
               <Field>
                 <FieldLabel htmlFor="email">{t.email}</FieldLabel>
                 <Input id="email" name="email" type="email" placeholder={t.emailPlaceholder} required />
@@ -153,7 +100,6 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
                 <Input id="password" name="password" type="password" required />
               </Field>
               <Field>
-                <Turnstile onToken={setCaptchaToken} resetKey={captchaReset} />
                 <Button type="submit" disabled={loading}>
                   {loading ? t.signingIn : t.signIn}
                 </Button>
