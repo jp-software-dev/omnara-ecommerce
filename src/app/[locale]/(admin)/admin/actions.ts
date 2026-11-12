@@ -62,7 +62,15 @@ export async function createProduct(input: {
     .select("id")
     .single();
 
-  if (error) throw error;
+  if (error) {
+    // 23503 = products_vendor_business_fkey: the vendor has no business yet.
+    if (error.code === "23503") {
+      throw new Error("Tu cuenta todavía no tiene un negocio. Un administrador debe crearlo antes de que puedas publicar productos.");
+    }
+    // 23505 = the slug is already taken.
+    if (error.code === "23505") throw new Error("Ya existe un producto con ese slug.");
+    throw error;
+  }
   revalidatePath("/[locale]/(admin)/admin/productos", "page");
   return data.id;
 }
