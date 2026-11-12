@@ -664,3 +664,44 @@ export async function getBusinessRatings(businessIds: string[]) {
   }
   return ratings;
 }
+
+// ---- Questions and answers -------------------------------------------------
+
+// Public list for a product page (RLS already hides moderated questions).
+export async function getProductQuestions(productId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("product_questions")
+    .select("id, question, answer, answered_at, created_at, user_id")
+    .eq("product_id", productId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return data;
+}
+
+// The signed-in visitor and their role, or null. One cheap profile lookup.
+export async function getViewer() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  return { id: user.id, role: (profile?.role ?? "customer") as "admin" | "vendor" | "customer" };
+}
+
+// Inbox: an admin sees every question (hidden ones too); a vendor the questions
+// about their own products. Unanswered ones first.
+export async function getQuestionsForRole(role: "admin" | "vendor", userId: string) {
+  const supabase = await createClient();
+  let query = supabase
+    .from("product_questions")
+    .select(
+      "id, question, answer, answered_at, created_at, is_hidden, products!inner(name, slug, vendor_id)"
+    );
+  if (role === "vendor") query = query.eq("products.vendor_id", userId);
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(200);
+  if (error) throw error;
+  return [...data].sort((a, b) => Number(!!a.answer) - Number(!!b.answer));
+}

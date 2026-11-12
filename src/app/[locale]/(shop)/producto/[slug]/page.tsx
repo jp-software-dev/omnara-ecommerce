@@ -3,7 +3,9 @@ import { Store } from "lucide-react";
 import {
   getBusinessByOwnerId,
   getProductBySlug,
+  getProductQuestions,
   getProductReviews,
+  getViewer,
   getBusinessRatings,
   getReviewEligibility,
   getSimilarFromOtherBusinesses,
@@ -16,6 +18,7 @@ import { ProductActions } from "@/components/shop/product-actions";
 import { WishlistButton } from "@/components/shop/wishlist-button";
 import { CompareToggle } from "@/components/shop/compare-toggle";
 import { BusinessRatingBadge } from "@/components/shop/business-rating";
+import { ProductQuestions } from "@/components/shop/product-questions";
 import { ProductPrice } from "@/components/shop/product-price";
 import { ProductReviews } from "@/components/shop/product-reviews";
 import { ReviewForm } from "@/components/shop/review-form";
@@ -51,8 +54,10 @@ export default async function ProductPage({
   }
 
   const category = product.categories;
-  const [reviews, eligibility, similarElsewhere, relatedProducts, business] = await Promise.all([
+  const [reviews, questions, viewer, eligibility, similarElsewhere, relatedProducts, business] = await Promise.all([
     getProductReviews(product.id),
+    getProductQuestions(product.id),
+    getViewer(),
     getReviewEligibility(product.id),
     getSimilarFromOtherBusinesses(product.category_id, product.id, product.vendor_id),
     getRelatedProducts(product.category_id, product.id, 10),
@@ -190,6 +195,16 @@ export default async function ProductPage({
               </AccordionItem>
             ) : null}
           </Accordion>
+
+          <div className="border-t pt-8">
+            <ProductQuestions
+              questions={questions}
+              productId={product.id}
+              locale={locale}
+              signedIn={!!viewer}
+              canAnswer={!!viewer && (viewer.role === "admin" || product.vendor_id === viewer.id)}
+            />
+          </div>
 
           <div className="border-t pt-8">
             <ProductReviews reviews={reviews} locale={locale} />

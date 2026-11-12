@@ -393,6 +393,15 @@ export async function moderateReview(reviewId: string, hidden: boolean) {
   revalidatePath("/[locale]/(shop)/producto/[slug]", "page");
 }
 
+// Hides or restores a product question. The database function re-checks that the caller is an admin.
+export async function moderateQuestion(questionId: string, hidden: boolean) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("moderate_question", { p_id: questionId, p_hidden: hidden });
+  if (error) throw error;
+  revalidatePath("/[locale]/(admin)/admin/preguntas", "page");
+  revalidatePath("/[locale]/(shop)/producto/[slug]", "page");
+}
+
 export async function markMessageRead(messageId: string) {
   const supabase = await createClient();
   const { error } = await supabase
