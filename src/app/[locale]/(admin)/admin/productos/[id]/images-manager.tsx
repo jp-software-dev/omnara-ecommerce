@@ -5,19 +5,10 @@ import Image from "next/image";
 import { useRouter } from "@/i18n/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
+import { IMAGE_TYPES, uploadImage, removeUploadedImage } from "@/lib/supabase/upload-image";
 import { addProductImage, deleteProductImage, makeImagePrimary } from "../../actions";
 
 type ProductImage = { id: string; url: string; position: number };
-
-const MAX_BYTES = 5 * 1024 * 1024;
-const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/avif"];
-const EXTENSIONS: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/avif": "avif",
-};
 
 export function ImagesManager({
   locale,
@@ -53,37 +44,19 @@ export function ImagesManager({
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error(en ? "Sign in again." : "Vuelve a iniciar sesión.");
-
       for (const file of Array.from(files)) {
-        if (!ALLOWED.includes(file.type)) {
-          toast.error(`${file.name}: ${en ? "unsupported format." : "formato no permitido."}`);
-          continue;
-        }
-        if (file.size > MAX_BYTES) {
-          toast.error(`${file.name}: ${en ? "larger than 5 MB." : "pesa más de 5 MB."}`);
-          continue;
-        }
-        // The first folder must be the user's id: the storage policy only lets
-        // a vendor write inside their own folder.
-        const path = `${user.id}/${productId}/${crypto.randomUUID()}.${EXTENSIONS[file.type]}`;
-        const { error } = await supabase.storage
-          .from("product-images")
-          .upload(path, file, { contentType: file.type, upsert: false });
-        if (error) {
-          toast.error(`${file.name}: ${error.message}`);
-          continue;
-        }
-        const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+        let uploaded: Awaited<ReturnType<typeof uploadImage>>;
         try {
-          await addProductImage(productId, data.publicUrl, productName);
+          uploaded = await uploadImage(file, productId, locale);
+        } catch (uploadError) {
+          toast.error(`${file.name}: ${uploadError instanceof Error ? uploadError.message : "Error"}`);
+          continue;
+        }
+        try {
+          await addProductImage(productId, uploaded.publicUrl, productName);
         } catch (insertError) {
           // Don't leave an orphan file behind if the row couldn't be created.
-          await supabase.storage.from("product-images").remove([path]);
+          await removeUploadedImage(uploaded.path);
           throw insertError;
         }
       }
@@ -164,7 +137,7 @@ export function ImagesManager({
       <input
         ref={inputRef}
         type="file"
-        accept={ALLOWED.join(",")}
+        accept={IMAGE_TYPES.join(",")}
         multiple
         className="hidden"
         onChange={(event) => handleFiles(event.target.files)}
