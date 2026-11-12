@@ -619,7 +619,7 @@ export async function getReturnDetail(id: string) {
   const { data, error } = await supabase
     .from("return_requests")
     .select(
-      "id, status, reason, details, decision_note, refund_amount_cents, currency, stripe_refund_id, created_at, order_id, user_id, vendor_id, order_items(product_name_snapshot, quantity, unit_price_cents), orders(order_number), return_messages(id, author_role, body, created_at)"
+      "id, status, reason, details, decision_note, refund_amount_cents, currency, stripe_refund_id, restocked_at, created_at, order_id, user_id, vendor_id, order_items(product_name_snapshot, quantity, unit_price_cents), orders(order_number), return_messages(id, author_role, body, created_at)"
     )
     .eq("id", id)
     .maybeSingle();

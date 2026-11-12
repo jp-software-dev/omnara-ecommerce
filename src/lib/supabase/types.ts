@@ -1025,6 +1025,7 @@ export type Database = {
           order_id: string
           order_item_id: string
           reason: string
+          restocked_at: string | null
           refund_amount_cents: number
           resolved_at: string | null
           status: string
@@ -1043,6 +1044,7 @@ export type Database = {
           order_item_id: string
           reason: string
           refund_amount_cents: number
+          restocked_at?: string | null
           resolved_at?: string | null
           status?: string
           stripe_refund_id?: string | null
@@ -1060,6 +1062,7 @@ export type Database = {
           order_item_id?: string
           reason?: string
           refund_amount_cents?: number
+          restocked_at?: string | null
           resolved_at?: string | null
           status?: string
           stripe_refund_id?: string | null
@@ -1251,6 +1254,10 @@ export type Database = {
       }
       resolve_data_request: {
         Args: { p_id: string; p_status: string; p_note: string }
+        Returns: undefined
+      }
+      restock_returned_item: {
+        Args: { p_return_id: string }
         Returns: undefined
       }
       submit_contact_message: {
