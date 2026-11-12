@@ -218,6 +218,41 @@ export async function getRelatedProducts(
   return data;
 }
 
+// Products in the same category sold by OTHER businesses, cheapest first, for the
+// "compare with other businesses" block. Products have no shared catalogue id
+// (no GTIN/model), so "similar" means same category and a different seller.
+export async function getSimilarFromOtherBusinesses(
+  categoryId: string | null,
+  excludeProductId: string,
+  vendorId: string | null,
+  limit = 3
+) {
+  if (!categoryId) return [];
+
+  const supabase = await createClient();
+  const inactiveVendorIds = await getInactiveVendorIds(supabase);
+
+  let query = supabase
+    .from("products")
+    .select("id, slug, name, base_price_mxn_cents, product_images(url, position)")
+    .eq("category_id", categoryId)
+    .eq("status", "active")
+    .neq("id", excludeProductId);
+
+  // PostgREST's neq drops NULL vendors, so spell the "different seller" rule out.
+  query = vendorId
+    ? query.or(`vendor_id.is.null,vendor_id.neq.${vendorId}`)
+    : query.not("vendor_id", "is", null);
+
+  if (inactiveVendorIds.length > 0) {
+    query = query.not("vendor_id", "in", inactiveVendorFilter(inactiveVendorIds));
+  }
+
+  const { data, error } = await query.order("base_price_mxn_cents", { ascending: true }).limit(limit);
+  if (error) throw error;
+  return data;
+}
+
 export async function getWishlistProducts(userId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
