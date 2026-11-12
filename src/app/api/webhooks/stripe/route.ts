@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { flushEmailsSoon } from "@/lib/email-outbox";
 
 type CartItemMeta = { v: string; q: number; p: number };
 
@@ -101,6 +102,9 @@ export async function POST(request: NextRequest) {
       total_cents: session.amount_total ?? subtotalCents,
       payment_method: "card",
       stripe_payment_intent_id: paymentIntentId,
+      // Needed for guests (no account): the order confirmation and shipping
+      // emails go to the address they typed at checkout.
+      customer_email: session.customer_details?.email ?? session.customer_email ?? null,
     })
     .select("id")
     .single();
@@ -163,6 +167,10 @@ export async function POST(request: NextRequest) {
       created_by: null,
     });
   }
+
+  // The database queued the confirmation and the sellers' "new sale" emails while
+  // the order was written; send them once this response is out.
+  flushEmailsSoon();
 
   return NextResponse.json({ received: true, orderId: order.id });
 }
