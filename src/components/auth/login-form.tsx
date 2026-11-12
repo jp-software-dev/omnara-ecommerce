@@ -1,7 +1,7 @@
 "use client";
 
 import { captchaEnabled, Turnstile } from "@/components/auth/turnstile";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocale } from "next-intl";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,9 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
+// The Google button only exists once Google is configured in Supabase and this flag is set.
+const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH === "true";
+
 export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const router = useRouter();
   const en = useLocale() === "en";
@@ -31,9 +34,8 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
     securityCheck: en ? "Complete the security check." : "Completa la verificación de seguridad.",
     wrongCredentials: en ? "Incorrect email or password." : "Correo o contraseña incorrectos.",
     signedIn: en ? "Signed in." : "Sesión iniciada.",
-    googleSoon: en
-      ? "Google sign-in will be connected in the next phase."
-      : "El inicio de sesión con Google se conecta en la siguiente fase.",
+    googleFailed: en ? "Google sign-in failed. Please try again." : "No se pudo iniciar sesión con Google. Intenta de nuevo.",
+    emailSubtitle: en ? "Sign in with your email" : "Inicia sesión con tu correo electrónico",
     welcome: en ? "Welcome back" : "Bienvenido de nuevo",
     googleSubtitle: en ? "Sign in with your Google account" : "Inicia sesión con tu cuenta de Google",
     google: en ? "Continue with Google" : "Continuar con Google",
@@ -89,8 +91,21 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
     router.refresh();
   }
 
-  function handleGoogleClick() {
-    toast(t.googleSoon);
+  // Back from a failed Google round trip (see /api/auth/callback).
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("error") === "oauth") {
+      toast.error(t.googleFailed);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleGoogleClick() {
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/api/auth/callback?locale=${en ? "en" : "es"}` },
+    });
+    if (error) toast.error(t.googleFailed);
   }
 
   return (
@@ -98,11 +113,13 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="text-xl">{t.welcome}</CardTitle>
-          <CardDescription>{t.googleSubtitle}</CardDescription>
+          <CardDescription>{googleEnabled ? t.googleSubtitle : t.emailSubtitle}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
             <FieldGroup>
+              {googleEnabled ? (
+                <>
               <Field>
                 <Button variant="outline" type="button" onClick={handleGoogleClick}>
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -117,6 +134,8 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
               <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
                 {t.orContinue}
               </FieldSeparator>
+                </>
+              ) : null}
               <Field>
                 <FieldLabel htmlFor="email">{t.email}</FieldLabel>
                 <Input id="email" name="email" type="email" placeholder={t.emailPlaceholder} required />
