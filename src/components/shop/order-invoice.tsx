@@ -9,6 +9,8 @@ type InvoiceItem = {
   quantity: number;
   unit_price_cents: number;
   product_name_snapshot: Json;
+  shipped_at?: string | null;
+  tracking_number?: string | null;
 };
 
 type ShippingSnapshot = {
@@ -54,6 +56,7 @@ export function OrderInvoice({
   const t = {
     orderNumber: locale === "en" ? "Order number" : "Número de pedido",
     items: locale === "en" ? "Items" : "Artículos",
+    itemShipped: locale === "en" ? "Shipped" : "Enviado",
     subtotal: locale === "en" ? "Subtotal" : "Subtotal",
     discount: locale === "en" ? "Discount" : "Descuento",
     shippingLabel: locale === "en" ? "Shipping" : "Envío",
@@ -83,6 +86,17 @@ export function OrderInvoice({
             <div>
               <p className="font-medium">{pickLocale(item.product_name_snapshot, locale) || "Producto"}</p>
               <p className="text-muted-foreground">× {item.quantity}</p>
+              {item.shipped_at ? (
+                <p className="text-xs text-muted-foreground">
+                  {t.itemShipped}
+                  {item.tracking_number ? (
+                    <>
+                      {" · "}
+                      {t.tracking}: <span className="font-mono">{item.tracking_number}</span>
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
             </div>
             <p className="font-medium">{price(item.unit_price_cents * item.quantity)}</p>
           </li>
