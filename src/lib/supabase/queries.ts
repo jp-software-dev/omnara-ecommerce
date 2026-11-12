@@ -364,7 +364,7 @@ export async function getOrderDetail(orderId: string) {
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "id, order_number, status, currency, subtotal_cents, shipping_cents, discount_cents, promo_code, total_cents, shipping_address_snapshot, tracking_number, created_at, user_id, order_items(id, quantity, unit_price_cents, product_name_snapshot, variant_attrs_snapshot, product_variants(product_id, products(slug)))"
+      "id, order_number, status, currency, subtotal_cents, shipping_cents, discount_cents, promo_code, total_cents, shipping_address_snapshot, tracking_number, created_at, user_id, order_items(id, quantity, unit_price_cents, product_name_snapshot, variant_attrs_snapshot, vendor_id, shipped_at, tracking_number, product_variants(product_id, products(slug)))"
     )
     .eq("id", orderId)
     .maybeSingle();
