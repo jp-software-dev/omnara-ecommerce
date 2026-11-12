@@ -66,7 +66,7 @@ export async function getFeaturedProducts(limit = 8) {
   let query = supabase
     .from("products")
     .select(
-      "id, slug, name, base_price_mxn_cents, category_id, product_images(url, position)"
+      "id, slug, name, base_price_mxn_cents, category_id, businesses(name, slug), product_images(url, position)"
     )
     .eq("status", "active")
     .eq("is_featured", true);
@@ -94,7 +94,7 @@ export async function getProductsByCategory(categorySlug: string) {
   let productsQuery = supabase
     .from("products")
     .select(
-      "id, slug, name, description_short, base_price_mxn_cents, attributes, created_at, product_images(url, position), product_variants(id, size, color, stock_quantity)"
+      "id, slug, name, description_short, base_price_mxn_cents, attributes, created_at, businesses(name, slug), product_images(url, position), product_variants(id, size, color, stock_quantity)"
     )
     .eq("category_id", category.id)
     .eq("status", "active");
@@ -117,7 +117,7 @@ export async function getNewArrivals(limit = 8) {
 
   let query = supabase
     .from("products")
-    .select("id, slug, name, base_price_mxn_cents, product_images(url, position)")
+    .select("id, slug, name, base_price_mxn_cents, businesses(name, slug), product_images(url, position)")
     .eq("status", "active");
   if (inactiveVendorIds.length > 0) {
     query = query.not("vendor_id", "in", inactiveVendorFilter(inactiveVendorIds));
@@ -167,7 +167,7 @@ export async function getBestSellers(limit = 8) {
   const inactiveVendorIds = await getInactiveVendorIds(supabase);
   let productsQuery = supabase
     .from("products")
-    .select("id, slug, name, base_price_mxn_cents, product_images(url, position)")
+    .select("id, slug, name, base_price_mxn_cents, businesses(name, slug), product_images(url, position)")
     .in("id", topProductIds)
     .eq("status", "active");
   if (inactiveVendorIds.length > 0) {
@@ -207,7 +207,7 @@ export async function getRelatedProducts(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("products")
-    .select("id, slug, name, base_price_mxn_cents, product_images(url, position)")
+    .select("id, slug, name, base_price_mxn_cents, businesses(name, slug), product_images(url, position)")
     .eq("category_id", categoryId)
     .eq("status", "active")
     .neq("id", excludeProductId)
@@ -234,7 +234,7 @@ export async function getSimilarFromOtherBusinesses(
 
   let query = supabase
     .from("products")
-    .select("id, slug, name, base_price_mxn_cents, product_images(url, position)")
+    .select("id, slug, name, base_price_mxn_cents, businesses(name, slug), product_images(url, position)")
     .eq("category_id", categoryId)
     .eq("status", "active")
     .neq("id", excludeProductId);
@@ -258,7 +258,7 @@ export async function getWishlistProducts(userId: string) {
   const { data, error } = await supabase
     .from("wishlists")
     .select(
-      "product_id, products(id, slug, name, base_price_mxn_cents, status, product_images(url, position))"
+      "product_id, products(id, slug, name, base_price_mxn_cents, status, businesses(name, slug), product_images(url, position))"
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -335,7 +335,7 @@ export async function searchProducts(query: string) {
   const [{ data, error }, inactiveVendorIds] = await Promise.all([
     supabase
       .from("products")
-      .select("id, slug, name, base_price_mxn_cents, vendor_id, product_images(url, position)")
+      .select("id, slug, name, base_price_mxn_cents, vendor_id, businesses(name, slug), product_images(url, position)")
       .eq("status", "active"),
     getInactiveVendorIds(supabase),
   ]);
@@ -489,7 +489,7 @@ export async function getProductsByBusiness(vendorId: string) {
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id, slug, name, base_price_mxn_cents, product_images(url, position)"
+      "id, slug, name, base_price_mxn_cents, businesses(name, slug), product_images(url, position)"
     )
     .eq("vendor_id", vendorId)
     .eq("status", "active")
