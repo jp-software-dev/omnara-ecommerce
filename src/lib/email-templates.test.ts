@@ -62,4 +62,11 @@ describe("email templates", () => {
     expect(email?.html).toContain("Falta una foto legible");
     expect(email?.subject).toContain("no fue aprobada");
   });
+
+  it("marks every email as a demo, in the recipient's language", () => {
+    const payload = { order_number: "ORD-1", total_cents: 100, currency: "MXN" };
+    expect(renderEmail("order_confirmation", "es", payload)?.html).toContain("proyecto educativo de demostración");
+    expect(renderEmail("order_confirmation", "en", payload)?.html).toContain("educational demo project");
+    expect(renderEmail("new_sale", "en", { order_number: "ORD-1", item_name: { en: "x" } })?.html).toContain("educational demo project");
+  });
 });
