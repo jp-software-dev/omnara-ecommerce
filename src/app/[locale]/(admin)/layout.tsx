@@ -14,6 +14,7 @@ import {
   CircleHelp,
   Send,
   ScrollText,
+  ShieldCheck,
 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { requireRole } from "@/lib/supabase/auth-helpers";
@@ -56,6 +57,7 @@ export default async function AdminLayout({
           },
           { href: "/admin/correos", label: locale === "en" ? "Emails" : "Correos", icon: Send },
           { href: "/admin/bitacora", label: locale === "en" ? "Audit log" : "Bitácora", icon: ScrollText },
+          { href: "/admin/privacidad", label: locale === "en" ? "Data requests" : "Solicitudes de datos", icon: ShieldCheck },
           {
             href: "/admin/solicitudes",
             label: locale === "en" ? "Applications" : "Solicitudes",

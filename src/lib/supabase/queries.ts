@@ -720,3 +720,15 @@ export async function getMyAddresses(userId: string) {
   if (error) throw error;
   return data;
 }
+
+// The signed-in user's own data requests (RLS: own rows only).
+export async function getMyDataRequests(userId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("data_requests")
+    .select("id, kind, status, admin_note, created_at, resolved_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}

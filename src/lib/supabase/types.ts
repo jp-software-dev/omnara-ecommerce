@@ -835,6 +835,54 @@ export type Database = {
           },
         ]
       }
+      data_requests: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          id: string
+          kind: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_requests_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_outbox: {
         Row: {
           attempts: number
@@ -1195,6 +1243,14 @@ export type Database = {
       }
       moderate_question: {
         Args: { p_id: string; p_hidden: boolean }
+        Returns: undefined
+      }
+      request_account_deletion: {
+        Args: never
+        Returns: string
+      }
+      resolve_data_request: {
+        Args: { p_id: string; p_status: string; p_note: string }
         Returns: undefined
       }
       submit_contact_message: {

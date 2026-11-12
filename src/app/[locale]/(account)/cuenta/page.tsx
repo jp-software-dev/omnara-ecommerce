@@ -2,7 +2,7 @@ import { Link, redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getWishlistProducts } from "@/lib/supabase/queries";
 import { ProductCard } from "@/components/shop/product-card";
-import { Heart, MapPin, Package, Undo2 } from "lucide-react";
+import { Heart, MapPin, Package, ShieldCheck, Undo2 } from "lucide-react";
 
 export default async function AccountPage({
   params,
@@ -58,6 +58,13 @@ export default async function AccountPage({
       >
         <MapPin className="size-4" />
         {locale === "en" ? "My addresses" : "Mis direcciones"}
+      </Link>
+      <Link
+        href="/cuenta/privacidad"
+        className="mt-3 inline-flex items-center gap-2 text-sm font-medium underline underline-offset-4"
+      >
+        <ShieldCheck className="size-4" />
+        {locale === "en" ? "Privacy and my data" : "Privacidad y mis datos"}
       </Link>
 
       <section className="mt-10">
