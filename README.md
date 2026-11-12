@@ -142,7 +142,6 @@ Omnara is a complete teaching marketplace. Known limits and next steps if it wer
 * **Restocking on returns** is not automatic, and sellers can't yet respond to a dispute with attachments.
 * **Google sign-in** (needs credentials from Google Cloud and Supabase) — the button is still a placeholder.
 * **Automated tests beyond unit level**: database rules were verified with SQL scripts and are not part of CI, and there are no browser (end-to-end) tests.
-* **A complete schema export**: `supabase/migrations` holds every change made in this project's later phases, but the original tables and policies were created directly in Supabase, so a fresh clone still can't rebuild the whole database by itself.
 
 ## 🛠 Technologies Used
 
@@ -224,7 +223,7 @@ You need Node.js 20+ and a Supabase project.
 | `npm run typecheck` | TypeScript type check |
 | `npm test` | Unit tests (Vitest) |
 
-> **Database:** every schema change made after the initial tables is versioned as SQL in `supabase/migrations` (applied to the Supabase project in order). The original tables and policies were created directly in Supabase and are not exported yet, so a fresh clone connects to an existing Supabase project instead of recreating one.
+> **Database:** the full schema is versioned as SQL in `supabase/migrations` (original tables, RLS and policies, plus every later change); apply the files in filename order to an empty Supabase project. The demo catalogue data and the migrations of the other apps that share this Supabase project are not included — see `supabase/migrations/README.md`.
 
 ## 🗂 Project documentation by stage
 
