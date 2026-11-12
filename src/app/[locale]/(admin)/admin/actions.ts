@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
 const ORDER_STATUSES = ["pending", "paid", "fulfilled", "cancelled", "refunded"] as const;
@@ -89,6 +90,126 @@ export async function updateProduct(
 
   if (error) throw error;
   revalidatePath("/[locale]/(admin)/admin/productos", "page");
+}
+
+const variantSchema = z.object({
+  sku: z.string().trim().min(2, "El SKU es obligatorio.").max(60),
+  size: z.string().trim().max(20).optional(),
+  color: z.string().trim().max(30).optional(),
+  priceOverrideMxnCents: z.number().int().positive().max(100_000_000).nullable(),
+  stockQuantity: z.number().int().min(0).max(100_000),
+});
+
+export async function addVariant(
+  productId: string,
+  input: z.input<typeof variantSchema>
+) {
+  const parsed = variantSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Datos de variante inválidos.");
+  }
+  const v = parsed.data;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("product_variants").insert({
+    product_id: productId,
+    sku: v.sku,
+    size: v.size || null,
+    color: v.color || null,
+    price_override_mxn_cents: v.priceOverrideMxnCents,
+    stock_quantity: v.stockQuantity,
+  });
+
+  if (error) {
+    // 23505 = unique_violation (sku is unique across the whole catalog)
+    if (error.code === "23505") throw new Error("Ya existe una variante con ese SKU.");
+    throw error;
+  }
+  revalidatePath("/[locale]/(admin)/admin/productos", "layout");
+}
+
+export async function deleteVariant(variantId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("product_variants").delete().eq("id", variantId);
+  if (error) {
+    // 23503 = foreign_key_violation: the variant already appears in an order.
+    if (error.code === "23503") {
+      throw new Error("Esta variante ya tiene ventas; ponla en 0 de inventario en lugar de borrarla.");
+    }
+    throw error;
+  }
+  revalidatePath("/[locale]/(admin)/admin/productos", "layout");
+}
+
+const PRODUCT_IMAGES_PREFIX = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/`;
+
+export async function addProductImage(productId: string, url: string, altText?: string) {
+  // Only images that live in our own bucket may be attached to a product.
+  if (!url.startsWith(PRODUCT_IMAGES_PREFIX)) {
+    throw new Error("La imagen debe subirse desde la aplicación.");
+  }
+  const supabase = await createClient();
+
+  const { data: last } = await supabase
+    .from("product_images")
+    .select("position")
+    .eq("product_id", productId)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { error } = await supabase.from("product_images").insert({
+    product_id: productId,
+    url,
+    alt_text: altText?.trim().slice(0, 200) || null,
+    position: (last?.position ?? -1) + 1,
+  });
+  if (error) throw error;
+  revalidatePath("/[locale]/(admin)/admin/productos", "layout");
+}
+
+export async function deleteProductImage(imageId: string) {
+  const supabase = await createClient();
+  const { data: image } = await supabase
+    .from("product_images")
+    .select("url")
+    .eq("id", imageId)
+    .maybeSingle();
+
+  const { error } = await supabase.from("product_images").delete().eq("id", imageId);
+  if (error) throw error;
+
+  // Best-effort cleanup of the file; the row is already gone either way.
+  if (image?.url.startsWith(PRODUCT_IMAGES_PREFIX)) {
+    await supabase.storage
+      .from("product-images")
+      .remove([image.url.slice(PRODUCT_IMAGES_PREFIX.length)]);
+  }
+  revalidatePath("/[locale]/(admin)/admin/productos", "layout");
+}
+
+export async function makeImagePrimary(productId: string, imageId: string) {
+  const supabase = await createClient();
+  const { data: images, error } = await supabase
+    .from("product_images")
+    .select("id, position")
+    .eq("product_id", productId)
+    .order("position", { ascending: true });
+  if (error) throw error;
+
+  const ordered = [
+    ...images.filter((i) => i.id === imageId),
+    ...images.filter((i) => i.id !== imageId),
+  ];
+  for (const [index, image] of ordered.entries()) {
+    if (image.position === index) continue;
+    const { error: updateError } = await supabase
+      .from("product_images")
+      .update({ position: index })
+      .eq("id", image.id);
+    if (updateError) throw updateError;
+  }
+  revalidatePath("/[locale]/(admin)/admin/productos", "layout");
 }
 
 export async function deleteProduct(productId: string) {
