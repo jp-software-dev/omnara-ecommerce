@@ -133,6 +133,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "products_vendor_business_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["vendor_id"]
+          },
+          {
             foreignKeyName: "businesses_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: true
@@ -617,6 +624,13 @@ export type Database = {
           vendor_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "products_vendor_business_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["owner_id"]
+          },
           {
             foreignKeyName: "products_category_id_fkey"
             columns: ["category_id"]

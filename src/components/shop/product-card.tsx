@@ -14,6 +14,8 @@ export type ProductCardData = {
   name: Json;
   base_price_mxn_cents: number;
   product_images: { url: string; position: number }[];
+  /** The seller's business; null for products sold by Omnara itself. */
+  businesses?: { name: string; slug: string } | null;
 };
 
 export function ProductCard({
@@ -55,6 +57,11 @@ export function ProductCard({
       <div className="space-y-1 px-0.5">
         <p className="truncate text-sm font-medium">{pickLocale(product.name, locale)}</p>
         <p className="text-sm font-semibold text-foreground">{price}</p>
+        {product.businesses ? (
+          <p className="truncate text-xs text-muted-foreground">
+            {locale === "en" ? "Sold by" : "Vendido por"} {product.businesses.name}
+          </p>
+        ) : null}
       </div>
     </Link>
   );
