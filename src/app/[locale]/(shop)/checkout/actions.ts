@@ -8,8 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   getAppSettings,
   getVariantsForCheckout,
-  validatePromoCode,
-} from "@/lib/supabase/queries";
+  validatePromoCode, getMyAddresses } from "@/lib/supabase/queries";
 import { pickLocale, convertToUsd } from "@/lib/format";
 import { computeShippingCents, FLAT_SHIPPING_MXN_CENTS } from "@/lib/shipping";
 
@@ -27,7 +26,18 @@ async function getOrigin() {
 
 export async function getCheckoutContext() {
   const settings = await getAppSettings();
-  return { freeShippingThresholdMxnCents: settings.free_shipping_threshold_mxn_cents };
+
+  // Saved addresses for a signed-in buyer (RLS: own rows); guests get none.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const addresses = user ? await getMyAddresses(user.id) : [];
+
+  return {
+    freeShippingThresholdMxnCents: settings.free_shipping_threshold_mxn_cents,
+    addresses,
+  };
 }
 
 export async function previewPromoCode(code: string, subtotalMxnCents: number) {
@@ -40,12 +50,15 @@ export async function createCheckoutSession({
   email,
   currency = "MXN",
   promoCode,
+  addressId,
 }: {
   items: CheckoutItemInput[];
   locale: string;
   email?: string;
   currency?: "MXN" | "USD";
   promoCode?: string;
+  /** One of the buyer's saved addresses; when absent Stripe collects the address as before. */
+  addressId?: string;
 }) {
   if (items.length === 0) {
     throw new Error("El carrito está vacío.");
@@ -55,6 +68,32 @@ export async function createCheckoutSession({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // A saved address is read through the signed-in user's own RLS scope AND filtered
+  // by user_id, so nobody can ship an order to (or read) someone else's address.
+  let shipTo: string | null = null;
+  if (addressId) {
+    if (!user) throw new Error("Inicia sesión para usar una dirección guardada.");
+    const { data: address } = await supabase
+      .from("addresses")
+      .select("recipient_name, line1, line2, city, state, postal_code, country")
+      .eq("id", addressId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!address) throw new Error("No se encontró la dirección elegida.");
+    shipTo = JSON.stringify({
+      n: address.recipient_name,
+      l1: address.line1,
+      l2: address.line2 ?? "",
+      c: address.city,
+      s: address.state,
+      p: address.postal_code,
+      k: address.country,
+    });
+    // Stripe caps a metadata value at 500 characters; the database limits keep us
+    // well below, this just makes the failure explicit instead of a Stripe error.
+    if (shipTo.length > 500) throw new Error("La dirección es demasiado larga.");
+  }
 
   const variants = await getVariantsForCheckout(items.map((item) => item.variantId));
   // The client only chooses WHICH currency to pay in — the actual amount is
@@ -135,7 +174,6 @@ export async function createCheckoutSession({
     mode: "payment",
     customer_email: email || user?.email || undefined,
     line_items: stripeLineItems,
-    shipping_address_collection: { allowed_countries: ["MX", "US"] },
     success_url: `${origin}/${locale}/checkout/confirmacion?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/${locale}/checkout`,
     metadata: {
@@ -144,6 +182,7 @@ export async function createCheckoutSession({
       shipping_cents: String(finalShippingCents),
       discount_cents: String(discountCents),
       promo_code: appliedPromoCode ?? "",
+      ship_to: shipTo ?? "",
       cart_items: JSON.stringify(
         lineItems.map((item) => ({
           v: item.variantId,
@@ -153,6 +192,11 @@ export async function createCheckoutSession({
       ),
     },
   };
+
+  // With a saved address we already know where it ships; otherwise Stripe asks, as before.
+  if (!shipTo) {
+    sessionParams.shipping_address_collection = { allowed_countries: ["MX", "US"] };
+  }
 
   if (discountCents > 0) {
     const coupon = await getStripe().coupons.create({
