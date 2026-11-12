@@ -1,9 +1,5 @@
 import { pickLocale, formatPrice } from "@/lib/format";
-import {
-  getRevenueByDay,
-  getTopProducts,
-  getOrderStatusCounts,
-} from "@/lib/supabase/admin-queries";
+import { getSalesAnalytics, getOrderStatusCounts } from "@/lib/supabase/admin-queries";
 import { requireRole } from "@/lib/supabase/auth-helpers";
 import { SimpleBarChart } from "@/components/admin/simple-bar-chart";
 
@@ -13,26 +9,27 @@ export default async function AdminAnalyticsPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  await requireRole(["admin", "vendor"], locale);
+  const { role } = await requireRole(["admin", "vendor"], locale);
 
-  const [revenueByDay, topProducts, statusCounts] = await Promise.all([
-    getRevenueByDay(30),
-    getTopProducts(5),
-    getOrderStatusCounts(),
-  ]);
-
-  const totalRevenueCents = revenueByDay.reduce((sum, d) => sum + d.totalCents, 0);
+  const [sales, statusCounts] = await Promise.all([getSalesAnalytics(30), getOrderStatusCounts()]);
+  const { revenueByDay, topProducts, paidOrders, avgOrderCents, totalCents: totalRevenueCents } = sales;
   const totalOrders = [...statusCounts.values()].reduce((sum, n) => sum + n, 0);
-  const paidOrders = (statusCounts.get("paid") ?? 0) + (statusCounts.get("fulfilled") ?? 0);
-  const avgOrderCents = paidOrders > 0 ? Math.round(totalRevenueCents / paidOrders) : 0;
 
   const t = {
     title: locale === "en" ? "Analytics" : "Analítica",
-    revenue30d: locale === "en" ? "Revenue (30d)" : "Ingresos (30d)",
+    revenue30d: locale === "en" ? "Product sales (30d)" : "Ventas de productos (30d)",
     orders30d: locale === "en" ? "Paid orders (30d)" : "Pedidos pagados (30d)",
     avgOrder: locale === "en" ? "Average order" : "Ticket promedio",
     revenueChart: locale === "en" ? "Revenue by day" : "Ingresos por día",
-    topProducts: locale === "en" ? "Top products" : "Productos más vendidos",
+    topProducts: locale === "en" ? "Top products (30d)" : "Productos más vendidos (30d)",
+    scope:
+      role === "vendor"
+        ? locale === "en"
+          ? "Only items sold by your business. Shipping and discounts are not included; USD sales are converted to MXN at the current rate."
+          : "Solo artículos vendidos por tu negocio. No incluye envío ni descuentos; las ventas en USD se convierten a MXN al tipo de cambio actual."
+        : locale === "en"
+          ? "Product sales across all businesses. Shipping and discounts are not included; USD sales are converted to MXN at the current rate."
+          : "Ventas de productos de todos los negocios. No incluye envío ni descuentos; las ventas en USD se convierten a MXN al tipo de cambio actual.",
     units: locale === "en" ? "units" : "unidades",
     noData: locale === "en" ? "Not enough data yet." : "Todavía no hay suficientes datos.",
   };
@@ -40,6 +37,7 @@ export default async function AdminAnalyticsPage({
   return (
     <main className="flex-1 p-6 md:p-10">
       <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{t.scope}</p>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-lg border p-5">
