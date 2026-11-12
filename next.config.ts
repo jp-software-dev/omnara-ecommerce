@@ -9,10 +9,14 @@ const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
 
 const isDev = process.env.NODE_ENV !== "production";
 
+// Cloudflare Turnstile (CAPTCHA) needs its script and iframe; allow that host only
+// when a site key is configured, so the policy stays as tight as before otherwise.
+const turnstileHost = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? " https://challenges.cloudflare.com" : "";
+
 // Turbopack/webpack HMR needs 'unsafe-eval' + a ws:// connection in dev only.
 const scriptSrc = isDev
-  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com"
-  : "script-src 'self' 'unsafe-inline' https://js.stripe.com";
+  ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com${turnstileHost}`
+  : `script-src 'self' 'unsafe-inline' https://js.stripe.com${turnstileHost}`;
 const connectSrc = isDev
   ? `connect-src 'self' ws://localhost:* https://${supabaseHost} https://api.stripe.com`
   : `connect-src 'self' https://${supabaseHost} https://api.stripe.com`;
@@ -37,7 +41,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       `img-src 'self' data: https://${supabaseHost}`,
       connectSrc,
-      "frame-src https://js.stripe.com https://hooks.stripe.com",
+      `frame-src https://js.stripe.com https://hooks.stripe.com${turnstileHost}`,
       "font-src 'self' data:",
       "object-src 'none'",
       "base-uri 'self'",

@@ -1,5 +1,6 @@
 "use client";
 
+import { captchaEnabled, Turnstile } from "@/components/auth/turnstile";
 import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,8 @@ import { Input } from "@/components/ui/input";
 export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,10 +35,19 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
     const email = String(form.get("email"));
     const password = String(form.get("password"));
 
+    if (captchaEnabled && !captchaToken) {
+      toast.error("Completa la verificación de seguridad.");
+      return;
+    }
     setLoading(true);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: { captchaToken: captchaToken ?? undefined },
+    });
     setLoading(false);
+    setCaptchaReset((n) => n + 1);
 
     if (error) {
       toast.error(
@@ -96,7 +108,8 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
                 <Input id="password" name="password" type="password" required />
               </Field>
               <Field>
-                <Button type="submit" disabled={loading}>
+                <Turnstile onToken={setCaptchaToken} resetKey={captchaReset} />
+                  <Button type="submit" disabled={loading}>
                   {loading ? "Iniciando sesión…" : "Iniciar sesión"}
                 </Button>
                 <FieldDescription className="text-center">

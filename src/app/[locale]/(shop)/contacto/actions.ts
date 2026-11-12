@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { verifyCaptcha } from "@/lib/captcha";
 
 const contactSchema = z.object({
   name: z.string().trim().min(2, "Escribe tu nombre.").max(80, "El nombre es demasiado largo (máximo 80)."),
@@ -14,6 +15,7 @@ const contactSchema = z.object({
     .max(2000, "El mensaje es demasiado largo (máximo 2000)."),
   // Honeypot: real people never see or fill this field; naive bots fill every input.
   website: z.string().optional(),
+  captchaToken: z.string().optional(),
 });
 
 export async function sendContactMessage(input: z.input<typeof contactSchema>, locale: string) {
@@ -23,6 +25,15 @@ export async function sendContactMessage(input: z.input<typeof contactSchema>, l
 
   // A bot filled the hidden field: answer as if it worked, store nothing.
   if (data.website) return;
+
+  // No-op until the Turnstile keys are configured; then a valid token is required.
+  if (!(await verifyCaptcha(data.captchaToken))) {
+    throw new Error(
+      locale === "en"
+        ? "We couldn't verify you're human. Please try again."
+        : "No pudimos verificar que eres una persona. Intenta de nuevo."
+    );
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("submit_contact_message", {
