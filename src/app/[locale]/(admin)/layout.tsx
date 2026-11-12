@@ -13,6 +13,7 @@ import {
   MessageSquareWarning,
   CircleHelp,
   Send,
+  ScrollText,
 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { requireRole } from "@/lib/supabase/auth-helpers";
@@ -54,6 +55,7 @@ export default async function AdminLayout({
             icon: MessageSquareWarning,
           },
           { href: "/admin/correos", label: locale === "en" ? "Emails" : "Correos", icon: Send },
+          { href: "/admin/bitacora", label: locale === "en" ? "Audit log" : "Bitácora", icon: ScrollText },
           {
             href: "/admin/solicitudes",
             label: locale === "en" ? "Applications" : "Solicitudes",

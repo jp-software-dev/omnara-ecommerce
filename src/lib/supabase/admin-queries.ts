@@ -273,3 +273,15 @@ export async function getEmailOutbox(limit = 50) {
   }
   return { rows: data, counts };
 }
+
+// Admin audit trail, newest first. `table` narrows it to one kind of record.
+export async function getAuditLog(table?: string, limit = 100) {
+  const supabase = await createClient();
+  let query = supabase
+    .from("admin_audit_log")
+    .select("id, table_name, record_id, action, changes, created_at, profiles(full_name)");
+  if (table) query = query.eq("table_name", table);
+  const { data, error } = await query.order("id", { ascending: false }).limit(limit);
+  if (error) throw error;
+  return data;
+}
