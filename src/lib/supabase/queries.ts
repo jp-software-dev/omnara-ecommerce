@@ -589,14 +589,6 @@ export type ComparedProduct = Awaited<ReturnType<typeof getProductsForComparison
 // only decide WHICH of the visible rows a given screen wants — a user who is both
 // a buyer and a seller sees both kinds of requests through RLS.
 
-export const RETURN_REASONS = [
-  "damaged",
-  "wrong_item",
-  "not_as_described",
-  "changed_mind",
-  "other",
-] as const;
-
 const RETURN_LIST_SELECT =
   "id, status, reason, refund_amount_cents, currency, created_at, order_id, order_items(product_name_snapshot, quantity), orders(order_number)";
 
