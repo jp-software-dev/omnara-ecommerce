@@ -442,6 +442,23 @@ export async function processEmailsNow() {
   return result;
 }
 
+// An administrator closes a data request (e.g. after removing or anonymising the
+// account by hand). The database function re-checks that the caller is an admin.
+export async function resolveDataRequest(requestId: string, status: "done" | "rejected", note: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("resolve_data_request", {
+    p_id: requestId,
+    p_status: status,
+    p_note: note,
+  });
+  if (error) {
+    if (error.message.includes("already resolved")) throw new Error("Esta solicitud ya fue atendida.");
+    throw error;
+  }
+  revalidatePath("/[locale]/(admin)/admin/privacidad", "page");
+  revalidatePath("/[locale]/(account)/cuenta/privacidad", "page");
+}
+
 export async function markMessageRead(messageId: string) {
   const supabase = await createClient();
   const { error } = await supabase
