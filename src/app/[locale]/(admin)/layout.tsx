@@ -9,6 +9,7 @@ import {
   Users,
   Store,
   UserCheck,
+  Undo2,
 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { requireRole } from "@/lib/supabase/auth-helpers";
@@ -28,6 +29,7 @@ export default async function AdminLayout({
     { href: "/admin/productos", label: locale === "en" ? "Products" : "Productos", icon: Package },
     { href: "/admin/inventario", label: locale === "en" ? "Inventory" : "Inventario", icon: Boxes },
     { href: "/admin/pedidos", label: locale === "en" ? "Orders" : "Pedidos", icon: ClipboardList },
+    { href: "/admin/devoluciones", label: locale === "en" ? "Returns" : "Devoluciones", icon: Undo2 },
     { href: "/admin/analitica", label: locale === "en" ? "Analytics" : "Analítica", icon: BarChart3 },
     ...(role === "vendor"
       ? [{ href: "/admin/mi-negocio", label: locale === "en" ? "My business" : "Mi negocio", icon: Store }]
