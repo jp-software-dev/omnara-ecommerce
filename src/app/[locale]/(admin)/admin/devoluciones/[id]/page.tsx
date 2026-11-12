@@ -3,7 +3,9 @@ import { Link, redirect } from "@/i18n/navigation";
 import { ReturnDetail } from "@/components/shop/return-detail";
 import { requireRole } from "@/lib/supabase/auth-helpers";
 import { getReturnDetail } from "@/lib/supabase/queries";
+import { formatPrice } from "@/lib/format";
 import { DecisionForm } from "../decision-form";
+import { RefundButton } from "../refund-button";
 
 export default async function AdminReturnDetailPage({
   params,
@@ -26,6 +28,14 @@ export default async function AdminReturnDetailPage({
     actions = <DecisionForm returnId={data.id} locale={locale} mode="vendor" />;
   } else if (role === "admin" && ["requested", "rejected", "escalated"].includes(data.status)) {
     actions = <DecisionForm returnId={data.id} locale={locale} mode="admin" />;
+  } else if (role === "admin" && data.status === "approved") {
+    actions = (
+      <RefundButton
+        returnId={data.id}
+        locale={locale}
+        amountLabel={formatPrice(data.refund_amount_cents, data.currency === "USD" ? "USD" : "MXN", locale)}
+      />
+    );
   }
 
   return (
