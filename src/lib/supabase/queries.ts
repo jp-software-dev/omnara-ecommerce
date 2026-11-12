@@ -500,3 +500,51 @@ export async function getMySellerApplication() {
   if (error) throw error;
   return data;
 }
+
+export const MAX_COMPARE_PRODUCTS = 4;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Products for the side-by-side comparison, in the order requested. Inactive
+// products and products of paused businesses are dropped (same rule as the
+// rest of the storefront), and ids that aren't valid UUIDs are ignored so a
+// hand-edited URL can't break the query.
+export async function getProductsForComparison(rawIds: string[]) {
+  const ids = [...new Set(rawIds.filter((id) => UUID_RE.test(id)))].slice(0, MAX_COMPARE_PRODUCTS);
+  if (ids.length === 0) return [];
+
+  const supabase = await createClient();
+  const [{ data, error }, inactiveVendorIds] = await Promise.all([
+    supabase
+      .from("products")
+      .select(
+        "id, slug, name, base_price_mxn_cents, vendor_id, attributes, categories(slug, name), product_images(url, position), product_variants(size, color, stock_quantity, price_override_mxn_cents), reviews(rating)"
+      )
+      .in("id", ids)
+      .eq("status", "active"),
+    getInactiveVendorIds(supabase),
+  ]);
+  if (error) throw error;
+
+  const visible = data.filter((p) => !p.vendor_id || !inactiveVendorIds.includes(p.vendor_id));
+
+  const vendorIds = [...new Set(visible.map((p) => p.vendor_id).filter((id): id is string => !!id))];
+  const businesses = vendorIds.length
+    ? (await supabase.from("businesses").select("owner_id, slug, name").in("owner_id", vendorIds)).data ?? []
+    : [];
+  const businessByOwner = new Map(businesses.map((b) => [b.owner_id, b]));
+
+  return ids
+    .map((id) => visible.find((p) => p.id === id))
+    .filter((p): p is NonNullable<typeof p> => !!p)
+    .map((p) => {
+      const ratingCount = p.reviews.length;
+      return {
+        ...p,
+        business: p.vendor_id ? (businessByOwner.get(p.vendor_id) ?? null) : null,
+        ratingCount,
+        ratingAvg: ratingCount ? p.reviews.reduce((sum, r) => sum + r.rating, 0) / ratingCount : null,
+      };
+    });
+}
+
+export type ComparedProduct = Awaited<ReturnType<typeof getProductsForComparison>>[number];
