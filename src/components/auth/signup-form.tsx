@@ -1,5 +1,6 @@
 "use client";
 
+import { captchaEnabled, Turnstile } from "@/components/auth/turnstile";
 import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,8 @@ import { Input } from "@/components/ui/input";
 export function SignupForm({ className, ...props }: React.ComponentProps<"div">) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,14 +45,19 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
       return;
     }
 
+    if (captchaEnabled && !captchaToken) {
+      toast.error("Completa la verificación de seguridad.");
+      return;
+    }
     setLoading(true);
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: { data: { full_name: fullName }, captchaToken: captchaToken ?? undefined },
     });
     setLoading(false);
+    setCaptchaReset((n) => n + 1);
 
     if (error) {
       toast.error(error.message);
@@ -98,7 +106,8 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
                 <FieldDescription>Mínimo 8 caracteres.</FieldDescription>
               </Field>
               <Field>
-                <Button type="submit" disabled={loading}>
+                <Turnstile onToken={setCaptchaToken} resetKey={captchaReset} />
+                  <Button type="submit" disabled={loading}>
                   {loading ? "Creando cuenta…" : "Crear cuenta"}
                 </Button>
                 <FieldDescription className="text-center">

@@ -1,5 +1,6 @@
 "use client";
 
+import { captchaEnabled, Turnstile } from "@/components/auth/turnstile";
 import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,8 @@ import { Input } from "@/components/ui/input";
 
 export function ForgotPasswordForm({ className, ...props }: React.ComponentProps<"div">) {
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
   const [sent, setSent] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -24,6 +27,10 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email"));
 
+    if (captchaEnabled && !captchaToken) {
+      toast.error("Completa la verificación de seguridad.");
+      return;
+    }
     setLoading(true);
     const supabase = createClient();
     // Auth pages aren't locale-prefixed in the redirect chosen here (matching
@@ -32,8 +39,10 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
     const locale = window.location.pathname.split("/")[1] || "es";
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/${locale}/restablecer`,
+      captchaToken: captchaToken ?? undefined,
     });
     setLoading(false);
+    setCaptchaReset((n) => n + 1);
 
     if (error) {
       toast.error(error.message);
@@ -63,6 +72,7 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
                   <Input id="email" name="email" type="email" placeholder="tu@correo.com" required />
                 </Field>
                 <Field>
+                  <Turnstile onToken={setCaptchaToken} resetKey={captchaReset} />
                   <Button type="submit" disabled={loading}>
                     {loading ? "Enviando…" : "Enviar enlace"}
                   </Button>
