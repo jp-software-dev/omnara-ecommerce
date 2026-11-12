@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { returnErrorMessage } from "@/lib/returns";
 import { createClient } from "@/lib/supabase/server";
 
 const ORDER_STATUSES = ["pending", "paid", "fulfilled", "cancelled", "refunded"] as const;
@@ -288,6 +289,38 @@ export async function rejectApplication(applicationId: string, reason: string) {
     throw error;
   }
   revalidatePath("/[locale]/(admin)/admin/solicitudes", "page");
+}
+
+// ---- Returns --------------------------------------------------------------
+// Thin wrappers over the database functions, which re-check who is calling.
+
+function revalidateReturns() {
+  revalidatePath("/[locale]/(admin)/admin/devoluciones", "layout");
+  revalidatePath("/[locale]/(account)/cuenta/devoluciones", "layout");
+}
+
+// The item's seller approves or rejects a new return request.
+export async function decideReturn(returnId: string, approve: boolean, note: string, locale: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("decide_return", {
+    p_id: returnId,
+    p_approve: approve,
+    p_note: note,
+  });
+  if (error) throw new Error(returnErrorMessage(error.message, locale));
+  revalidateReturns();
+}
+
+// Admin settles an escalated (or stuck) request: approve it or close it.
+export async function resolveReturn(returnId: string, approve: boolean, note: string, locale: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_resolve_return", {
+    p_id: returnId,
+    p_approve: approve,
+    p_note: note,
+  });
+  if (error) throw new Error(returnErrorMessage(error.message, locale));
+  revalidateReturns();
 }
 
 export async function markMessageRead(messageId: string) {
