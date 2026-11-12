@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
+import { sendContactMessage } from "@/app/[locale]/(shop)/contacto/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -12,6 +12,7 @@ export function ContactForm({ locale }: { locale: string }) {
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [website, setWebsite] = useState(""); // honeypot, see the hidden input below
   const [loading, setLoading] = useState(false);
 
   const t = {
@@ -29,33 +30,40 @@ export function ContactForm({ locale }: { locale: string }) {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.from("contact_messages").insert({
-      name: name.trim(),
-      email: email.trim(),
-      subject: subject.trim() || null,
-      message: message.trim(),
-    });
-    setLoading(false);
-
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      await sendContactMessage({ name, email, subject, message, website }, locale);
+      toast.success(t.success);
+      setName("");
+      setEmail("");
+      setSubject("");
+      setMessage("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error");
+    } finally {
+      setLoading(false);
     }
-
-    toast.success(t.success);
-    setName("");
-    setEmail("");
-    setSubject("");
-    setMessage("");
   }
 
   return (
     <form onSubmit={handleSubmit} className="mt-6">
       <FieldGroup>
+        {/* Honeypot: invisible to people and screen readers, tempting for bots. */}
+        <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+          <label>
+            Website
+            <input
+              type="text"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              value={website}
+              onChange={(event) => setWebsite(event.target.value)}
+            />
+          </label>
+        </div>
         <Field>
           <FieldLabel htmlFor="contact-name">{t.name}</FieldLabel>
-          <Input id="contact-name" value={name} onChange={(e) => setName(e.target.value)} required />
+          <Input id="contact-name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} required />
         </Field>
         <Field>
           <FieldLabel htmlFor="contact-email">{t.email}</FieldLabel>
@@ -76,6 +84,7 @@ export function ContactForm({ locale }: { locale: string }) {
           <textarea
             id="contact-message"
             value={message}
+            maxLength={2000}
             onChange={(e) => setMessage(e.target.value)}
             placeholder={t.messagePlaceholder}
             required

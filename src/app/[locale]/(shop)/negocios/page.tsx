@@ -1,7 +1,8 @@
 import Image from "next/image";
 import { Store } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { getActiveBusinesses } from "@/lib/supabase/queries";
+import { getActiveBusinesses, getBusinessRatings } from "@/lib/supabase/queries";
+import { BusinessRatingBadge } from "@/components/shop/business-rating";
 
 export default async function BusinessesPage({
   params,
@@ -10,6 +11,7 @@ export default async function BusinessesPage({
 }) {
   const { locale } = await params;
   const businesses = await getActiveBusinesses();
+  const ratings = await getBusinessRatings(businesses.map((business) => business.id));
 
   const t = {
     title: locale === "en" ? "Businesses" : "Negocios",
@@ -58,6 +60,7 @@ export default async function BusinessesPage({
                 </div>
                 <div className="min-w-0">
                   <p className="truncate font-medium">{business.name}</p>
+                  <BusinessRatingBadge rating={ratings.get(business.id)} locale={locale} className="mt-0.5" />
                   {business.description ? (
                     <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{business.description}</p>
                   ) : null}

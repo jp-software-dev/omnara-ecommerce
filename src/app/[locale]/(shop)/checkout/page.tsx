@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { DemoBanner } from "@/components/shop/demo-banner";
+import { formatAddressLine, type SavedAddress } from "@/lib/addresses";
 import { formatPrice, convertToUsd } from "@/lib/format";
 import { FLAT_SHIPPING_MXN_CENTS } from "@/lib/shipping";
 import { cartSubtotalMxnCents, useCartHydrated, useCartStore } from "@/stores/cart-store";
@@ -28,6 +29,9 @@ export default function CheckoutPage({
   const [freeShippingThresholdMxnCents, setFreeShippingThresholdMxnCents] = useState<number | null>(
     null
   );
+  // Saved addresses of a signed-in buyer; `addressId === null` means "enter it in Stripe".
+  const [addresses, setAddresses] = useState<SavedAddress[]>([]);
+  const [addressId, setAddressId] = useState<string | null>(null);
   const [promoInput, setPromoInput] = useState("");
   const [promoChecking, setPromoChecking] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountMxnCents: number } | null>(
@@ -35,7 +39,12 @@ export default function CheckoutPage({
   );
 
   useEffect(() => {
-    getCheckoutContext().then((ctx) => setFreeShippingThresholdMxnCents(ctx.freeShippingThresholdMxnCents));
+    getCheckoutContext().then((ctx) => {
+      setFreeShippingThresholdMxnCents(ctx.freeShippingThresholdMxnCents);
+      setAddresses(ctx.addresses);
+      // Preselect the default address (they come back default first).
+      setAddressId(ctx.addresses.find((address) => address.is_default)?.id ?? null);
+    });
   }, []);
 
   const subtotal = cartSubtotalMxnCents(items);
@@ -69,6 +78,12 @@ export default function CheckoutPage({
     promoApplied: locale === "en" ? "Code applied" : "Código aplicado",
     promoInvalid:
       locale === "en" ? "That code isn't valid for this order." : "Ese código no es válido para este pedido.",
+    shipTo: locale === "en" ? "Ship to" : "Enviar a",
+    otherAddress:
+      locale === "en"
+        ? "Another address (I'll enter it on the payment page)"
+        : "Otra dirección (la escribo en la página de pago)",
+    manageAddresses: locale === "en" ? "Manage my addresses" : "Administrar mis direcciones",
     empty: locale === "en" ? "Your bag is empty." : "Tu carrito está vacío.",
     browse: locale === "en" ? "Browse products" : "Ver productos",
   };
@@ -99,6 +114,7 @@ export default function CheckoutPage({
         email,
         currency,
         promoCode: appliedPromo?.code,
+        addressId: addressId ?? undefined,
       });
     } catch (error) {
       setLoading(false);
@@ -198,6 +214,45 @@ export default function CheckoutPage({
           )}
         </div>
       </Field>
+
+      {addresses.length > 0 ? (
+        <fieldset className="mt-6">
+          <legend className="mb-2 text-sm font-medium">{t.shipTo}</legend>
+          <div className="grid gap-2">
+            {addresses.map((address) => (
+              <label key={address.id} className="flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm has-[:checked]:border-primary">
+                <input
+                  type="radio"
+                  name="checkout-address"
+                  className="mt-1"
+                  checked={addressId === address.id}
+                  onChange={() => setAddressId(address.id)}
+                />
+                <span>
+                  <span className="font-medium">
+                    {address.label ? `${address.label} · ` : ""}
+                    {address.recipient_name}
+                  </span>
+                  <span className="block text-muted-foreground">{formatAddressLine(address)}</span>
+                </span>
+              </label>
+            ))}
+            <label className="flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm has-[:checked]:border-primary">
+              <input
+                type="radio"
+                name="checkout-address"
+                className="mt-1"
+                checked={addressId === null}
+                onChange={() => setAddressId(null)}
+              />
+              <span>{t.otherAddress}</span>
+            </label>
+          </div>
+          <Link href="/cuenta/direcciones" className="mt-2 inline-block text-xs underline underline-offset-4">
+            {t.manageAddresses}
+          </Link>
+        </fieldset>
+      ) : null}
 
       <Field className="mt-4">
         <FieldLabel htmlFor="checkout-email">{t.email}</FieldLabel>

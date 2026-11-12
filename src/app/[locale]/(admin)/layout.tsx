@@ -8,6 +8,13 @@ import {
   Tag,
   Users,
   Store,
+  UserCheck,
+  Undo2,
+  MessageSquareWarning,
+  CircleHelp,
+  Send,
+  ScrollText,
+  ShieldCheck,
 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { requireRole } from "@/lib/supabase/auth-helpers";
@@ -27,6 +34,8 @@ export default async function AdminLayout({
     { href: "/admin/productos", label: locale === "en" ? "Products" : "Productos", icon: Package },
     { href: "/admin/inventario", label: locale === "en" ? "Inventory" : "Inventario", icon: Boxes },
     { href: "/admin/pedidos", label: locale === "en" ? "Orders" : "Pedidos", icon: ClipboardList },
+    { href: "/admin/devoluciones", label: locale === "en" ? "Returns" : "Devoluciones", icon: Undo2 },
+    { href: "/admin/preguntas", label: locale === "en" ? "Questions" : "Preguntas", icon: CircleHelp },
     { href: "/admin/analitica", label: locale === "en" ? "Analytics" : "Analítica", icon: BarChart3 },
     ...(role === "vendor"
       ? [{ href: "/admin/mi-negocio", label: locale === "en" ? "My business" : "Mi negocio", icon: Store }]
@@ -41,6 +50,19 @@ export default async function AdminLayout({
           },
           { href: "/admin/usuarios", label: locale === "en" ? "Users" : "Usuarios", icon: Users },
           { href: "/admin/negocios", label: locale === "en" ? "Businesses" : "Negocios", icon: Store },
+          {
+            href: "/admin/resenas",
+            label: locale === "en" ? "Reviews" : "Reseñas",
+            icon: MessageSquareWarning,
+          },
+          { href: "/admin/correos", label: locale === "en" ? "Emails" : "Correos", icon: Send },
+          { href: "/admin/bitacora", label: locale === "en" ? "Audit log" : "Bitácora", icon: ScrollText },
+          { href: "/admin/privacidad", label: locale === "en" ? "Data requests" : "Solicitudes de datos", icon: ShieldCheck },
+          {
+            href: "/admin/solicitudes",
+            label: locale === "en" ? "Applications" : "Solicitudes",
+            icon: UserCheck,
+          },
         ]
       : []),
   ];

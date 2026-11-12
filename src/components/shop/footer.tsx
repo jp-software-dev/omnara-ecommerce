@@ -1,8 +1,9 @@
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 
 export async function Footer() {
   const t = await getTranslations("common");
+  const locale = await getLocale();
   const year = new Date().getFullYear();
 
   return (
@@ -19,6 +20,11 @@ export async function Footer() {
               <Link href="/ayuda">Preguntas frecuentes</Link>
               <Link href="/ayuda#envios">Envíos y devoluciones</Link>
               <Link href="/contacto">Contacto</Link>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="font-medium text-foreground">{locale === "en" ? "Sell" : "Vender"}</span>
+              <Link href="/vender">{locale === "en" ? "Sell on Omnara" : "Vende en Omnara"}</Link>
+              <Link href="/negocios">{locale === "en" ? "Businesses" : "Negocios"}</Link>
             </div>
             <div className="flex flex-col gap-2">
               <span className="font-medium text-foreground">Legal</span>

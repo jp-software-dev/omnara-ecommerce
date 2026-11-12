@@ -66,7 +66,7 @@ export async function getFeaturedProducts(limit = 8) {
   let query = supabase
     .from("products")
     .select(
-      "id, slug, name, base_price_mxn_cents, category_id, product_images(url, position)"
+      "id, slug, name, base_price_mxn_cents, category_id, businesses(name, slug), product_images(url, position)"
     )
     .eq("status", "active")
     .eq("is_featured", true);
@@ -94,7 +94,7 @@ export async function getProductsByCategory(categorySlug: string) {
   let productsQuery = supabase
     .from("products")
     .select(
-      "id, slug, name, description_short, base_price_mxn_cents, attributes, created_at, product_images(url, position), product_variants(id, size, color, stock_quantity)"
+      "id, slug, name, description_short, base_price_mxn_cents, attributes, created_at, businesses(name, slug), product_images(url, position), product_variants(id, size, color, stock_quantity)"
     )
     .eq("category_id", category.id)
     .eq("status", "active");
@@ -117,7 +117,7 @@ export async function getNewArrivals(limit = 8) {
 
   let query = supabase
     .from("products")
-    .select("id, slug, name, base_price_mxn_cents, product_images(url, position)")
+    .select("id, slug, name, base_price_mxn_cents, businesses(name, slug), product_images(url, position)")
     .eq("status", "active");
   if (inactiveVendorIds.length > 0) {
     query = query.not("vendor_id", "in", inactiveVendorFilter(inactiveVendorIds));
@@ -167,7 +167,7 @@ export async function getBestSellers(limit = 8) {
   const inactiveVendorIds = await getInactiveVendorIds(supabase);
   let productsQuery = supabase
     .from("products")
-    .select("id, slug, name, base_price_mxn_cents, product_images(url, position)")
+    .select("id, slug, name, base_price_mxn_cents, businesses(name, slug), product_images(url, position)")
     .in("id", topProductIds)
     .eq("status", "active");
   if (inactiveVendorIds.length > 0) {
@@ -207,7 +207,7 @@ export async function getRelatedProducts(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("products")
-    .select("id, slug, name, base_price_mxn_cents, product_images(url, position)")
+    .select("id, slug, name, base_price_mxn_cents, businesses(name, slug), product_images(url, position)")
     .eq("category_id", categoryId)
     .eq("status", "active")
     .neq("id", excludeProductId)
@@ -218,12 +218,47 @@ export async function getRelatedProducts(
   return data;
 }
 
+// Products in the same category sold by OTHER businesses, cheapest first, for the
+// "compare with other businesses" block. Products have no shared catalogue id
+// (no GTIN/model), so "similar" means same category and a different seller.
+export async function getSimilarFromOtherBusinesses(
+  categoryId: string | null,
+  excludeProductId: string,
+  vendorId: string | null,
+  limit = 3
+) {
+  if (!categoryId) return [];
+
+  const supabase = await createClient();
+  const inactiveVendorIds = await getInactiveVendorIds(supabase);
+
+  let query = supabase
+    .from("products")
+    .select("id, slug, name, base_price_mxn_cents, businesses(name, slug), product_images(url, position)")
+    .eq("category_id", categoryId)
+    .eq("status", "active")
+    .neq("id", excludeProductId);
+
+  // PostgREST's neq drops NULL vendors, so spell the "different seller" rule out.
+  query = vendorId
+    ? query.or(`vendor_id.is.null,vendor_id.neq.${vendorId}`)
+    : query.not("vendor_id", "is", null);
+
+  if (inactiveVendorIds.length > 0) {
+    query = query.not("vendor_id", "in", inactiveVendorFilter(inactiveVendorIds));
+  }
+
+  const { data, error } = await query.order("base_price_mxn_cents", { ascending: true }).limit(limit);
+  if (error) throw error;
+  return data;
+}
+
 export async function getWishlistProducts(userId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("wishlists")
     .select(
-      "product_id, products(id, slug, name, base_price_mxn_cents, status, product_images(url, position))"
+      "product_id, products(id, slug, name, base_price_mxn_cents, status, businesses(name, slug), product_images(url, position))"
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -260,6 +295,38 @@ export async function getProductReviews(productId: string) {
   return data;
 }
 
+export type ReviewEligibility = "anonymous" | "already_reviewed" | "not_purchased" | "can_review";
+
+// Whether the current visitor may review this product. The database enforces the
+// same rule on insert (reviews_insert_buyers); this only decides what to show.
+// Both lookups go through RLS: a user can read their own orders and public reviews.
+export async function getReviewEligibility(productId: string): Promise<ReviewEligibility> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return "anonymous";
+
+  const [{ data: existing }, { data: purchases }] = await Promise.all([
+    supabase
+      .from("reviews")
+      .select("id")
+      .eq("product_id", productId)
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("order_items")
+      .select("id, orders!inner(user_id, status), product_variants!inner(product_id)")
+      .eq("product_variants.product_id", productId)
+      .eq("orders.user_id", user.id)
+      .in("orders.status", ["paid", "fulfilled"])
+      .limit(1),
+  ]);
+
+  if (existing) return "already_reviewed";
+  return purchases && purchases.length > 0 ? "can_review" : "not_purchased";
+}
+
 export async function searchProducts(query: string) {
   const q = query.trim().toLowerCase();
   if (!q) return [];
@@ -268,7 +335,7 @@ export async function searchProducts(query: string) {
   const [{ data, error }, inactiveVendorIds] = await Promise.all([
     supabase
       .from("products")
-      .select("id, slug, name, base_price_mxn_cents, vendor_id, product_images(url, position)")
+      .select("id, slug, name, base_price_mxn_cents, vendor_id, businesses(name, slug), product_images(url, position)")
       .eq("status", "active"),
     getInactiveVendorIds(supabase),
   ]);
@@ -276,14 +343,15 @@ export async function searchProducts(query: string) {
   if (error) throw error;
 
   // The catalog is small enough that filtering in JS (matching either
-  // locale's name) is simpler and more forgiving than fighting Postgres
+  // locale's name, or the seller's business name) is simpler and more forgiving than fighting Postgres
   // JSONB operators through the query builder for a couple dozen rows.
   return data.filter((product) => {
     if (product.vendor_id && inactiveVendorIds.includes(product.vendor_id)) return false;
     const name = product.name as { es?: string; en?: string } | null;
     const es = name?.es?.toLowerCase() ?? "";
     const en = name?.en?.toLowerCase() ?? "";
-    return es.includes(q) || en.includes(q);
+    const seller = product.businesses?.name.toLowerCase() ?? "";
+    return es.includes(q) || en.includes(q) || seller.includes(q);
   });
 }
 
@@ -364,7 +432,7 @@ export async function getOrderDetail(orderId: string) {
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "id, order_number, status, currency, subtotal_cents, shipping_cents, discount_cents, promo_code, total_cents, shipping_address_snapshot, tracking_number, created_at, user_id, order_items(id, quantity, unit_price_cents, product_name_snapshot, variant_attrs_snapshot, product_variants(product_id, products(slug)))"
+      "id, order_number, status, currency, subtotal_cents, shipping_cents, discount_cents, promo_code, total_cents, shipping_address_snapshot, tracking_number, created_at, user_id, order_items(id, quantity, unit_price_cents, product_name_snapshot, variant_attrs_snapshot, vendor_id, shipped_at, tracking_number, product_variants(product_id, products(slug)))"
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -408,7 +476,7 @@ export async function getBusinessByOwnerId(ownerId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("businesses")
-    .select("slug, name")
+    .select("id, slug, name")
     .eq("owner_id", ownerId)
     .eq("is_active", true)
     .maybeSingle();
@@ -422,7 +490,7 @@ export async function getProductsByBusiness(vendorId: string) {
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id, slug, name, base_price_mxn_cents, product_images(url, position)"
+      "id, slug, name, base_price_mxn_cents, businesses(name, slug), product_images(url, position)"
     )
     .eq("vendor_id", vendorId)
     .eq("status", "active")
@@ -445,6 +513,222 @@ export async function getMyBusiness() {
     .eq("owner_id", user.id)
     .maybeSingle();
 
+  if (error) throw error;
+  return data;
+}
+
+// The signed-in user's most recent seller application (RLS: own rows only).
+export async function getMySellerApplication() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("seller_applications")
+    .select("id, business_name, status, rejection_reason, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export const MAX_COMPARE_PRODUCTS = 4;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Products for the side-by-side comparison, in the order requested. Inactive
+// products and products of paused businesses are dropped (same rule as the
+// rest of the storefront), and ids that aren't valid UUIDs are ignored so a
+// hand-edited URL can't break the query.
+export async function getProductsForComparison(rawIds: string[]) {
+  const ids = [...new Set(rawIds.filter((id) => UUID_RE.test(id)))].slice(0, MAX_COMPARE_PRODUCTS);
+  if (ids.length === 0) return [];
+
+  const supabase = await createClient();
+  const [{ data, error }, inactiveVendorIds] = await Promise.all([
+    supabase
+      .from("products")
+      .select(
+        "id, slug, name, base_price_mxn_cents, vendor_id, attributes, categories(slug, name), product_images(url, position), product_variants(size, color, stock_quantity, price_override_mxn_cents), reviews(rating)"
+      )
+      .in("id", ids)
+      .eq("status", "active"),
+    getInactiveVendorIds(supabase),
+  ]);
+  if (error) throw error;
+
+  const visible = data.filter((p) => !p.vendor_id || !inactiveVendorIds.includes(p.vendor_id));
+
+  const vendorIds = [...new Set(visible.map((p) => p.vendor_id).filter((id): id is string => !!id))];
+  const businesses = vendorIds.length
+    ? (await supabase.from("businesses").select("owner_id, slug, name").in("owner_id", vendorIds)).data ?? []
+    : [];
+  const businessByOwner = new Map(businesses.map((b) => [b.owner_id, b]));
+
+  return ids
+    .map((id) => visible.find((p) => p.id === id))
+    .filter((p): p is NonNullable<typeof p> => !!p)
+    .map((p) => {
+      const ratingCount = p.reviews.length;
+      return {
+        ...p,
+        business: p.vendor_id ? (businessByOwner.get(p.vendor_id) ?? null) : null,
+        ratingCount,
+        ratingAvg: ratingCount ? p.reviews.reduce((sum, r) => sum + r.rating, 0) / ratingCount : null,
+      };
+    });
+}
+
+export type ComparedProduct = Awaited<ReturnType<typeof getProductsForComparison>>[number];
+
+// ---- Returns, refunds and disputes ----------------------------------------
+// All reads are RLS-scoped (buyer, the item's seller, admin); the filters below
+// only decide WHICH of the visible rows a given screen wants — a user who is both
+// a buyer and a seller sees both kinds of requests through RLS.
+
+const RETURN_LIST_SELECT =
+  "id, status, reason, refund_amount_cents, currency, created_at, order_id, order_items(product_name_snapshot, quantity), orders(order_number)";
+
+export async function getMyReturns(userId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("return_requests")
+    .select(RETURN_LIST_SELECT)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+// Admin sees every request; a vendor only the ones about their own items.
+export async function getReturnsForRole(role: "admin" | "vendor", userId: string) {
+  const supabase = await createClient();
+  let query = supabase.from("return_requests").select(RETURN_LIST_SELECT);
+  if (role === "vendor") query = query.eq("vendor_id", userId);
+  const { data, error } = await query.order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function getReturnDetail(id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("return_requests")
+    .select(
+      "id, status, reason, details, decision_note, refund_amount_cents, currency, stripe_refund_id, restocked_at, created_at, order_id, user_id, vendor_id, order_items(product_name_snapshot, quantity, unit_price_cents), orders(order_number), return_messages(id, author_role, body, created_at)"
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  if (data) {
+    data.return_messages.sort((a, b) => a.created_at.localeCompare(b.created_at));
+  }
+  return data;
+}
+
+// For the order page: which items already have a request, and in which state.
+export async function getReturnsByOrder(orderId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("return_requests")
+    .select("id, order_item_id, status")
+    .eq("order_id", orderId);
+  if (error) throw error;
+  return new Map(data.map((r) => [r.order_item_id, r] as const));
+}
+
+export type ReturnListItem = Awaited<ReturnType<typeof getMyReturns>>[number];
+
+export type BusinessRating = { avg: number; count: number };
+
+// Seller rating = average of the visible reviews of the business's products
+// (business_ratings view). Businesses without reviews are simply absent.
+export async function getBusinessRatings(businessIds: string[]) {
+  const ratings = new Map<string, BusinessRating>();
+  if (businessIds.length === 0) return ratings;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("business_ratings")
+    .select("business_id, review_count, avg_rating")
+    .in("business_id", businessIds);
+  if (error) throw error;
+
+  for (const row of data) {
+    if (row.business_id && row.avg_rating !== null && row.review_count) {
+      ratings.set(row.business_id, { avg: Number(row.avg_rating), count: row.review_count });
+    }
+  }
+  return ratings;
+}
+
+// ---- Questions and answers -------------------------------------------------
+
+// Public list for a product page (RLS already hides moderated questions).
+export async function getProductQuestions(productId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("product_questions")
+    .select("id, question, answer, answered_at, created_at, user_id")
+    .eq("product_id", productId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return data;
+}
+
+// The signed-in visitor and their role, or null. One cheap profile lookup.
+export async function getViewer() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  return { id: user.id, role: (profile?.role ?? "customer") as "admin" | "vendor" | "customer" };
+}
+
+// Inbox: an admin sees every question (hidden ones too); a vendor the questions
+// about their own products. Unanswered ones first.
+export async function getQuestionsForRole(role: "admin" | "vendor", userId: string) {
+  const supabase = await createClient();
+  let query = supabase
+    .from("product_questions")
+    .select(
+      "id, question, answer, answered_at, created_at, is_hidden, products!inner(name, slug, vendor_id)"
+    );
+  if (role === "vendor") query = query.eq("products.vendor_id", userId);
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(200);
+  if (error) throw error;
+  return [...data].sort((a, b) => Number(!!a.answer) - Number(!!b.answer));
+}
+
+// The signed-in user's shipping addresses, default first (RLS: own rows only).
+export async function getMyAddresses(userId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("addresses")
+    .select("id, label, recipient_name, phone, line1, line2, city, state, postal_code, country, is_default")
+    .eq("user_id", userId)
+    .eq("type", "shipping")
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+// The signed-in user's own data requests (RLS: own rows only).
+export async function getMyDataRequests(userId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("data_requests")
+    .select("id, kind, status, admin_note, created_at, resolved_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
   if (error) throw error;
   return data;
 }

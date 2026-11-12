@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -36,8 +37,8 @@ export function EditBusinessForm({
   const t = {
     name: locale === "en" ? "Business name" : "Nombre del negocio",
     description: locale === "en" ? "Description" : "Descripción",
-    logoUrl: locale === "en" ? "Logo URL" : "URL del logo",
-    bannerUrl: locale === "en" ? "Banner URL" : "URL del banner",
+    logo: locale === "en" ? "Logo" : "Logo",
+    banner: locale === "en" ? "Banner" : "Banner",
     active: locale === "en" ? "Active (visible to customers)" : "Activo (visible a clientes)",
     save: locale === "en" ? "Save changes" : "Guardar cambios",
     saving: locale === "en" ? "Saving..." : "Guardando...",
@@ -73,14 +74,23 @@ export function EditBusinessForm({
             onChange={(e) => setDescription(e.target.value)}
           />
         </Field>
-        <Field>
-          <FieldLabel htmlFor="edit-business-logo">{t.logoUrl}</FieldLabel>
-          <Input id="edit-business-logo" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="edit-business-banner">{t.bannerUrl}</FieldLabel>
-          <Input id="edit-business-banner" value={bannerUrl} onChange={(e) => setBannerUrl(e.target.value)} />
-        </Field>
+        <ImageUploadField
+          locale={locale}
+          label={t.logo}
+          hint={locale === "en" ? "Square image works best." : "Funciona mejor una imagen cuadrada."}
+          kind="business-logo"
+          value={logoUrl}
+          onChange={setLogoUrl}
+        />
+        <ImageUploadField
+          locale={locale}
+          label={t.banner}
+          hint={locale === "en" ? "Wide image, about 3:1." : "Imagen ancha, aproximadamente 3:1."}
+          kind="business-banner"
+          value={bannerUrl}
+          onChange={setBannerUrl}
+          wide
+        />
         <label className="flex items-center gap-2 text-sm">
           <Checkbox checked={isActive} onCheckedChange={(checked) => setIsActive(checked === true)} />
           {t.active}

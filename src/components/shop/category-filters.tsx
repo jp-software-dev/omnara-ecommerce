@@ -47,6 +47,10 @@ const SORT_LABELS: Record<string, Record<SortOption, string>> = {
 
 const GENDER_OPTIONS = ["Hombre", "Mujer", "Unisex"] as const;
 
+// Products sold by Omnara itself have no business; they share this filter key.
+const OMNARA_SELLER = "__omnara";
+const sellerKeyOf = (product: ProductCardData) => product.businesses?.slug ?? OMNARA_SELLER;
+
 export function CategoryFilters({
   products,
   locale,
@@ -57,6 +61,7 @@ export function CategoryFilters({
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
+  const [selectedSellers, setSelectedSellers] = useState<string[]>([]);
   const [sort, setSort] = useState<SortOption>("relevance");
 
   const genderOf = (product: Product) =>
@@ -76,6 +81,17 @@ export function CategoryFilters({
     return { colors: [...colorSet].sort(), sizes: [...sizeSet].sort(), hasGenderData: genderFound };
   }, [products]);
 
+  // Only worth showing when the category actually mixes several sellers.
+  const sellers = useMemo(() => {
+    const byKey = new Map<string, string>();
+    for (const product of products) {
+      byKey.set(sellerKeyOf(product), product.businesses?.name ?? "Omnara");
+    }
+    return byKey.size > 1
+      ? [...byKey.entries()].map(([key, name]) => ({ key, name })).sort((a, b) => a.name.localeCompare(b.name))
+      : [];
+  }, [products]);
+
   const filtered = useMemo(() => {
     let result = products.filter((product) => {
       const matchesColor =
@@ -86,7 +102,9 @@ export function CategoryFilters({
         product.product_variants.some((v) => v.size && selectedSizes.includes(v.size));
       const matchesGender =
         selectedGenders.length === 0 || selectedGenders.includes(genderOf(product) ?? "");
-      return matchesColor && matchesSize && matchesGender;
+      const matchesSeller =
+        selectedSellers.length === 0 || selectedSellers.includes(sellerKeyOf(product));
+      return matchesColor && matchesSize && matchesGender && matchesSeller;
     });
 
     if (sort === "newest") {
@@ -98,7 +116,7 @@ export function CategoryFilters({
     }
 
     return result;
-  }, [products, selectedColors, selectedSizes, selectedGenders, sort]);
+  }, [products, selectedColors, selectedSizes, selectedGenders, selectedSellers, sort]);
 
   function toggle(list: string[], value: string, setList: (v: string[]) => void) {
     setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
@@ -139,8 +157,28 @@ export function CategoryFilters({
             ...(colors.length > 0 ? ["color"] : []),
             ...(sizes.length > 0 ? ["size"] : []),
             ...(hasGenderData ? ["gender"] : []),
+            ...(sellers.length > 0 ? ["seller"] : []),
           ]}
         >
+          {sellers.length > 0 ? (
+            <AccordionItem value="seller">
+              <AccordionTrigger>{locale === "en" ? "Seller" : "Vendedor"}</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2">
+                  {sellers.map((seller) => (
+                    <label key={seller.key} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={selectedSellers.includes(seller.key)}
+                        onCheckedChange={() => toggle(selectedSellers, seller.key, setSelectedSellers)}
+                      />
+                      {seller.name}
+                    </label>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ) : null}
+
           {hasGenderData ? (
             <AccordionItem value="gender">
               <AccordionTrigger>{locale === "en" ? "Gender" : "Género"}</AccordionTrigger>

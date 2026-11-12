@@ -133,6 +133,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "products_vendor_business_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["vendor_id"]
+          },
+          {
             foreignKeyName: "businesses_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: true
@@ -341,6 +348,8 @@ export type Database = {
           order_id: string
           product_name_snapshot: Json
           quantity: number
+          shipped_at: string | null
+          tracking_number: string | null
           unit_price_cents: number
           variant_attrs_snapshot: Json
           variant_id: string | null
@@ -351,6 +360,8 @@ export type Database = {
           order_id: string
           product_name_snapshot: Json
           quantity: number
+          shipped_at?: string | null
+          tracking_number?: string | null
           unit_price_cents: number
           variant_attrs_snapshot?: Json
           variant_id?: string | null
@@ -361,6 +372,8 @@ export type Database = {
           order_id?: string
           product_name_snapshot?: Json
           quantity?: number
+          shipped_at?: string | null
+          tracking_number?: string | null
           unit_price_cents?: number
           variant_attrs_snapshot?: Json
           variant_id?: string | null
@@ -395,6 +408,7 @@ export type Database = {
           billing_address_id: string | null
           created_at: string
           currency: string
+          customer_email: string | null
           discount_cents: number
           id: string
           order_number: string
@@ -415,6 +429,7 @@ export type Database = {
           billing_address_id?: string | null
           created_at?: string
           currency?: string
+          customer_email?: string | null
           discount_cents?: number
           id?: string
           order_number: string
@@ -435,6 +450,7 @@ export type Database = {
           billing_address_id?: string | null
           created_at?: string
           currency?: string
+          customer_email?: string | null
           discount_cents?: number
           id?: string
           order_number?: string
@@ -612,6 +628,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "products_vendor_business_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["owner_id"]
+          },
+          {
             foreignKeyName: "products_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
@@ -704,6 +727,7 @@ export type Database = {
           comment: string | null
           created_at: string
           id: string
+          is_hidden: boolean
           is_verified_purchase: boolean
           product_id: string
           rating: number
@@ -714,6 +738,7 @@ export type Database = {
           comment?: string | null
           created_at?: string
           id?: string
+          is_hidden?: boolean
           is_verified_purchase?: boolean
           product_id: string
           rating: number
@@ -724,6 +749,7 @@ export type Database = {
           comment?: string | null
           created_at?: string
           id?: string
+          is_hidden?: boolean
           is_verified_purchase?: boolean
           product_id?: string
           rating?: number
@@ -771,6 +797,367 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          changes: Json
+          created_at: string
+          id: number
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          changes?: Json
+          created_at?: string
+          id?: number
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          changes?: Json
+          created_at?: string
+          id?: number
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_requests: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          id: string
+          kind: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_requests_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_outbox: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          locale: string
+          payload: Json
+          sent_at: string | null
+          status: string
+          template: string
+          to_email: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          locale?: string
+          payload?: Json
+          sent_at?: string | null
+          status?: string
+          template: string
+          to_email: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          locale?: string
+          payload?: Json
+          sent_at?: string | null
+          status?: string
+          template?: string
+          to_email?: string
+        }
+        Relationships: []
+      }
+      product_questions: {
+        Row: {
+          answer: string | null
+          answered_at: string | null
+          answered_by: string | null
+          created_at: string
+          id: string
+          is_hidden: boolean
+          product_id: string
+          question: string
+          user_id: string
+        }
+        Insert: {
+          answer?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          product_id: string
+          question: string
+          user_id: string
+        }
+        Update: {
+          answer?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          product_id?: string
+          question?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_questions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_questions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_questions_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      return_messages: {
+        Row: {
+          author_id: string
+          author_role: string
+          body: string
+          created_at: string
+          id: string
+          return_id: string
+        }
+        Insert: {
+          author_id: string
+          author_role: string
+          body: string
+          created_at?: string
+          id?: string
+          return_id: string
+        }
+        Update: {
+          author_id?: string
+          author_role?: string
+          body?: string
+          created_at?: string
+          id?: string
+          return_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "return_messages_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "return_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      return_requests: {
+        Row: {
+          created_at: string
+          currency: string
+          decision_note: string | null
+          details: string | null
+          id: string
+          order_id: string
+          order_item_id: string
+          reason: string
+          restocked_at: string | null
+          refund_amount_cents: number
+          resolved_at: string | null
+          status: string
+          stripe_refund_id: string | null
+          updated_at: string
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency: string
+          decision_note?: string | null
+          details?: string | null
+          id?: string
+          order_id: string
+          order_item_id: string
+          reason: string
+          refund_amount_cents: number
+          restocked_at?: string | null
+          resolved_at?: string | null
+          status?: string
+          stripe_refund_id?: string | null
+          updated_at?: string
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          decision_note?: string | null
+          details?: string | null
+          id?: string
+          order_id?: string
+          order_item_id?: string
+          reason?: string
+          refund_amount_cents?: number
+          restocked_at?: string | null
+          resolved_at?: string | null
+          status?: string
+          stripe_refund_id?: string | null
+          updated_at?: string
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "return_requests_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: true
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seller_applications: {
+        Row: {
+          business_name: string
+          created_at: string
+          description: string | null
+          document_path: string
+          id: string
+          phone: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          business_name: string
+          created_at?: string
+          description?: string | null
+          document_path: string
+          id?: string
+          phone?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          business_name?: string
+          created_at?: string
+          description?: string | null
+          document_path?: string
+          id?: string
+          phone?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_applications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seller_applications_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wishlists: {
         Row: {
           created_at: string
@@ -809,7 +1196,14 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      business_ratings: {
+        Row: {
+          avg_rating: number | null
+          business_id: string | null
+          review_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_list_users: {
@@ -821,6 +1215,74 @@ export type Database = {
           id: string
           role: string
         }[]
+      }
+      request_return: {
+        Args: { p_order_item_id: string; p_reason: string; p_details: string }
+        Returns: string
+      }
+      decide_return: {
+        Args: { p_id: string; p_approve: boolean; p_note: string }
+        Returns: undefined
+      }
+      escalate_return: {
+        Args: { p_id: string; p_note: string }
+        Returns: undefined
+      }
+      admin_resolve_return: {
+        Args: { p_id: string; p_approve: boolean; p_note: string }
+        Returns: undefined
+      }
+      mark_return_refunded: {
+        Args: { p_id: string; p_refund_id: string }
+        Returns: undefined
+      }
+      ask_question: {
+        Args: { p_product_id: string; p_question: string }
+        Returns: string
+      }
+      answer_question: {
+        Args: { p_id: string; p_answer: string }
+        Returns: undefined
+      }
+      moderate_question: {
+        Args: { p_id: string; p_hidden: boolean }
+        Returns: undefined
+      }
+      request_account_deletion: {
+        Args: never
+        Returns: string
+      }
+      resolve_data_request: {
+        Args: { p_id: string; p_status: string; p_note: string }
+        Returns: undefined
+      }
+      restock_returned_item: {
+        Args: { p_return_id: string }
+        Returns: undefined
+      }
+      submit_contact_message: {
+        Args: { p_name: string; p_email: string; p_subject: string; p_message: string }
+        Returns: undefined
+      }
+      moderate_review: {
+        Args: { p_id: string; p_hidden: boolean }
+        Returns: undefined
+      }
+      add_return_message: {
+        Args: { p_id: string; p_body: string }
+        Returns: undefined
+      }
+      approve_seller_application: {
+        Args: { p_id: string; p_slug: string }
+        Returns: string
+      }
+      reject_seller_application: {
+        Args: { p_id: string; p_reason: string }
+        Returns: undefined
+      }
+      vendor_ship_items: {
+        Args: { p_order_id: string; p_tracking: string }
+        Returns: undefined
       }
     }
     Enums: {

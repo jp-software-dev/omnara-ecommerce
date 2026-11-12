@@ -2,8 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { flushEmailsSoon } from "@/lib/email-outbox";
 
 type CartItemMeta = { v: string; q: number; p: number };
+
+// A saved address chosen at checkout travels in the session metadata (compact
+// keys, see createCheckoutSession). Parsed defensively: anything unexpected
+// just means "no address", never a failed order.
+function parseShipTo(raw: string | undefined) {
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw) as Record<string, unknown>;
+    const text = (key: string) => (typeof value[key] === "string" && value[key] ? (value[key] as string) : null);
+    const line1 = text("l1");
+    const city = text("c");
+    if (!line1 || !city) return null;
+    return {
+      name: text("n"),
+      address: {
+        line1,
+        line2: text("l2"),
+        city,
+        state: text("s"),
+        postal_code: text("p"),
+        country: text("k"),
+      },
+    };
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(request: NextRequest) {
   const signature = request.headers.get("stripe-signature");
@@ -84,7 +112,7 @@ export async function POST(request: NextRequest) {
           country: shippingDetails.address.country,
         },
       }
-    : null;
+    : parseShipTo(session.metadata?.ship_to);
 
   const { data: order, error: orderError } = await db
     .from("orders")
@@ -101,6 +129,9 @@ export async function POST(request: NextRequest) {
       total_cents: session.amount_total ?? subtotalCents,
       payment_method: "card",
       stripe_payment_intent_id: paymentIntentId,
+      // Needed for guests (no account): the order confirmation and shipping
+      // emails go to the address they typed at checkout.
+      customer_email: session.customer_details?.email ?? session.customer_email ?? null,
     })
     .select("id")
     .single();
@@ -163,6 +194,10 @@ export async function POST(request: NextRequest) {
       created_by: null,
     });
   }
+
+  // The database queued the confirmation and the sellers' "new sale" emails while
+  // the order was written; send them once this response is out.
+  flushEmailsSoon();
 
   return NextResponse.json({ received: true, orderId: order.id });
 }

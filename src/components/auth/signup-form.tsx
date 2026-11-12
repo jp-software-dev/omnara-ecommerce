@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale } from "next-intl";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -23,6 +24,30 @@ import { Input } from "@/components/ui/input";
 
 export function SignupForm({ className, ...props }: React.ComponentProps<"div">) {
   const router = useRouter();
+  const en = useLocale() === "en";
+  const t = {
+    mismatch: en ? "Passwords don't match." : "Las contraseñas no coinciden.",
+    tooShort: en ? "Password must be at least 8 characters." : "La contraseña debe tener al menos 8 caracteres.",
+    created: en ? "Account created." : "Cuenta creada.",
+    checkEmail: en ? "Account created. Check your email to confirm it." : "Cuenta creada. Revisa tu correo para confirmarla.",
+    title: en ? "Create your account" : "Crea tu cuenta",
+    subtitle: en ? "Enter your details to sign up" : "Ingresa tus datos para registrarte",
+    fullName: en ? "Full name" : "Nombre completo",
+    namePlaceholder: en ? "Your name" : "Tu nombre",
+    email: en ? "Email" : "Correo electrónico",
+    emailPlaceholder: en ? "you@email.com" : "tu@correo.com",
+    password: en ? "Password" : "Contraseña",
+    confirm: en ? "Confirm" : "Confirmar",
+    minimum: en ? "At least 8 characters." : "Mínimo 8 caracteres.",
+    creating: en ? "Creating account…" : "Creando cuenta…",
+    create: en ? "Create account" : "Crear cuenta",
+    haveAccount: en ? "Already have an account?" : "¿Ya tienes cuenta?",
+    signIn: en ? "Sign in" : "Inicia sesión",
+    agreePrefix: en ? "By continuing, you agree to our" : "Al continuar, aceptas nuestros",
+    terms: en ? "Terms of service" : "Términos de servicio",
+    and: en ? "and" : "y",
+    privacy: en ? "Privacy notice" : "Aviso de privacidad",
+  };
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -34,11 +59,11 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
     const confirmPassword = String(form.get("confirm-password"));
 
     if (password !== confirmPassword) {
-      toast.error("Las contraseñas no coinciden.");
+      toast.error(t.mismatch);
       return;
     }
     if (password.length < 8) {
-      toast.error("La contraseña debe tener al menos 8 caracteres.");
+      toast.error(t.tooShort);
       return;
     }
 
@@ -57,11 +82,11 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
     }
 
     if (data.session) {
-      toast.success("Cuenta creada.");
+      toast.success(t.created);
       router.push("/");
       router.refresh();
     } else {
-      toast.success("Cuenta creada. Revisa tu correo para confirmarla.");
+      toast.success(t.checkEmail);
       router.push("/login");
     }
   }
@@ -70,39 +95,39 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Crea tu cuenta</CardTitle>
-          <CardDescription>Ingresa tus datos para registrarte</CardDescription>
+          <CardTitle className="text-xl">{t.title}</CardTitle>
+          <CardDescription>{t.subtitle}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="name">Nombre completo</FieldLabel>
-                <Input id="name" name="name" type="text" placeholder="Tu nombre" required />
+                <FieldLabel htmlFor="name">{t.fullName}</FieldLabel>
+                <Input id="name" name="name" type="text" placeholder={t.namePlaceholder} required />
               </Field>
               <Field>
-                <FieldLabel htmlFor="email">Correo electrónico</FieldLabel>
-                <Input id="email" name="email" type="email" placeholder="tu@correo.com" required />
+                <FieldLabel htmlFor="email">{t.email}</FieldLabel>
+                <Input id="email" name="email" type="email" placeholder={t.emailPlaceholder} required />
               </Field>
               <Field>
                 <Field className="grid grid-cols-2 gap-4">
                   <Field>
-                    <FieldLabel htmlFor="password">Contraseña</FieldLabel>
+                    <FieldLabel htmlFor="password">{t.password}</FieldLabel>
                     <Input id="password" name="password" type="password" required />
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor="confirm-password">Confirmar</FieldLabel>
+                    <FieldLabel htmlFor="confirm-password">{t.confirm}</FieldLabel>
                     <Input id="confirm-password" name="confirm-password" type="password" required />
                   </Field>
                 </Field>
-                <FieldDescription>Mínimo 8 caracteres.</FieldDescription>
+                <FieldDescription>{t.minimum}</FieldDescription>
               </Field>
               <Field>
                 <Button type="submit" disabled={loading}>
-                  {loading ? "Creando cuenta…" : "Crear cuenta"}
+                  {loading ? t.creating : t.create}
                 </Button>
                 <FieldDescription className="text-center">
-                  ¿Ya tienes cuenta? <a href="../login">Inicia sesión</a>
+                  {t.haveAccount} <a href="../login">{t.signIn}</a>
                 </FieldDescription>
               </Field>
             </FieldGroup>
@@ -110,8 +135,8 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
         </CardContent>
       </Card>
       <FieldDescription className="px-6 text-center">
-        Al continuar, aceptas nuestros <a href="../terminos">Términos de servicio</a> y{" "}
-        <a href="../privacidad">Aviso de privacidad</a>.
+        {t.agreePrefix} <a href="../terminos">{t.terms}</a> {t.and}{" "}
+        <a href="../privacidad">{t.privacy}</a>.
       </FieldDescription>
     </div>
   );

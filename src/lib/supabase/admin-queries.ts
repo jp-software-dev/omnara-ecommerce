@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAppSettings } from "@/lib/supabase/queries";
 import type { Json } from "@/lib/supabase/types";
 
 // RLS already scopes these to "own products" for a vendor and "all" for an
@@ -23,7 +24,7 @@ export async function getAdminProduct(id: string) {
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id, slug, name, description_short, description_long, base_price_mxn_cents, status, category_id, vendor_id, attributes, product_variants(id, sku, size, color, stock_quantity, low_stock_threshold, price_override_mxn_cents)"
+      "id, slug, name, description_short, description_long, base_price_mxn_cents, status, category_id, vendor_id, attributes, product_images(id, url, position), product_variants(id, sku, size, color, stock_quantity, low_stock_threshold, price_override_mxn_cents)"
     )
     .eq("id", id)
     .single();
@@ -93,62 +94,78 @@ export async function getPromoCodes() {
   return data;
 }
 
-export async function getRevenueByDay(days = 30) {
+// Sales analytics are built from order_items, not from orders.total_cents:
+// an order can mix several businesses (and carry shipping and discounts), so the
+// order total says nothing about what ONE seller earned. order_items is already
+// RLS-scoped — a vendor only receives their own lines, an admin receives all —
+// so this one query serves both roles without any manual filtering.
+// Orders paid in USD store USD cents; they are converted to MXN at the current
+// exchange rate (the rate at the time of sale is not stored).
+export async function getSalesAnalytics(days = 30) {
   const supabase = await createClient();
   const since = new Date();
   since.setDate(since.getDate() - days);
 
-  const { data, error } = await supabase
-    .from("orders")
-    .select("total_cents, created_at, status")
-    .gte("created_at", since.toISOString())
-    .in("status", ["paid", "fulfilled"])
-    .order("created_at", { ascending: true });
+  const [{ data, error }, settings] = await Promise.all([
+    supabase
+      .from("order_items")
+      .select(
+        "order_id, quantity, unit_price_cents, product_name_snapshot, orders!inner(created_at, status, currency), product_variants(product_id)"
+      )
+      .in("orders.status", ["paid", "fulfilled"])
+      .gte("orders.created_at", since.toISOString()),
+    getAppSettings(),
+  ]);
 
   if (error) throw error;
 
+  const toMxn = (cents: number, currency: string) =>
+    currency === "USD" ? Math.round(cents * settings.usd_exchange_rate) : cents;
+
   const byDay = new Map<string, number>();
-  for (const order of data) {
-    const day = order.created_at.slice(0, 10);
-    byDay.set(day, (byDay.get(day) ?? 0) + order.total_cents);
+  const orderIds = new Set<string>();
+  const products = new Map<string, { name: Json; units: number; revenueCents: number }>();
+  let totalCents = 0;
+
+  for (const item of data) {
+    const lineCents = toMxn(item.unit_price_cents * item.quantity, item.orders.currency);
+    totalCents += lineCents;
+    orderIds.add(item.order_id);
+
+    const day = item.orders.created_at.slice(0, 10);
+    byDay.set(day, (byDay.get(day) ?? 0) + lineCents);
+
+    const productId = item.product_variants?.product_id;
+    if (productId) {
+      const existing = products.get(productId);
+      if (existing) {
+        existing.units += item.quantity;
+        existing.revenueCents += lineCents;
+      } else {
+        products.set(productId, {
+          name: item.product_name_snapshot,
+          units: item.quantity,
+          revenueCents: lineCents,
+        });
+      }
+    }
   }
 
-  const series: { day: string; totalCents: number }[] = [];
+  const revenueByDay: { day: string; totalCents: number }[] = [];
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date();
     date.setDate(date.getDate() - i);
     const key = date.toISOString().slice(0, 10);
-    series.push({ day: key, totalCents: byDay.get(key) ?? 0 });
-  }
-  return series;
-}
-
-export async function getTopProducts(limit = 5) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("order_items")
-    .select("quantity, unit_price_cents, product_name_snapshot, product_variants(product_id)");
-
-  if (error) throw error;
-
-  const totals = new Map<string, { name: Json; units: number; revenueCents: number }>();
-  for (const item of data) {
-    const productId = item.product_variants?.product_id;
-    if (!productId) continue;
-    const existing = totals.get(productId);
-    if (existing) {
-      existing.units += item.quantity;
-      existing.revenueCents += item.quantity * item.unit_price_cents;
-    } else {
-      totals.set(productId, {
-        name: item.product_name_snapshot,
-        units: item.quantity,
-        revenueCents: item.quantity * item.unit_price_cents,
-      });
-    }
+    revenueByDay.push({ day: key, totalCents: byDay.get(key) ?? 0 });
   }
 
-  return [...totals.values()].sort((a, b) => b.units - a.units).slice(0, limit);
+  return {
+    revenueByDay,
+    totalCents,
+    paidOrders: orderIds.size,
+    avgOrderCents: orderIds.size > 0 ? Math.round(totalCents / orderIds.size) : 0,
+    topProducts: [...products.values()].sort((a, b) => b.units - a.units).slice(0, 5),
+  };
 }
 
 export async function getOrderStatusCounts() {
@@ -196,4 +213,87 @@ export async function getBusinessById(id: string) {
 
   if (error) throw error;
   return data;
+}
+
+export async function getSellerApplications() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("seller_applications")
+    .select(
+      "id, user_id, business_name, description, phone, document_path, status, rejection_reason, created_at, reviewed_at, profiles!seller_applications_user_id_fkey(full_name)"
+    )
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+// Identity documents live in a private bucket; only admins can sign URLs for them.
+export async function getApplicationDocumentUrl(path: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
+    .from("seller-documents")
+    .createSignedUrl(path, 60 * 10);
+  if (error) return null;
+  return data.signedUrl;
+}
+
+// Admins see every review (RLS), hidden ones included, newest first.
+export async function getReviewsForModeration(limit = 100) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("reviews")
+    .select(
+      "id, rating, title, comment, is_verified_purchase, is_hidden, created_at, products(name, slug), profiles(full_name)"
+    )
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data;
+}
+
+// Admin view of the email queue (RLS: admins only).
+export async function getEmailOutbox(limit = 50) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("email_outbox")
+    .select("id, to_email, template, status, attempts, last_error, created_at, sent_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+
+  const counts = new Map<string, number>();
+  for (const status of ["pending", "sent", "failed"]) {
+    const { count } = await supabase
+      .from("email_outbox")
+      .select("id", { count: "exact", head: true })
+      .eq("status", status);
+    counts.set(status, count ?? 0);
+  }
+  return { rows: data, counts };
+}
+
+// Admin audit trail, newest first. `table` narrows it to one kind of record.
+export async function getAuditLog(table?: string, limit = 100) {
+  const supabase = await createClient();
+  let query = supabase
+    .from("admin_audit_log")
+    .select("id, table_name, record_id, action, changes, created_at, profiles(full_name)");
+  if (table) query = query.eq("table_name", table);
+  const { data, error } = await query.order("id", { ascending: false }).limit(limit);
+  if (error) throw error;
+  return data;
+}
+
+// Admin queue of data requests, pending first.
+export async function getDataRequests() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("data_requests")
+    .select("id, kind, status, admin_note, created_at, resolved_at, user_id, profiles!data_requests_user_id_fkey(full_name)")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return [...data].sort((a, b) => Number(b.status === "pending") - Number(a.status === "pending"));
 }

@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { useCartStore } from "@/stores/cart-store";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { useCompareStore } from "@/stores/compare-store";
 
 export function Providers({
   children,
@@ -26,6 +27,7 @@ export function Providers({
   useEffect(() => {
     useCartStore.persist.rehydrate();
     useCurrencyStore.persist.rehydrate();
+    useCompareStore.persist.rehydrate();
     useCurrencyStore.setState({ usdExchangeRate });
   }, [usdExchangeRate]);
 

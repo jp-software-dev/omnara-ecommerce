@@ -107,7 +107,7 @@ export function ProductForm({
         if (!slug.trim()) {
           throw new Error(locale === "en" ? "Slug is required." : "El slug es obligatorio.");
         }
-        await createProduct({
+        const newId = await createProduct({
           slug: slug.trim(),
           nameEs,
           nameEn,
@@ -116,6 +116,15 @@ export function ProductForm({
           status,
           attributes: relevantAttributes,
         });
+        // A new product still needs images and variants, so go straight to its page.
+        toast.success(
+          locale === "en"
+            ? "Product created. Now add images and variants."
+            : "Producto creado. Ahora agrega imágenes y variantes."
+        );
+        router.push(`/admin/productos/${newId}`);
+        router.refresh();
+        return;
       }
       toast.success(locale === "en" ? "Saved." : "Guardado.");
       router.push("/admin/productos");
