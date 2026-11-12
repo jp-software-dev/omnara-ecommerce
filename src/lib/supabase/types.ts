@@ -1159,6 +1159,10 @@ export type Database = {
         Args: { p_id: string; p_hidden: boolean }
         Returns: undefined
       }
+      submit_contact_message: {
+        Args: { p_name: string; p_email: string; p_subject: string; p_message: string }
+        Returns: undefined
+      }
       moderate_review: {
         Args: { p_id: string; p_hidden: boolean }
         Returns: undefined
