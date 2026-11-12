@@ -229,6 +229,26 @@ export async function updateOrderTracking(orderId: string, trackingNumber: strin
   revalidatePath("/[locale]/(admin)/admin/pedidos/[id]", "page");
 }
 
+// A vendor ships THEIR items of an order. Goes through a SECURITY DEFINER
+// function because orders is admin-writable only (and one order can hold
+// items from several businesses, so a vendor must not touch the whole order).
+export async function shipMyItems(orderId: string, trackingNumber: string) {
+  const tracking = trackingNumber.trim();
+  if (tracking.length > 80) throw new Error("El número de rastreo es demasiado largo.");
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("vendor_ship_items", {
+    p_order_id: orderId,
+    p_tracking: tracking,
+  });
+  if (error) {
+    if (error.message.includes("not paid")) throw new Error("El pedido todavía no está pagado.");
+    if (error.message.includes("no items")) throw new Error("No tienes artículos en este pedido.");
+    throw error;
+  }
+  revalidatePath("/[locale]/(admin)/admin/pedidos", "layout");
+}
+
 export async function markMessageRead(messageId: string) {
   const supabase = await createClient();
   const { error } = await supabase
