@@ -384,6 +384,15 @@ export async function refundReturn(returnId: string, locale: string) {
   revalidatePath("/[locale]/(admin)/admin/pedidos", "layout");
 }
 
+// Hides or restores a review. The database function re-checks that the caller is an admin.
+export async function moderateReview(reviewId: string, hidden: boolean) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("moderate_review", { p_id: reviewId, p_hidden: hidden });
+  if (error) throw error;
+  revalidatePath("/[locale]/(admin)/admin/resenas", "page");
+  revalidatePath("/[locale]/(shop)/producto/[slug]", "page");
+}
+
 export async function markMessageRead(messageId: string) {
   const supabase = await createClient();
   const { error } = await supabase

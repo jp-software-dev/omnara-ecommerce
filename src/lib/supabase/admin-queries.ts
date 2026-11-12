@@ -237,3 +237,18 @@ export async function getApplicationDocumentUrl(path: string) {
   if (error) return null;
   return data.signedUrl;
 }
+
+// Admins see every review (RLS), hidden ones included, newest first.
+export async function getReviewsForModeration(limit = 100) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("reviews")
+    .select(
+      "id, rating, title, comment, is_verified_purchase, is_hidden, created_at, products(name, slug), profiles(full_name)"
+    )
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data;
+}

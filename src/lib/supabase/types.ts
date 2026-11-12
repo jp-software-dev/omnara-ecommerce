@@ -710,6 +710,7 @@ export type Database = {
           comment: string | null
           created_at: string
           id: string
+          is_hidden: boolean
           is_verified_purchase: boolean
           product_id: string
           rating: number
@@ -720,6 +721,7 @@ export type Database = {
           comment?: string | null
           created_at?: string
           id?: string
+          is_hidden?: boolean
           is_verified_purchase?: boolean
           product_id: string
           rating: number
@@ -730,6 +732,7 @@ export type Database = {
           comment?: string | null
           created_at?: string
           id?: string
+          is_hidden?: boolean
           is_verified_purchase?: boolean
           product_id?: string
           rating?: number
@@ -1021,6 +1024,10 @@ export type Database = {
       }
       mark_return_refunded: {
         Args: { p_id: string; p_refund_id: string }
+        Returns: undefined
+      }
+      moderate_review: {
+        Args: { p_id: string; p_hidden: boolean }
         Returns: undefined
       }
       add_return_message: {
