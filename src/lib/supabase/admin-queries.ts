@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAppSettings } from "@/lib/supabase/queries";
 import type { Json } from "@/lib/supabase/types";
 
 // RLS already scopes these to "own products" for a vendor and "all" for an
@@ -93,62 +94,78 @@ export async function getPromoCodes() {
   return data;
 }
 
-export async function getRevenueByDay(days = 30) {
+// Sales analytics are built from order_items, not from orders.total_cents:
+// an order can mix several businesses (and carry shipping and discounts), so the
+// order total says nothing about what ONE seller earned. order_items is already
+// RLS-scoped — a vendor only receives their own lines, an admin receives all —
+// so this one query serves both roles without any manual filtering.
+// Orders paid in USD store USD cents; they are converted to MXN at the current
+// exchange rate (the rate at the time of sale is not stored).
+export async function getSalesAnalytics(days = 30) {
   const supabase = await createClient();
   const since = new Date();
   since.setDate(since.getDate() - days);
 
-  const { data, error } = await supabase
-    .from("orders")
-    .select("total_cents, created_at, status")
-    .gte("created_at", since.toISOString())
-    .in("status", ["paid", "fulfilled"])
-    .order("created_at", { ascending: true });
+  const [{ data, error }, settings] = await Promise.all([
+    supabase
+      .from("order_items")
+      .select(
+        "order_id, quantity, unit_price_cents, product_name_snapshot, orders!inner(created_at, status, currency), product_variants(product_id)"
+      )
+      .in("orders.status", ["paid", "fulfilled"])
+      .gte("orders.created_at", since.toISOString()),
+    getAppSettings(),
+  ]);
 
   if (error) throw error;
 
+  const toMxn = (cents: number, currency: string) =>
+    currency === "USD" ? Math.round(cents * settings.usd_exchange_rate) : cents;
+
   const byDay = new Map<string, number>();
-  for (const order of data) {
-    const day = order.created_at.slice(0, 10);
-    byDay.set(day, (byDay.get(day) ?? 0) + order.total_cents);
+  const orderIds = new Set<string>();
+  const products = new Map<string, { name: Json; units: number; revenueCents: number }>();
+  let totalCents = 0;
+
+  for (const item of data) {
+    const lineCents = toMxn(item.unit_price_cents * item.quantity, item.orders.currency);
+    totalCents += lineCents;
+    orderIds.add(item.order_id);
+
+    const day = item.orders.created_at.slice(0, 10);
+    byDay.set(day, (byDay.get(day) ?? 0) + lineCents);
+
+    const productId = item.product_variants?.product_id;
+    if (productId) {
+      const existing = products.get(productId);
+      if (existing) {
+        existing.units += item.quantity;
+        existing.revenueCents += lineCents;
+      } else {
+        products.set(productId, {
+          name: item.product_name_snapshot,
+          units: item.quantity,
+          revenueCents: lineCents,
+        });
+      }
+    }
   }
 
-  const series: { day: string; totalCents: number }[] = [];
+  const revenueByDay: { day: string; totalCents: number }[] = [];
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date();
     date.setDate(date.getDate() - i);
     const key = date.toISOString().slice(0, 10);
-    series.push({ day: key, totalCents: byDay.get(key) ?? 0 });
-  }
-  return series;
-}
-
-export async function getTopProducts(limit = 5) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("order_items")
-    .select("quantity, unit_price_cents, product_name_snapshot, product_variants(product_id)");
-
-  if (error) throw error;
-
-  const totals = new Map<string, { name: Json; units: number; revenueCents: number }>();
-  for (const item of data) {
-    const productId = item.product_variants?.product_id;
-    if (!productId) continue;
-    const existing = totals.get(productId);
-    if (existing) {
-      existing.units += item.quantity;
-      existing.revenueCents += item.quantity * item.unit_price_cents;
-    } else {
-      totals.set(productId, {
-        name: item.product_name_snapshot,
-        units: item.quantity,
-        revenueCents: item.quantity * item.unit_price_cents,
-      });
-    }
+    revenueByDay.push({ day: key, totalCents: byDay.get(key) ?? 0 });
   }
 
-  return [...totals.values()].sort((a, b) => b.units - a.units).slice(0, limit);
+  return {
+    revenueByDay,
+    totalCents,
+    paidOrders: orderIds.size,
+    avgOrderCents: orderIds.size > 0 ? Math.round(totalCents / orderIds.size) : 0,
+    topProducts: [...products.values()].sort((a, b) => b.units - a.units).slice(0, 5),
+  };
 }
 
 export async function getOrderStatusCounts() {
