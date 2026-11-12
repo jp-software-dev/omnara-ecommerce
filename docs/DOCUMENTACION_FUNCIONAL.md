@@ -21,7 +21,7 @@ Omnara es un **marketplace multicategoría** (ropa, calzado, electrónica, acces
 | Rol | Quién es | Qué puede hacer además de comprar |
 |---|---|---|
 | **Cliente** (`customer`) | Cualquiera que se registra, o navega como invitado | Comprar, ver su historial de pedidos, dejar reseñas, guardar favoritos |
-| **Vendedor** (`vendor`) | Dueño de un negocio; gestiona sus propios productos | Todo lo del cliente + panel: su negocio, sus productos, su inventario, pedidos donde tiene algún ítem vendido (sin poder cambiar el estado) |
+| **Vendedor** (`vendor`) | Dueño de un negocio; gestiona sus propios productos | Todo lo del cliente + panel: su negocio, sus productos, su inventario, pedidos donde tiene algún ítem vendido (marca como enviados solo sus artículos y registra el rastreo) |
 | **Administrador** (`admin`) | Operador de la plataforma | Todo lo anterior sobre **cualquier** vendedor/producto/pedido, además de: alta y edición de negocios, gestión de usuarios y roles, mensajes de contacto, códigos promocionales, analítica completa, cambiar el estado de cualquier pedido |
 
 Los roles se asignan desde `/admin/usuarios` (solo admin) — antes de esta funcionalidad, solo se podían cambiar directamente en la base de datos.
@@ -55,7 +55,8 @@ Los roles se asignan desde `/admin/usuarios` (solo admin) — antes de esta func
 
 - Estrellas 1–5, título y comentario opcionales.
 - **Una reseña por cliente por producto** (no se puede reseñar dos veces el mismo producto).
-- Cualquier usuario con sesión puede reseñar un producto; la reseña **aún no se valida contra una compra real** (la marca "compra verificada" existe en el modelo pero no se asigna automáticamente — ver §13).
+- **Solo pueden reseñar quienes compraron el producto** (pedido pagado). La marca "compra verificada" la calcula la base de datos al publicar; ni el cliente ni el autor pueden falsificarla ni mover su reseña a otro producto.
+- Un administrador puede **ocultar** una reseña (no se borra y se puede restaurar); las reseñas ocultas dejan de contar en promedios y calificaciones.
 - Promedio de calificación visible en la ficha del producto.
 - En el detalle de un pedido ya **enviado**, la tienda invita activamente a dejar reseña de cada producto comprado (seguimiento post-venta).
 
@@ -108,11 +109,18 @@ Acceso restringido por rol; un vendedor ve el mismo panel pero **solo sus propio
 | Mi negocio | **Solo vendedor** | Edita nombre, descripción, logo y banner de su propio negocio |
 | Productos | Admin y vendedor (solo los suyos) | Alta, edición y borrado; campos dinámicos según categoría |
 | Inventario | Admin y vendedor (solo lo suyo) | Ajuste de stock por variante; filas con stock bajo el umbral resaltadas |
-| Pedidos | Admin (todos) / vendedor (con ítems suyos) | Lista de pedidos; **solo admin** puede cambiar el estado; el detalle de cada pedido incluye campo de **número de rastreo** editable |
+| Pedidos | Admin (todos) / vendedor (con ítems suyos) | Lista de pedidos; el **estado general** solo lo cambia el admin; cada **vendedor marca como enviados sus propios artículos** y registra su número de rastreo (el pedido pasa a enviado cuando ya no queda nada pendiente) |
 | Analítica | Admin y vendedor | Ingresos de los últimos 30 días por día (gráfica), pedidos pagados, ticket promedio, top 5 productos más vendidos |
 | Mensajes | **Solo admin** | Bandeja de mensajes de contacto (`/contacto`), con estado Nuevo/Leído |
 | Promociones | **Solo admin** | Lista y creación de códigos de descuento |
 | Usuarios | **Solo admin** | Lista de todos los usuarios con su correo y rol; puede cambiar el rol de cualquiera excepto el propio (evita que un admin se bloquee a sí mismo por accidente) |
+| Solicitudes | **Solo admin** | Revisa las solicitudes de vendedor con un enlace temporal al documento de identidad; aprueba (crea el negocio y promueve al usuario) o rechaza con motivo |
+| Devoluciones | Admin (todas) / vendedor (las de sus artículos) | Bandeja de devoluciones: el vendedor aprueba o rechaza; el admin resuelve disputas y ejecuta el reembolso por Stripe |
+| Preguntas | Admin y vendedor (sobre sus productos) | Responde las preguntas públicas de los compradores; el admin puede ocultarlas |
+| Reseñas | **Solo admin** | Moderación: oculta o restaura reseñas |
+| Correos | **Solo admin** | Estado de la cola de notificaciones por correo y envío manual |
+| Bitácora | **Solo admin** | Registro de los cambios hechos por administradores (solo qué campos cambiaron) |
+| Solicitudes de datos | **Solo admin** | Solicitudes de eliminación de cuenta; se atienden a mano |
 
 ## 10. Comunicación con el cliente
 
@@ -139,19 +147,55 @@ Acceso restringido por rol; un vendedor ve el mismo panel pero **solo sus propio
 - Un carrito con productos de varios negocios genera un único pedido.
 - El checkout **nunca** procesa un cargo real — el cliente de Stripe está bloqueado a solo aceptar llaves de modo de prueba.
 
-## 13. Fuera de alcance / pendiente (transparencia)
+- Cada vendedor marca como enviados solo sus artículos; el pedido pasa a enviado cuando no queda nada pendiente.
+- Solo quien compró un producto puede reseñarlo; la marca de compra verificada la fija la base de datos.
+- Una devolución solo se pide por artículo enviado, dentro de los 30 días posteriores al envío, y una sola vez por artículo.
+- El reembolso es el precio del artículo menos su parte proporcional del descuento aplicado; el envío no se reembolsa.
+- El rechazo de un vendedor puede escalarse a Omnara; solo un administrador ejecuta el reembolso por Stripe.
+- Un vendedor sin negocio no puede crear productos; un negocio con productos no se puede borrar.
 
-Cosas que la tienda **no** hace hoy, por decisión de alcance o por depender de algo externo al código:
+## 13. Registro de vendedores (`/vender`)
 
-- **Login con Google:** el botón existe pero es un stub — necesita credenciales OAuth reales que solo el dueño del proyecto puede generar en Google Cloud Console.
-- **Libreta de direcciones reutilizable:** la tabla existe en la base de datos, pero el checkout todavía no la usa para guardar/reutilizar direcciones del cliente (usa solo una copia de la dirección de ese pedido puntual).
-- **Notificaciones por correo de cambios de estado:** un cliente se entera de que su pedido se envió solo si entra a `/cuenta/pedidos`, no recibe un correo automático.
-- **Moderación de reseñas** desde el panel admin.
-- **Reseñas de compra verificada:** hoy cualquier usuario con sesión puede reseñar cualquier producto y la marca de verificación no se asigna.
-- **Comparación de productos** (entre productos y entre vendedores).
-- **Verificación de vendedores:** el alta es solo manual, por un administrador.
-- **Devoluciones, reembolsos y disputas:** solo hay información en el centro de ayuda.
-- **Reparto de pagos por vendedor (Stripe Connect):** un carrito es un pedido y el dinero no se divide.
-- **El vendedor no cambia el estado ni el rastreo** de sus propios pedidos; lo hace el administrador.
-- **Alta de variantes e imágenes desde la interfaz:** el formulario de producto no las gestiona todavía.
-- **Pruebas automatizadas:** el proyecto no tiene un framework de tests configurado todavía.
+- Cualquier cliente con sesión puede enviar una solicitud: nombre del negocio, descripción, teléfono y un **documento de identificación** (JPG, PNG, WebP o PDF, hasta 5 MB) que se guarda en un espacio privado que solo ven los administradores.
+- Solo se permite una solicitud abierta por persona; si se rechaza (con motivo visible), puede volver a aplicar.
+- Un administrador la aprueba con una dirección pública (slug) editable: en una sola operación se crea el negocio y la cuenta pasa a vendedor. El solicitante recibe un correo con la decisión.
+
+## 14. Gestión del negocio y de los productos
+
+- El vendedor sube el **logo y el banner** de su negocio y gestiona sus productos: imágenes (con portada) y **variantes** (SKU, talla, color, precio propio, inventario) desde la página del producto.
+- Cada negocio muestra una **calificación**: el promedio de las reseñas visibles de sus productos.
+- Las tarjetas indican "Vendido por"; las categorías se pueden **filtrar por vendedor** y la búsqueda encuentra también por nombre de negocio.
+
+## 15. Comparación de productos
+
+- Botón "Comparar" en tarjetas y fichas (hasta 4 productos) y una barra flotante. La página `/comparar` muestra lado a lado precio (resalta el mejor), vendedor, calificación, tallas y colores disponibles, existencias y características.
+- En cada ficha, "Compara con otros negocios" propone productos de la misma categoría de otros vendedores. Como los productos no comparten un código común, **"similar" significa misma categoría y distinto vendedor**, no el mismo artículo exacto.
+
+## 16. Devoluciones, reembolsos y disputas
+
+1. El comprador pide la devolución de un artículo enviado desde el detalle de su pedido (motivo y comentario).
+2. El vendedor la **aprueba o rechaza**. Si rechaza, el comprador puede **abrir una disputa** y Omnara decide.
+3. Si se aprueba, el administrador ejecuta el **reembolso por Stripe** al método de pago original.
+4. Comprador, vendedor y administrador conversan en un hilo hasta que el caso se resuelve. Los artículos de productos propios de Omnara pasan directo al administrador.
+5. Cuando todos los artículos de un pedido se reembolsan, el pedido queda como reembolsado.
+
+## 17. Preguntas y respuestas
+
+- Cualquier usuario con sesión puede preguntarle al vendedor desde la ficha (hasta 5 preguntas por hora). Las preguntas y respuestas son públicas.
+- Responde el vendedor del producto (o un administrador); un administrador puede ocultar una pregunta sin borrarla.
+
+## 18. Direcciones guardadas, privacidad y notificaciones
+
+- **Direcciones** (`/cuenta/direcciones`): hasta 10, una predeterminada, solo México o Estados Unidos. Al pagar, el comprador elige una guardada o captura otra en Stripe.
+- **Privacidad** (`/cuenta/privacidad`): descarga de los datos propios en JSON y solicitud de eliminación de la cuenta, que atiende un administrador (los pedidos y pagos se conservan por obligaciones legales). Los términos y el aviso de privacidad están en `/terminos` y `/privacidad`, en español e inglés.
+- **Correos**: confirmación de pedido, nueva venta (al vendedor), artículo enviado con rastreo, novedades de devoluciones, disputas (a administradores) y decisión de una solicitud de vendedor. Se envían solo cuando hay un proveedor de correo configurado.
+
+## 19. Fuera de alcance / pendiente (transparencia)
+
+- **Login con Google:** el botón es un marcador; requiere credenciales de Google Cloud y Supabase.
+- **Reparto de pagos por vendedor (Stripe Connect):** un carrito es un pedido y el dinero no se divide entre vendedores.
+- **Paqueterías** y envío por vendedor o por peso.
+- **Reposición automática de inventario** al aprobar una devolución.
+- **Comparar el mismo artículo exacto** entre vendedores (haría falta un código o modelo común).
+- **Pruebas de extremo a extremo** en navegador; las reglas de la base se verificaron con scripts SQL fuera de la integración continua.
+- **Texto legal revisado por un abogado:** los términos y el aviso son de un proyecto escolar.
