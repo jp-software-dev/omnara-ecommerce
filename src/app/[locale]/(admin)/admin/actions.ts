@@ -249,6 +249,47 @@ export async function shipMyItems(orderId: string, trackingNumber: string) {
   revalidatePath("/[locale]/(admin)/admin/pedidos", "layout");
 }
 
+// Approving creates the business and promotes the applicant in one database
+// transaction (approve_seller_application); the function re-checks that the
+// caller is an admin.
+export async function approveApplication(applicationId: string, slug: string) {
+  assertValidSlug(slug);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("approve_seller_application", {
+    p_id: applicationId,
+    p_slug: slug,
+  });
+  if (error) {
+    // 23505 = the slug is already used by another business
+    if (error.code === "23505") throw new Error("Ya existe un negocio con ese slug.");
+    if (error.message.includes("already has a business")) {
+      throw new Error("Este usuario ya tiene un negocio.");
+    }
+    if (error.message.includes("already reviewed")) {
+      throw new Error("Esta solicitud ya fue revisada.");
+    }
+    throw error;
+  }
+  revalidatePath("/[locale]/(admin)/admin/solicitudes", "page");
+  revalidatePath("/[locale]/(admin)/admin/negocios", "page");
+  revalidatePath("/[locale]/(admin)/admin/usuarios", "page");
+}
+
+export async function rejectApplication(applicationId: string, reason: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("reject_seller_application", {
+    p_id: applicationId,
+    p_reason: reason,
+  });
+  if (error) {
+    if (error.message.includes("already reviewed")) {
+      throw new Error("Esta solicitud ya fue revisada.");
+    }
+    throw error;
+  }
+  revalidatePath("/[locale]/(admin)/admin/solicitudes", "page");
+}
+
 export async function markMessageRead(messageId: string) {
   const supabase = await createClient();
   const { error } = await supabase

@@ -54,6 +54,9 @@ export async function Header({ locale }: { locale: string }) {
               <Link href="/negocios" className="rounded-md px-2 py-2 text-sm hover:bg-muted">
                 {locale === "en" ? "Businesses" : "Negocios"}
               </Link>
+              <Link href="/vender" className="rounded-md px-2 py-2 text-sm hover:bg-muted">
+                {locale === "en" ? "Sell" : "Vender"}
+              </Link>
             </nav>
           </SheetContent>
         </Sheet>
@@ -77,6 +80,9 @@ export async function Header({ locale }: { locale: string }) {
           ))}
           <Link href="/negocios" className="rounded-md px-3 py-2 text-sm font-medium hover:bg-muted">
             {locale === "en" ? "Businesses" : "Negocios"}
+          </Link>
+          <Link href="/vender" className="rounded-md px-3 py-2 text-sm font-medium hover:bg-muted">
+            {locale === "en" ? "Sell" : "Vender"}
           </Link>
         </nav>
 

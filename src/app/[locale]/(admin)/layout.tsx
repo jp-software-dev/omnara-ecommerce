@@ -8,6 +8,7 @@ import {
   Tag,
   Users,
   Store,
+  UserCheck,
 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { requireRole } from "@/lib/supabase/auth-helpers";
@@ -41,6 +42,11 @@ export default async function AdminLayout({
           },
           { href: "/admin/usuarios", label: locale === "en" ? "Users" : "Usuarios", icon: Users },
           { href: "/admin/negocios", label: locale === "en" ? "Businesses" : "Negocios", icon: Store },
+          {
+            href: "/admin/solicitudes",
+            label: locale === "en" ? "Applications" : "Solicitudes",
+            icon: UserCheck,
+          },
         ]
       : []),
   ];
