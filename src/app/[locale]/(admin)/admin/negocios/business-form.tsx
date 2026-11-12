@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
@@ -44,8 +45,8 @@ export function BusinessForm({ locale, users }: { locale: string; users: User[] 
     name: locale === "en" ? "Business name" : "Nombre del negocio",
     slug: "Slug",
     description: locale === "en" ? "Description" : "Descripción",
-    logoUrl: locale === "en" ? "Logo URL" : "URL del logo",
-    bannerUrl: locale === "en" ? "Banner URL" : "URL del banner",
+    logo: locale === "en" ? "Logo" : "Logo",
+    banner: locale === "en" ? "Banner" : "Banner",
     create: locale === "en" ? "Create business" : "Crear negocio",
     creating: locale === "en" ? "Creating..." : "Creando...",
     success: locale === "en" ? "Business created." : "Negocio creado.",
@@ -138,14 +139,23 @@ export function BusinessForm({ locale, users }: { locale: string; users: User[] 
             onChange={(e) => setDescription(e.target.value)}
           />
         </Field>
-        <Field>
-          <FieldLabel htmlFor="business-logo">{t.logoUrl}</FieldLabel>
-          <Input id="business-logo" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="business-banner">{t.bannerUrl}</FieldLabel>
-          <Input id="business-banner" value={bannerUrl} onChange={(e) => setBannerUrl(e.target.value)} />
-        </Field>
+        <ImageUploadField
+          locale={locale}
+          label={t.logo}
+          hint={locale === "en" ? "Square image works best." : "Funciona mejor una imagen cuadrada."}
+          kind="business-logo"
+          value={logoUrl}
+          onChange={setLogoUrl}
+        />
+        <ImageUploadField
+          locale={locale}
+          label={t.banner}
+          hint={locale === "en" ? "Wide image, about 3:1." : "Imagen ancha, aproximadamente 3:1."}
+          kind="business-banner"
+          value={bannerUrl}
+          onChange={setBannerUrl}
+          wide
+        />
         <Button type="submit" disabled={loading || !ownerId}>
           {loading ? t.creating : t.create}
         </Button>

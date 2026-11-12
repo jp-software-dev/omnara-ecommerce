@@ -284,6 +284,14 @@ function assertValidSlug(slug: string) {
   }
 }
 
+// Logo and banner must come from our own bucket (or be empty): the CSP and
+// next/image only allow that host, and it keeps arbitrary URLs out of the DB.
+function assertBucketImageUrl(url: string) {
+  if (url !== "" && !url.startsWith(PRODUCT_IMAGES_PREFIX)) {
+    throw new Error("La imagen debe subirse desde la aplicación.");
+  }
+}
+
 export async function createBusiness(input: {
   ownerId: string;
   slug: string;
@@ -293,6 +301,8 @@ export async function createBusiness(input: {
   bannerUrl: string;
 }) {
   assertValidSlug(input.slug);
+  assertBucketImageUrl(input.logoUrl);
+  assertBucketImageUrl(input.bannerUrl);
   const supabase = await createClient();
 
   const { data: ownerProfile, error: ownerError } = await supabase
@@ -342,6 +352,8 @@ export async function updateBusiness(
     isActive: boolean;
   }
 ) {
+  assertBucketImageUrl(input.logoUrl);
+  assertBucketImageUrl(input.bannerUrl);
   const supabase = await createClient();
   const { error } = await supabase
     .from("businesses")
@@ -364,6 +376,8 @@ export async function updateMyBusiness(input: {
   logoUrl: string;
   bannerUrl: string;
 }) {
+  assertBucketImageUrl(input.logoUrl);
+  assertBucketImageUrl(input.bannerUrl);
   const supabase = await createClient();
   const {
     data: { user },
