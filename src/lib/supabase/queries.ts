@@ -343,14 +343,15 @@ export async function searchProducts(query: string) {
   if (error) throw error;
 
   // The catalog is small enough that filtering in JS (matching either
-  // locale's name) is simpler and more forgiving than fighting Postgres
+  // locale's name, or the seller's business name) is simpler and more forgiving than fighting Postgres
   // JSONB operators through the query builder for a couple dozen rows.
   return data.filter((product) => {
     if (product.vendor_id && inactiveVendorIds.includes(product.vendor_id)) return false;
     const name = product.name as { es?: string; en?: string } | null;
     const es = name?.es?.toLowerCase() ?? "";
     const en = name?.en?.toLowerCase() ?? "";
-    return es.includes(q) || en.includes(q);
+    const seller = product.businesses?.name.toLowerCase() ?? "";
+    return es.includes(q) || en.includes(q) || seller.includes(q);
   });
 }
 
