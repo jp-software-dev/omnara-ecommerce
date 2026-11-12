@@ -314,7 +314,7 @@ Todas las rutas anteriores existen bajo `/es/...` y `/en/...` (prefijo de locale
 - **Vercel**, proyecto `omnara-ecommerce` (`prj_3wLsc1N7opx6Nly7bIxp4kB5KicP`), integración Git nativa: cada push a `main` dispara un deploy de producción; cada rama/PR genera un preview deployment automático.
 - Dominios: `omnara-ecommerce.vercel.app` (+ alias por equipo/rama).
 - Build con Turbopack (`bundler: turbopack` en la metadata de cada deployment).
-- **Supabase** aloja Postgres/Auth/Storage. Los cambios de esquema posteriores a las tablas iniciales están versionados como SQL en `supabase/migrations` (aplicados al proyecto en orden); las tablas y políticas originales se crearon directamente en Supabase y todavía no están exportadas.
+- **Supabase** aloja Postgres/Auth/Storage. Todo el esquema está versionado como SQL en `supabase/migrations` (tablas y políticas originales más los cambios posteriores); se aplica en orden de nombre de archivo sobre un proyecto vacío. **El proyecto de Supabase es compartido**: además de Omnara (esquema `public`) aloja los esquemas `textiles` y `mediagenda` de otras aplicaciones, cuyas migraciones no se incluyen; tampoco se incluyen los datos de demostración del catálogo (ver `supabase/migrations/README.md`).
 
 ## 15. Patrones de código recurrentes (para mantener consistencia futura)
 
