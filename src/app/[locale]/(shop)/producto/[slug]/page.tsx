@@ -12,6 +12,7 @@ import { getCategoryAttributeFields } from "@/lib/category-attributes";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { ProductActions } from "@/components/shop/product-actions";
 import { WishlistButton } from "@/components/shop/wishlist-button";
+import { CompareToggle } from "@/components/shop/compare-toggle";
 import { ProductPrice } from "@/components/shop/product-price";
 import { ProductReviews } from "@/components/shop/product-reviews";
 import { ReviewForm } from "@/components/shop/review-form";
@@ -111,6 +112,7 @@ export default async function ProductPage({
                 className="shrink-0 border"
               />
             </div>
+            <CompareToggle productId={product.id} locale={locale} className="mt-3" />
             <p className="mt-2 text-base text-muted-foreground">
               {pickLocale(product.description_short, locale)}
             </p>

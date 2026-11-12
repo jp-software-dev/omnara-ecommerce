@@ -6,6 +6,7 @@ import type { Json } from "@/lib/supabase/types";
 import { pickLocale } from "@/lib/format";
 import { useDisplayPrice } from "@/hooks/use-display-price";
 import { WishlistButton } from "@/components/shop/wishlist-button";
+import { CompareToggle } from "@/components/shop/compare-toggle";
 
 export type ProductCardData = {
   id: string;
@@ -44,6 +45,11 @@ export function ProductCard({
           productId={product.id}
           locale={locale}
           className="absolute right-2 top-2"
+        />
+        <CompareToggle
+          productId={product.id}
+          locale={locale}
+          className="absolute bottom-2 left-2"
         />
       </div>
       <div className="space-y-1 px-0.5">
