@@ -285,3 +285,15 @@ export async function getAuditLog(table?: string, limit = 100) {
   if (error) throw error;
   return data;
 }
+
+// Admin queue of data requests, pending first.
+export async function getDataRequests() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("data_requests")
+    .select("id, kind, status, admin_note, created_at, resolved_at, user_id, profiles!data_requests_user_id_fkey(full_name)")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return [...data].sort((a, b) => Number(b.status === "pending") - Number(a.status === "pending"));
+}
