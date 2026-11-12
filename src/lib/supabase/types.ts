@@ -408,6 +408,7 @@ export type Database = {
           billing_address_id: string | null
           created_at: string
           currency: string
+          customer_email: string | null
           discount_cents: number
           id: string
           order_number: string
@@ -428,6 +429,7 @@ export type Database = {
           billing_address_id?: string | null
           created_at?: string
           currency?: string
+          customer_email?: string | null
           discount_cents?: number
           id?: string
           order_number: string
@@ -448,6 +450,7 @@ export type Database = {
           billing_address_id?: string | null
           created_at?: string
           currency?: string
+          customer_email?: string | null
           discount_cents?: number
           id?: string
           order_number?: string
@@ -791,6 +794,45 @@ export type Database = {
           id?: string
           is_default?: boolean
           name?: string
+        }
+        Relationships: []
+      }
+      email_outbox: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          locale: string
+          payload: Json
+          sent_at: string | null
+          status: string
+          template: string
+          to_email: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          locale?: string
+          payload?: Json
+          sent_at?: string | null
+          status?: string
+          template: string
+          to_email: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          locale?: string
+          payload?: Json
+          sent_at?: string | null
+          status?: string
+          template?: string
+          to_email?: string
         }
         Relationships: []
       }

@@ -252,3 +252,24 @@ export async function getReviewsForModeration(limit = 100) {
   if (error) throw error;
   return data;
 }
+
+// Admin view of the email queue (RLS: admins only).
+export async function getEmailOutbox(limit = 50) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("email_outbox")
+    .select("id, to_email, template, status, attempts, last_error, created_at, sent_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+
+  const counts = new Map<string, number>();
+  for (const status of ["pending", "sent", "failed"]) {
+    const { count } = await supabase
+      .from("email_outbox")
+      .select("id", { count: "exact", head: true })
+      .eq("status", status);
+    counts.set(status, count ?? 0);
+  }
+  return { rows: data, counts };
+}
