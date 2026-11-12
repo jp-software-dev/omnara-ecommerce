@@ -2,6 +2,7 @@
 
 import { captchaEnabled, Turnstile } from "@/components/auth/turnstile";
 import { useState } from "react";
+import { useLocale } from "next-intl";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -18,6 +19,20 @@ import { Input } from "@/components/ui/input";
 
 export function ForgotPasswordForm({ className, ...props }: React.ComponentProps<"div">) {
   const [loading, setLoading] = useState(false);
+  const en = useLocale() === "en";
+  const t = {
+    securityCheck: en ? "Complete the security check." : "Completa la verificación de seguridad.",
+    title: en ? "Recover your password" : "Recupera tu contraseña",
+    subtitle: en ? "We'll email you a link to reset it" : "Te enviaremos un enlace para restablecerla",
+    sent: en
+      ? "If an account exists with that email, you'll get a link in a few minutes."
+      : "Si existe una cuenta con ese correo, recibirás un enlace en unos minutos.",
+    email: en ? "Email" : "Correo electrónico",
+    emailPlaceholder: en ? "you@email.com" : "tu@correo.com",
+    sending: en ? "Sending…" : "Enviando…",
+    send: en ? "Send link" : "Enviar enlace",
+    back: en ? "Back to sign in" : "Volver a iniciar sesión",
+  };
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaReset, setCaptchaReset] = useState(0);
   const [sent, setSent] = useState(false);
@@ -28,7 +43,7 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
     const email = String(form.get("email"));
 
     if (captchaEnabled && !captchaToken) {
-      toast.error("Completa la verificación de seguridad.");
+      toast.error(t.securityCheck);
       return;
     }
     setLoading(true);
@@ -56,28 +71,28 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Recupera tu contraseña</CardTitle>
-          <CardDescription>Te enviaremos un enlace para restablecerla</CardDescription>
+          <CardTitle className="text-xl">{t.title}</CardTitle>
+          <CardDescription>{t.subtitle}</CardDescription>
         </CardHeader>
         <CardContent>
           {sent ? (
             <p className="text-center text-sm text-muted-foreground">
-              Si existe una cuenta con ese correo, recibirás un enlace en unos minutos.
+              {t.sent}
             </p>
           ) : (
             <form onSubmit={handleSubmit}>
               <FieldGroup>
                 <Field>
-                  <FieldLabel htmlFor="email">Correo electrónico</FieldLabel>
-                  <Input id="email" name="email" type="email" placeholder="tu@correo.com" required />
+                  <FieldLabel htmlFor="email">{t.email}</FieldLabel>
+                  <Input id="email" name="email" type="email" placeholder={t.emailPlaceholder} required />
                 </Field>
                 <Field>
                   <Turnstile onToken={setCaptchaToken} resetKey={captchaReset} />
                   <Button type="submit" disabled={loading}>
-                    {loading ? "Enviando…" : "Enviar enlace"}
+                    {loading ? t.sending : t.send}
                   </Button>
                   <FieldDescription className="text-center">
-                    <a href="../login">Volver a iniciar sesión</a>
+                    <a href="../login">{t.back}</a>
                   </FieldDescription>
                 </Field>
               </FieldGroup>

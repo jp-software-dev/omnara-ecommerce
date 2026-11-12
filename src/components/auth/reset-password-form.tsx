@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale } from "next-intl";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -18,6 +19,20 @@ import { Input } from "@/components/ui/input";
 
 export function ResetPasswordForm({ className, ...props }: React.ComponentProps<"div">) {
   const router = useRouter();
+  const en = useLocale() === "en";
+  const t = {
+    mismatch: en ? "Passwords don't match." : "Las contraseñas no coinciden.",
+    tooShort: en ? "Password must be at least 8 characters." : "La contraseña debe tener al menos 8 caracteres.",
+    expired: en ? "The link expired or was already used — request a new one." : "El enlace expiró o ya se usó — solicita uno nuevo.",
+    updated: en ? "Password updated." : "Contraseña actualizada.",
+    title: en ? "Choose a new password" : "Elige una nueva contraseña",
+    subtitle: en ? "Use at least 8 characters" : "Usa al menos 8 caracteres",
+    newPassword: en ? "New password" : "Nueva contraseña",
+    confirm: en ? "Confirm password" : "Confirmar contraseña",
+    saving: en ? "Saving…" : "Guardando…",
+    save: en ? "Save password" : "Guardar contraseña",
+    back: en ? "Back to sign in" : "Volver a iniciar sesión",
+  };
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -27,11 +42,11 @@ export function ResetPasswordForm({ className, ...props }: React.ComponentProps<
     const confirmPassword = String(form.get("confirm-password"));
 
     if (password !== confirmPassword) {
-      toast.error("Las contraseñas no coinciden.");
+      toast.error(t.mismatch);
       return;
     }
     if (password.length < 8) {
-      toast.error("La contraseña debe tener al menos 8 caracteres.");
+      toast.error(t.tooShort);
       return;
     }
 
@@ -43,13 +58,13 @@ export function ResetPasswordForm({ className, ...props }: React.ComponentProps<
     if (error) {
       toast.error(
         error.message === "Auth session missing!"
-          ? "El enlace expiró o ya se usó — solicita uno nuevo."
+          ? t.expired
           : error.message
       );
       return;
     }
 
-    toast.success("Contraseña actualizada.");
+    toast.success(t.updated);
     router.push("/");
     router.refresh();
   }
@@ -58,26 +73,26 @@ export function ResetPasswordForm({ className, ...props }: React.ComponentProps<
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Elige una nueva contraseña</CardTitle>
-          <CardDescription>Usa al menos 8 caracteres</CardDescription>
+          <CardTitle className="text-xl">{t.title}</CardTitle>
+          <CardDescription>{t.subtitle}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="password">Nueva contraseña</FieldLabel>
+                <FieldLabel htmlFor="password">{t.newPassword}</FieldLabel>
                 <Input id="password" name="password" type="password" required />
               </Field>
               <Field>
-                <FieldLabel htmlFor="confirm-password">Confirmar contraseña</FieldLabel>
+                <FieldLabel htmlFor="confirm-password">{t.confirm}</FieldLabel>
                 <Input id="confirm-password" name="confirm-password" type="password" required />
               </Field>
               <Field>
                 <Button type="submit" disabled={loading}>
-                  {loading ? "Guardando…" : "Guardar contraseña"}
+                  {loading ? t.saving : t.save}
                 </Button>
                 <FieldDescription className="text-center">
-                  <a href="../login">Volver a iniciar sesión</a>
+                  <a href="../login">{t.back}</a>
                 </FieldDescription>
               </Field>
             </FieldGroup>
