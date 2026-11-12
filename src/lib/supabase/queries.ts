@@ -583,3 +583,69 @@ export async function getProductsForComparison(rawIds: string[]) {
 }
 
 export type ComparedProduct = Awaited<ReturnType<typeof getProductsForComparison>>[number];
+
+// ---- Returns, refunds and disputes ----------------------------------------
+// All reads are RLS-scoped (buyer, the item's seller, admin); the filters below
+// only decide WHICH of the visible rows a given screen wants — a user who is both
+// a buyer and a seller sees both kinds of requests through RLS.
+
+export const RETURN_REASONS = [
+  "damaged",
+  "wrong_item",
+  "not_as_described",
+  "changed_mind",
+  "other",
+] as const;
+
+const RETURN_LIST_SELECT =
+  "id, status, reason, refund_amount_cents, currency, created_at, order_id, order_items(product_name_snapshot, quantity), orders(order_number)";
+
+export async function getMyReturns(userId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("return_requests")
+    .select(RETURN_LIST_SELECT)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+// Admin sees every request; a vendor only the ones about their own items.
+export async function getReturnsForRole(role: "admin" | "vendor", userId: string) {
+  const supabase = await createClient();
+  let query = supabase.from("return_requests").select(RETURN_LIST_SELECT);
+  if (role === "vendor") query = query.eq("vendor_id", userId);
+  const { data, error } = await query.order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function getReturnDetail(id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("return_requests")
+    .select(
+      "id, status, reason, details, decision_note, refund_amount_cents, currency, stripe_refund_id, created_at, order_id, user_id, vendor_id, order_items(product_name_snapshot, quantity, unit_price_cents), orders(order_number), return_messages(id, author_role, body, created_at)"
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  if (data) {
+    data.return_messages.sort((a, b) => a.created_at.localeCompare(b.created_at));
+  }
+  return data;
+}
+
+// For the order page: which items already have a request, and in which state.
+export async function getReturnsByOrder(orderId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("return_requests")
+    .select("id, order_item_id, status")
+    .eq("order_id", orderId);
+  if (error) throw error;
+  return new Map(data.map((r) => [r.order_item_id, r] as const));
+}
+
+export type ReturnListItem = Awaited<ReturnType<typeof getMyReturns>>[number];
