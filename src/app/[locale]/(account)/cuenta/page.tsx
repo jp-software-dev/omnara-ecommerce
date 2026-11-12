@@ -2,7 +2,7 @@ import { Link, redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getWishlistProducts } from "@/lib/supabase/queries";
 import { ProductCard } from "@/components/shop/product-card";
-import { Heart, Package, Undo2 } from "lucide-react";
+import { Heart, MapPin, Package, Undo2 } from "lucide-react";
 
 export default async function AccountPage({
   params,
@@ -51,6 +51,13 @@ export default async function AccountPage({
       >
         <Undo2 className="size-4" />
         {locale === "en" ? "My returns" : "Mis devoluciones"}
+      </Link>
+      <Link
+        href="/cuenta/direcciones"
+        className="mt-3 inline-flex items-center gap-2 text-sm font-medium underline underline-offset-4"
+      >
+        <MapPin className="size-4" />
+        {locale === "en" ? "My addresses" : "Mis direcciones"}
       </Link>
 
       <section className="mt-10">
