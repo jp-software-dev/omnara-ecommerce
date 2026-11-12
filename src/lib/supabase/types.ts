@@ -777,6 +777,63 @@ export type Database = {
         }
         Relationships: []
       }
+      seller_applications: {
+        Row: {
+          business_name: string
+          created_at: string
+          description: string | null
+          document_path: string
+          id: string
+          phone: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          business_name: string
+          created_at?: string
+          description?: string | null
+          document_path: string
+          id?: string
+          phone?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          business_name?: string
+          created_at?: string
+          description?: string | null
+          document_path?: string
+          id?: string
+          phone?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_applications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seller_applications_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wishlists: {
         Row: {
           created_at: string
@@ -827,6 +884,14 @@ export type Database = {
           id: string
           role: string
         }[]
+      }
+      approve_seller_application: {
+        Args: { p_id: string; p_slug: string }
+        Returns: string
+      }
+      reject_seller_application: {
+        Args: { p_id: string; p_reason: string }
+        Returns: undefined
       }
       vendor_ship_items: {
         Args: { p_order_id: string; p_tracking: string }

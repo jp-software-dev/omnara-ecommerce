@@ -214,3 +214,26 @@ export async function getBusinessById(id: string) {
   if (error) throw error;
   return data;
 }
+
+export async function getSellerApplications() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("seller_applications")
+    .select(
+      "id, user_id, business_name, description, phone, document_path, status, rejection_reason, created_at, reviewed_at, profiles!seller_applications_user_id_fkey(full_name)"
+    )
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+// Identity documents live in a private bucket; only admins can sign URLs for them.
+export async function getApplicationDocumentUrl(path: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
+    .from("seller-documents")
+    .createSignedUrl(path, 60 * 10);
+  if (error) return null;
+  return data.signedUrl;
+}

@@ -480,3 +480,23 @@ export async function getMyBusiness() {
   if (error) throw error;
   return data;
 }
+
+// The signed-in user's most recent seller application (RLS: own rows only).
+export async function getMySellerApplication() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("seller_applications")
+    .select("id, business_name, status, rejection_reason, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
