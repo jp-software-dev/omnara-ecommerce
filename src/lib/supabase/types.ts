@@ -797,6 +797,44 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          changes: Json
+          created_at: string
+          id: number
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          changes?: Json
+          created_at?: string
+          id?: number
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          changes?: Json
+          created_at?: string
+          id?: number
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_outbox: {
         Row: {
           attempts: number
