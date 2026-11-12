@@ -15,45 +15,50 @@ It was built as a university project (IUEM — *Comercio Electrónico* and *Inge
 
 ## 🌟 Highlights
 
-* **Multi-seller marketplace** with public storefronts, a seller directory and "Sold by" attribution.
-* **Single checkout across sellers**, paid through Stripe and confirmed by a signature-verified webhook.
+* **Multi-seller marketplace**: sellers apply, an administrator approves them, and each gets a public storefront, a product/inventory panel and its own orders, returns and analytics.
+* **Single checkout across sellers**, paid through Stripe and confirmed by a signature-verified webhook; each seller ships and tracks **their own items**.
+* **Trust built in**: reviews only from real buyers (with a database-computed *Verified purchase* badge), seller ratings, public questions and answers, side-by-side product comparison, and a return / refund / dispute flow.
 * **Three roles** — customer, vendor, admin — enforced by Row Level Security in the database, not just in the UI.
-* **Full shopping cycle:** discovery, cart, promo codes, shipping, payment, order tracking, invoices and reviews.
 * **Bilingual (ES/EN) and multi-currency (MXN/USD)**, with the amount Stripe charges derived from the same exchange rate shown on screen.
-* **Operations tooling:** inventory with audit trail, promotions, analytics, support inbox and user/role management.
+* **Security and privacy**: server-side validation, an append-only admin audit log, CAPTCHA-ready forms, a rate-limited contact form, real terms and privacy notice, data export and deletion requests.
+* **Quality**: unit tests, CI on every pull request, and the SQL of every database change versioned in `supabase/migrations`.
 
 ## ✨ Features
 
 ### Marketplace
-* **Seller businesses.** Each seller has a business profile (name, description, logo, banner) and a public storefront at `/negocio/[slug]`, plus a directory at `/negocios`. One business per owner, enforced by a unique constraint.
-* **Admin-run onboarding.** A student signs up normally; an administrator then creates their business from `/admin/negocios`, which promotes the account to the `vendor` role in the same step. Admins cannot be picked as owners (it would silently demote them).
-* **Seller self-service.** A vendor edits their own branding from `/admin/mi-negocio`. The permission is enforced by Row Level Security — a vendor cannot touch another business even by calling the database directly.
-* **"Sold by" attribution.** Product pages show which business sells the item and link to its storefront.
-* **Pause a seller.** Deactivating a business hides its storefront *and* removes its products from the home page, category pages, search and best-sellers.
-* **One checkout across sellers.** A cart can mix products from several businesses and is paid in a single Stripe session, producing one order. Each seller sees only the orders that contain their items.
+* **Seller applications.** Anyone can apply at `/vender` with their business details and an identity document (kept in a private bucket only admins can read). An admin reviews it at `/admin/solicitudes` and approves with an editable slug or rejects with a reason; approval promotes the user, creates the business and closes the application in a single transaction.
+* **Storefronts.** Each business has a public page at `/negocio/[slug]`, a directory at `/negocios`, a logo and banner it uploads itself, and a **seller rating** (the average of the visible reviews of its products).
+* **Product management.** Vendors create products, upload images (cover image, delete) and add or remove variants (SKU, size, color, price override, stock) from the product page — no SQL involved.
+* **Sold-by everywhere.** Product cards and pages say who sells each item; category pages can be **filtered by seller** and search also matches **business names**.
+* **Pause a seller.** Deactivating a business hides its storefront and removes its products from the home page, categories, search and best-sellers.
+* **One checkout across sellers.** A cart can mix businesses and is paid once, producing one order; each seller sees only the orders that contain their items.
 
 ### Shopping experience
-* **Category-aware catalog.** Products carry category-specific attributes (brand/model for electronics, material/gender for apparel, dimensions for home goods) stored as JSONB and rendered dynamically in both the seller form and the product page.
-* **Discovery.** Live search, category pages with filters and sorting, featured / new / best-seller sections, related products, wishlist, size guide and variant (size/color) selection with per-variant stock.
-* **Cart and checkout.** Persistent cart, guest and authenticated checkout, promo codes, shipping calculation (free above a configurable threshold, flat rate below it) and a printable receipt/invoice.
-* **Orders and follow-up.** Order history, order detail with a status stepper (pending → paid → fulfilled), tracking number, and a "leave a review" prompt once an order ships.
-* **Reviews.** 1–5 star ratings with title and comment, one review per customer per product, average rating on the product page.
-* **Customer service.** Contact form feeding an admin inbox, and a help center with FAQ and shipping/returns information.
-* **Bilingual and multi-currency.** ES/EN interface (next-intl) and a MXN/USD switcher that recalculates every displayed price *and* the amount Stripe charges.
+* **Category-aware catalog**, live search, filters and sorting, featured / new / best-seller sections, related products, wishlist, size guide and variant selection with per-variant stock.
+* **Product comparison.** Up to four products side by side (best price highlighted, seller, rating, sizes and colors in stock, specifications), and a *Compare with other businesses* block on each product page (same category, different seller).
+* **Cart and checkout.** Persistent cart, guest and signed-in checkout, promo codes, shipping calculation and a printable receipt. Signed-in buyers keep an **address book** (`/cuenta/direcciones`) and pick a saved address at checkout.
+* **Orders.** Order history with a status stepper, and **per-item shipping and tracking** shown on the receipt.
+* **Returns, refunds and disputes.** A buyer can return a shipped item within 30 days; the seller approves or rejects; a rejection can be escalated to Omnara; the admin refunds through Stripe. Buyer, seller and admin talk in a shared thread, and the refund amount is computed in the database (item price minus its share of any discount; shipping excluded).
+* **Reviews and questions.** Only buyers can review a product, and the badge is set by the database, never by the client. Anyone signed in can ask the seller a public question. Admins can hide a review or question without deleting it.
+* **Customer service.** Contact form feeding an admin inbox, and a help center.
+* **Bilingual and multi-currency.** ES/EN interface (including login and signup) and a MXN/USD switcher that recalculates every price and the amount Stripe charges.
 
 ### Operations
-* **Inventory.** Per-variant stock, low-stock alerts, automatic decrement on payment and an inventory-movement audit trail.
-* **Promotions.** Percentage or fixed-amount codes with minimum order, usage limit and expiry; validated server-side and applied through an ephemeral Stripe coupon.
-* **Analytics.** Revenue by day, top products, paid orders and average ticket.
-* **User and role management.** Admins list every user (with email) and change roles from `/admin/usuarios`; an admin cannot change their own role.
+* **Inventory** per variant, low-stock alerts, automatic decrement on payment and a movement audit trail.
+* **Promotions** (percentage or fixed codes with minimum, limit and expiry) validated on the server and applied through an ephemeral Stripe coupon.
+* **Analytics** for admins and for each vendor: product sales by day, top products, paid orders and average order, computed from the seller's own items (USD sales converted to MXN at the current rate).
+* **Email notifications** (order confirmation, new sale, item shipped, return updates, disputes, seller application decisions), queued by database triggers and sent through Resend; admins can inspect the queue at `/admin/correos`.
+* **Users, roles and moderation**: user and role management, review and question moderation, and a returns inbox.
 
-### Security
-* **Row Level Security everywhere.** Every table has RLS; the policies decide who can read or change what (admin / vendor / customer scoping on products, orders, inventory, businesses).
-* **Server-authoritative money.** Prices, shipping, discounts and currency conversion are recomputed on the server from the database before a Stripe session is created; the client only chooses *what* to buy.
-* **Signature-verified, idempotent webhook.** Orders are written only from a Stripe webhook whose signature is verified, and a replayed event cannot create a duplicate order.
-* **Test-mode lock** on the Stripe client, plus a CSP and standard security headers on every route.
-* **Least privilege.** The service-role key is used in only a few narrow places (webhook, order lookup by Stripe session, promo-code validation, sitewide best-seller rollup); user listing with emails goes through a `SECURITY DEFINER` function restricted to admins.
-* **Secrets hygiene.** `.env*` and key/certificate formats are git-ignored, and the git history was audited for leaked secrets.
+### Security and privacy
+* **Row Level Security everywhere**; every sensitive write (returns, applications, questions, moderation, data requests) goes through a `SECURITY DEFINER` function that checks who is calling.
+* **Server-authoritative money**: prices, shipping, discounts, refunds and currency conversion are recomputed on the server; the client only chooses *what* to buy.
+* **Signature-verified, idempotent Stripe webhook**, **test-mode lock** on the Stripe client, idempotent refunds, and a CSP plus standard security headers.
+* **Server-side validation** (zod) on products, businesses, promo codes, variants, addresses, returns, questions and the contact form.
+* **Abuse protection**: the contact form only accepts messages through a database function that validates and throttles (3 per address and 40 in total per hour) plus a honeypot; login, signup, recovery and contact are **CAPTCHA-ready** (Cloudflare Turnstile, off until configured).
+* **Admin audit log** (`/admin/bitacora`): who changed which fields, written by triggers, append-only and without copying personal data.
+* **Privacy**: real terms of service and privacy notice (ES/EN), a personal data export (`/cuenta/privacidad`) and account deletion requests handled by an admin.
+* **Least privilege and secrets hygiene**: the service-role key is used in a few narrow places; `.env*` and key formats are git-ignored.
 
 ## 🎓 Mapping to the course material
 
@@ -65,7 +70,7 @@ It was built as a university project (IUEM — *Comercio Electrónico* and *Inge
 | **Empresa** — offers products | Seller businesses (`vendor` role + `businesses` table) |
 | **Plataforma** — makes the operation possible | This Next.js application and its admin panel |
 | **Proveedor de pagos** — processes/authorizes payment | Stripe Checkout (test mode) |
-| **Logística** — storage, shipping, delivery | Shipping cost, address capture and tracking number |
+| **Logística** — storage, shipping, delivery | Shipping cost, address book, per-seller shipping and tracking numbers |
 | **Proveedor tecnológico** — hosting, infrastructure, software | Vercel (hosting) and Supabase (database, auth, storage) |
 
 ### Platform functions
@@ -79,6 +84,9 @@ It was built as a university project (IUEM — *Comercio Electrónico* and *Inge
 | Inventario | Variant stock, low-stock alerts, movement audit trail |
 | Pagos | Stripe Checkout + webhook |
 | Promociones | Promo codes (admin-managed) |
+| Reseñas y reputación | Verified reviews, seller ratings, questions, comparison |
+| Devoluciones y reembolsos | Return requests, disputes, Stripe refunds |
+| Notificaciones | Transactional emails |
 | Atención al cliente | Contact inbox, help center |
 
 ### What happens when a product is added to the cart
@@ -112,29 +120,29 @@ The last step is the one the course flags as essential ("the store needs to know
 
 | Challenge | How Omnara addresses it |
 | --- | --- |
-| Seguridad informática | RLS, CSP and security headers, server-side validation, least-privilege keys |
-| Fraudes | Payment handled entirely by Stripe; webhook signature verification; test-mode lock |
-| Protección de datos personales | Data minimized to name/email/address; RLS keeps it scoped to the owner |
-| Competencia | Several sellers share one catalog, search and checkout |
-| Logística | Shipping cost, address snapshot and tracking number on every order |
-| Devoluciones | Returns policy and process documented in the help center |
-| Confianza del consumidor | Reviews and average rating, public seller storefronts |
+| Seguridad informática | RLS, CSP, server-side validation, least-privilege keys, abuse throttling, CAPTCHA-ready forms, admin audit log |
+| Fraudes | Payment handled by Stripe, webhook signature verification, test-mode lock; sellers are vetted with an identity document before they can sell |
+| Protección de datos personales | Data minimized, RLS scopes it to its owner, private bucket for identity documents, data export and deletion requests, privacy notice |
+| Competencia | Several sellers share one catalog; product comparison, seller ratings and filters help shoppers choose |
+| Logística | Shipping cost, address book and snapshot, per-seller shipping with tracking and email notices (no carrier integration yet) |
+| Devoluciones | 30-day return flow with seller decision, dispute escalation and Stripe refunds |
+| Confianza del consumidor | Verified-purchase reviews, seller ratings, questions and answers, moderation, public storefronts |
 | Disponibilidad / dependencia tecnológica | Managed hosting on Vercel and Supabase |
 | Costos de envío | Configurable free-shipping threshold and flat rate |
-| Cumplimiento legal | Terms and privacy pages |
+| Cumplimiento legal | Real terms of service and privacy notice (written as a student project; review with a lawyer before real use) |
 | Experiencia de usuario | Responsive, bilingual, accessible focus states, reduced-motion support |
 
 ## 🔭 Future work
 
-Omnara is a complete teaching marketplace. Natural next steps if it were taken toward production:
+Omnara is a complete teaching marketplace. Known limits and next steps if it were taken toward production:
 
-* Verified-purchase reviews, seller ratings and moderation.
-* Self-service seller applications with identity verification.
-* Product comparison across sellers.
-* Return/refund and dispute workflow.
-* Per-seller orders and payouts with Stripe Connect and a platform commission.
-* Carrier integration and email notifications.
-* Rate limiting / CAPTCHA, automated tests and schema migrations versioned in the repository.
+* **Per-seller payouts** with Stripe Connect and a platform commission: today one cart is one order and the money is not split.
+* **Carrier integration** and shipping priced per seller or by weight.
+* **Comparison of the exact same item** across sellers: products have no shared catalogue code (GTIN/model), so "similar" means same category and a different seller.
+* **Restocking on returns** is not automatic, and sellers can't yet respond to a dispute with attachments.
+* **Google sign-in** (needs credentials from Google Cloud and Supabase) — the button is still a placeholder.
+* **Automated tests beyond unit level**: database rules were verified with SQL scripts and are not part of CI, and there are no browser (end-to-end) tests.
+* **A complete schema export**: `supabase/migrations` holds every change made in this project's later phases, but the original tables and policies were created directly in Supabase, so a fresh clone still can't rebuild the whole database by itself.
 
 ## 🛠 Technologies Used
 
@@ -167,6 +175,13 @@ You need Node.js 20+ and a Supabase project.
    SUPABASE_SERVICE_ROLE_KEY=
    STRIPE_SECRET_KEY=
    STRIPE_WEBHOOK_SECRET=
+   # Optional — features stay inert until they are set:
+   RESEND_API_KEY=
+   EMAIL_FROM=
+   CRON_SECRET=
+   NEXT_PUBLIC_SITE_URL=
+   NEXT_PUBLIC_TURNSTILE_SITE_KEY=
+   TURNSTILE_SECRET_KEY=
    ```
 
    | Variable | Needed for |
@@ -175,6 +190,10 @@ You need Node.js 20+ and a Supabase project.
    | `SUPABASE_SERVICE_ROLE_KEY` | Promo-code validation, best-sellers, Stripe webhook, order confirmation. **Server-only: never expose it to the browser.** |
    | `STRIPE_SECRET_KEY` | Checkout. Must be a test key (`sk_test_…`) or the app refuses to start Stripe. |
    | `STRIPE_WEBHOOK_SECRET` | Verifying webhook signatures so orders can be created |
+   | `RESEND_API_KEY`, `EMAIL_FROM` | Sending notification emails. Without them emails are queued and `/admin/correos` says so. |
+   | `CRON_SECRET` | Protects `/api/cron/send-emails`, a safety net that re-sends queued emails. |
+   | `NEXT_PUBLIC_SITE_URL` | Base URL used for links inside emails. |
+   | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile CAPTCHA. Also enable CAPTCHA protection in the Supabase dashboard (Authentication → Attack Protection) with the same secret, and turn on leaked-password protection there. |
 
 3. **Forward Stripe webhooks** while developing (Stripe CLI), and copy the signing secret it prints into `STRIPE_WEBHOOK_SECRET`:
    ```bash
@@ -202,8 +221,10 @@ You need Node.js 20+ and a Supabase project.
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build |
 | `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript type check |
+| `npm test` | Unit tests (Vitest) |
 
-> **Note:** the database schema (tables, RLS policies, the `admin_list_users()` function) lives in the Supabase project rather than in migration files in this repository, so a fresh clone connects to an existing Supabase project instead of recreating one.
+> **Database:** every schema change made after the initial tables is versioned as SQL in `supabase/migrations` (applied to the Supabase project in order). The original tables and policies were created directly in Supabase and are not exported yet, so a fresh clone connects to an existing Supabase project instead of recreating one.
 
 ## 🗂 Project documentation by stage
 
@@ -211,9 +232,9 @@ The course ties each stage of the software lifecycle to a document. For Omnara:
 
 | Stage | Document | Where |
 | --- | --- | --- |
-| Necesidad / Requisitos | Functional scope | *Features* in this README |
+| Necesidad / Requisitos | Functional scope | *Features* in this README and `docs/DOCUMENTACION_FUNCIONAL` |
 | Diseño | Architecture and data model | *Technologies Used* above; schema in Supabase |
-| Desarrollo | Technical documentation | Code comments where the reason is non-obvious; `AGENTS.md` |
-| Pruebas | Results and incidents | Pull request test plans and code-review findings on GitHub |
+| Desarrollo | Technical documentation | `docs/DOCUMENTACION_TECNICA`; code comments where the reason is non-obvious; `AGENTS.md` |
+| Pruebas | Results and incidents | Unit tests (`npm test`), the CI check on every pull request, and the test plan in each pull request |
 | Implementación | Installation manual | *Installation & Setup* above |
 | Mantenimiento | Change log | Git history and merged pull requests |

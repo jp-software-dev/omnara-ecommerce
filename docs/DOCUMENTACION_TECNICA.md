@@ -70,7 +70,7 @@ src/
 
 - `next-intl` con dos locales: `es` (default) y `en`, prefijo de URL siempre presente (`/es/...`, `/en/...`).
 - El archivo `messages/*.json` solo cubre el namespace `common` (marca, buscar, carrito, cuenta, favoritos) y `home`. **El resto de la interfaz no usa el sistema de mensajes de next-intl** — cada página/componente define un objeto `t` local con el patrón `locale === "en" ? "..." : "..."`. Es una decisión de diseño consistente en todo el proyecto, no un descuido puntual.
-- Las páginas de auth (`login-form.tsx`, `signup-form.tsx`, `forgot-password-form.tsx`, `reset-password-form.tsx`) están **hardcodeadas en español**, sin importar el locale — es la única inconsistencia i18n del proyecto.
+- Las pantallas de auth (`login-form.tsx`, `signup-form.tsx`, `forgot-password-form.tsx`, `reset-password-form.tsx`) leen el idioma con `useLocale()` y usan el mismo objeto `t` en línea que el resto de la interfaz.
 - `pickLocale(jsonValue, locale)` (`src/lib/format.ts`) extrae el string correcto de un campo JSONB bilingüe (`{es, en}`) usado en `products.name`, `categories.name`, etc., con fallback a `es`.
 
 ## 6. Modelo de datos (Supabase / Postgres)
@@ -82,7 +82,7 @@ Proyecto Supabase: `omnara-ecommerce` (`jqgfsbtevkofhwlaxutt`, región `us-west-
 | Tabla | Propósito | Columnas clave |
 |---|---|---|
 | `profiles` | Perfil 1:1 con `auth.users` | `id` (FK a `auth.users`), `full_name`, `phone`, `role` (`admin`/`vendor`/`customer`, default `customer`), `preferred_locale`, `preferred_currency` |
-| `addresses` | Libreta de direcciones (existe en BD, **no conectada a ninguna UI todavía** — ver §12) | `user_id`, `recipient_name`, `line1/2`, `city`, `state`, `postal_code`, `country` (default `MX`), `type` (`shipping`/`billing`), `is_default` |
+| `addresses` | Libreta de direcciones del comprador (se usa en `/cuenta/direcciones` y en el checkout) | `user_id`, `label`, `recipient_name`, `phone`, `line1/2`, `city`, `state`, `postal_code`, `country` (`MX`/`US`), `type`, `is_default` (una sola por usuario y tipo; máximo 10 por usuario) |
 | `categories` | Árbol de categorías (`parent_id` autorreferencial) | `slug`, `name`/`description` (jsonb bilingüe), `position` |
 | `warehouses` | Almacenes (1 seed activo) | `name`, `address`, `is_default` |
 | `businesses` | Negocio de cada vendedor | `owner_id` (FK a `profiles`, **unique**: un negocio por dueño), `slug` (unique), `name`, `description`, `logo_url`, `banner_url`, `is_active`, `created_at`, `updated_at` |
@@ -91,13 +91,21 @@ Proyecto Supabase: `omnara-ecommerce` (`jqgfsbtevkofhwlaxutt`, región `us-west-
 | `product_images` | Imágenes por producto o por variante | `product_id`, `variant_id` (nullable), `url`, `alt_text`, `position` |
 | `inventory_movements` | Auditoría de movimientos de stock | `variant_id`, `warehouse_id`, `quantity_change`, `reason` (`restock`/`sale`/`adjustment`/`return`), `created_by` |
 | `carts` / `cart_items` | Carrito persistido en BD (existe, pero la app usa Zustand+localStorage como fuente real del carrito — ver §11) | `carts.user_id`/`session_id`/`currency`; `cart_items.cart_id`, `variant_id`, `quantity` |
-| `orders` | Pedido | `order_number` (unique), `user_id` (nullable -> invitado), `status` (`pending`/`paid`/`fulfilled`/`cancelled`/`refunded`), `currency`, `subtotal_cents`, `shipping_cents`, `discount_cents`, `promo_code`, `total_cents`, `shipping_address_snapshot` (jsonb), `tracking_number`, `payment_method`, `stripe_payment_intent_id` (unique de facto por lookup) |
-| `order_items` | Líneas de pedido, con snapshot histórico | `order_id`, `variant_id`, `vendor_id`, `product_name_snapshot`/`variant_attrs_snapshot` (jsonb), `unit_price_cents`, `quantity` |
-| `reviews` | Reseñas de producto | `product_id`, `user_id`, `rating` (1-5), `title`, `comment`, `is_verified_purchase` (la columna existe, pero **nada la asigna**: la inserción es cliente-side sin validar compra) |
+| `orders` | Pedido | `order_number` (unique), `user_id` (nullable -> invitado), `status` (`pending`/`paid`/`fulfilled`/`cancelled`/`refunded`), `currency`, `subtotal_cents`, `shipping_cents`, `discount_cents`, `promo_code`, `total_cents`, `shipping_address_snapshot` (jsonb), `tracking_number`, `payment_method`, `stripe_payment_intent_id` (unique de facto por lookup); `customer_email` (correo del comprador, incluidos invitados) |
+| `order_items` | Líneas de pedido, con snapshot histórico | `order_id`, `variant_id`, `vendor_id`, `product_name_snapshot`/`variant_attrs_snapshot` (jsonb), `unit_price_cents`, `quantity`; `shipped_at`, `tracking_number` (envío **por vendedor**) |
+| `reviews` | Reseñas de producto | `product_id`, `user_id`, `rating` (1-5), `title`, `comment`, `is_verified_purchase` (**calculado por un trigger**), `is_hidden` (moderación) |
 | `promo_codes` | Códigos de descuento | `code` (unique), `discount_type` (`percentage`/`fixed`), `discount_value`, `min_order_cents`, `expires_at`, `usage_limit`, `times_used`, `is_active` |
 | `wishlists` | Favoritos | `user_id`, `product_id` |
 | `app_settings` | Config global, fila única (`id = 1`) | `usd_exchange_rate` (default 18.0), `free_shipping_threshold_mxn_cents` (default 150000 = $1,500 MXN) |
 | `contact_messages` | Buzón de contacto | `name`, `email`, `subject`, `message`, `status` (`new`/`read`) |
+| `seller_applications` | Solicitudes para vender | `user_id`, `business_name`, `description`, `phone`, `document_path` (bucket privado `seller-documents`), `status` (`pending`/`approved`/`rejected`), `rejection_reason`, `reviewed_by` |
+| `return_requests` | Devoluciones (una por artículo) | `order_item_id` (unique), `order_id`, `user_id`, `vendor_id`, `reason`, `details`, `status` (`requested`/`approved`/`rejected`/`escalated`/`closed`/`refunded`), `refund_amount_cents`, `currency`, `stripe_refund_id` |
+| `return_messages` | Hilo de cada devolución | `return_id`, `author_id`, `author_role` (`buyer`/`vendor`/`admin`), `body` |
+| `product_questions` | Preguntas y respuestas públicas | `product_id`, `user_id`, `question`, `answer`, `answered_by`, `answered_at`, `is_hidden` |
+| `email_outbox` | Cola de notificaciones por correo | `to_email`, `locale`, `template`, `payload`, `status` (`pending`/`sent`/`failed`), `attempts`, `last_error` |
+| `admin_audit_log` | Bitácora de cambios de administradores (solo se agrega) | `actor_id`, `table_name`, `record_id`, `action`, `changes` (solo columnas que cambiaron) |
+| `data_requests` | Solicitudes de eliminación de cuenta | `user_id`, `kind`, `status` (`pending`/`done`/`rejected`), `admin_note`, `resolved_by` |
+| `business_ratings` (vista) | Calificación de cada negocio: promedio y número de reseñas visibles de sus productos (`security_invoker`) | `business_id`, `review_count`, `avg_rating` |
 
 **Convención de dinero:** todos los montos se guardan como enteros en **centavos de MXN** (`*_cents`), nunca floats. `promo_codes.discount_value` es la única excepción con doble semántica: 0–100 para `percentage`, centavos MXN para `fixed` (convención documentada en el código, no forzada por un `check`).
 
@@ -131,6 +139,24 @@ Todas `SECURITY DEFINER`:
 | `handle_new_user()` | Trigger que crea la fila en `profiles` al registrarse en `auth.users` |
 | `admin_list_users()` | Devuelve `id, email, full_name, role, created_at` uniendo `profiles` + `auth.users` (que no es accesible vía PostgREST); solo retorna filas si el llamante es admin. Permite listar usuarios con email **sin necesitar `SUPABASE_SERVICE_ROLE_KEY`** en runtime. `EXECUTE` revocado a `anon`, otorgado a `authenticated`. |
 
+### 6.2b. Funciones añadidas (todas `SECURITY DEFINER`, con `search_path` fijo)
+
+Las escrituras sensibles no tienen políticas de INSERT/UPDATE: pasan por funciones que verifican quién llama.
+
+| Función | Uso |
+|---|---|
+| `vendor_ship_items(order, tracking)` | El vendedor marca sus artículos como enviados; el pedido pasa a enviado cuando no queda nada pendiente |
+| `approve_seller_application(id, slug)` / `reject_seller_application(id, reason)` | Aprobar crea el negocio, promueve al usuario y cierra la solicitud en una transacción |
+| `request_return`, `decide_return`, `escalate_return`, `admin_resolve_return`, `mark_return_refunded`, `add_return_message` | Flujo de devoluciones; el monto del reembolso se calcula en la base |
+| `ask_question`, `answer_question`, `moderate_question` | Preguntas y respuestas; límite de 5 preguntas por hora |
+| `moderate_review(id, hidden)` | Ocultar o restaurar una reseña (solo admin) |
+| `submit_contact_message(...)` | Única vía para escribir en `contact_messages`; valida y limita la frecuencia |
+| `request_account_deletion()` / `resolve_data_request(...)` | Solicitudes de eliminación de cuenta |
+| `private.user_purchased`, `private.has_purchased` | Comprueban compras reales (política de reseñas y trigger de la marca verificada) |
+| Disparadores `email_*` | Encolan correos; cada uno atrapa sus errores para no bloquear la operación que los origina |
+| Disparadores `audit_*` | Escriben en la bitácora; solo registran acciones de administradores |
+
+
 ### 6.3. Row Level Security (RLS) — política completa
 
 RLS está **habilitado en todas las tablas** de `public`. No hay ninguna tabla de negocio sin RLS.
@@ -146,13 +172,19 @@ RLS está **habilitado en todas las tablas** de `public`. No hay ninguna tabla d
 | `product_variants` / `product_images` | Mismo patrón que `products`, verificado vía join al producto padre |
 | `inventory_movements` | SELECT/INSERT: dueño del producto (vendor) o admin |
 | `carts` / `cart_items` | ALL: dueño del carrito |
-| `orders` | SELECT: comprador, admin, o vendor con algún ítem en el pedido; UPDATE: **solo admin** (un vendor no puede cambiar el estado de un pedido) |
+| `orders` | SELECT: comprador, admin, o vendor con algún ítem en el pedido; UPDATE: **solo admin** (el vendedor solo toca sus artículos mediante `vendor_ship_items`) |
 | `order_items` | SELECT: vendor del ítem, admin, o dueño del pedido |
-| `reviews` | SELECT: público; INSERT: propio (`user_id = auth.uid()`); UPDATE/DELETE: propio o admin |
+| `reviews` | SELECT: público salvo reseñas ocultas (las ven su autor y los admins); INSERT: solo compradores del producto (`reviews_insert_buyers`); UPDATE/DELETE: propio o admin; un trigger fija la marca verificada y solo un admin cambia `is_hidden` |
 | `promo_codes` | ALL: **solo admin** — el storefront no puede leer esta tabla con el cliente normal (ver §9.2) |
 | `wishlists` | ALL: dueño |
 | `app_settings` | SELECT: público; UPDATE: admin |
-| `contact_messages` | INSERT: público (`anon`/`authenticated`); ALL (incl. SELECT): solo admin |
+| `contact_messages` | Sin INSERT directo (se escribe con `submit_contact_message`); ALL: solo admin |
+| `seller_applications` | SELECT: propio o admin; INSERT: solo clientes, para sí mismos y como pendiente; sin UPDATE/DELETE |
+| `return_requests` / `return_messages` | SELECT: comprador, vendedor del artículo o admin; sin escritura directa |
+| `product_questions` | SELECT: público salvo ocultas (las ven su autor y los admins); sin escritura directa |
+| `email_outbox`, `admin_audit_log` | SELECT: solo admin; sin escritura directa (las escriben disparadores o el rol de servicio) |
+| `data_requests` | SELECT: propio o admin; sin escritura directa |
+| `businesses` (clave foránea) | `products.vendor_id` referencia `businesses.owner_id`: un vendedor sin negocio no puede crear productos y un negocio con productos no se puede borrar |
 
 **Principio de diseño explícito en el código:** "RLS ya scopea esto — un vendor consultando la base de datos directamente obtiene el mismo alcance que la UI muestra, porque la base de datos es la que lo aplica." Ninguna Server Action filtra manualmente por rol antes de tocar la BD; todas usan el cliente autenticado normal (`createClient()`) y dejan que RLS decida qué filas son visibles o mutables.
 
@@ -237,6 +269,14 @@ Los negocios pausados se excluyen del home, categorías, búsqueda y más vendid
 ### Panel exclusivo admin (además del filtro anterior)
 `/admin/mensajes`, `/admin/promociones`, `/admin/usuarios`, `/admin/negocios`, `/admin/negocios/[id]`
 
+### Rutas añadidas
+- Tienda: `/vender`, `/comparar`, `/negocios`, `/negocio/[slug]`.
+- Cuenta: `/cuenta/direcciones`, `/cuenta/devoluciones`, `/cuenta/devoluciones/[id]`, `/cuenta/privacidad`.
+- Panel (admin y vendedor): `/admin/devoluciones`, `/admin/devoluciones/[id]`, `/admin/preguntas`, `/admin/mi-negocio` (vendedor).
+- Panel (solo admin): `/admin/solicitudes`, `/admin/negocios`, `/admin/resenas`, `/admin/correos`, `/admin/bitacora`, `/admin/privacidad`.
+- API: `GET /api/account/export` (descarga de datos del usuario), `GET|POST /api/cron/send-emails` (protegida con `CRON_SECRET`).
+
+
 ### API
 `POST /api/webhooks/stripe`
 
@@ -256,6 +296,10 @@ Todas las rutas anteriores existen bajo `/es/...` y `/en/...` (prefijo de locale
 | `SUPABASE_SERVICE_ROLE_KEY` | `getBestSellers`, `validatePromoCode`, webhook, confirmación de checkout | **No** — degradan de forma controlada (ver §9.2) |
 | `STRIPE_SECRET_KEY` | Cualquier operación de Stripe (`getStripe()` lanza error si falta) | **No** |
 | `STRIPE_WEBHOOK_SECRET` | Verificación de firma del webhook | **No** |
+| `RESEND_API_KEY`, `EMAIL_FROM` | Envío de correos (sin ellos quedan en cola) | No |
+| `CRON_SECRET` | Protege `/api/cron/send-emails` | No |
+| `NEXT_PUBLIC_SITE_URL` | Enlaces dentro de los correos | No |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | CAPTCHA (Cloudflare Turnstile); activar también en el panel de Supabase | No |
 
 `.env.example` documenta las 5. Ni `.env.local` ni `.env.example` están versionados en git (`.gitignore`: `.env*`).
 
@@ -270,7 +314,7 @@ Todas las rutas anteriores existen bajo `/es/...` y `/en/...` (prefijo de locale
 - **Vercel**, proyecto `omnara-ecommerce` (`prj_3wLsc1N7opx6Nly7bIxp4kB5KicP`), integración Git nativa: cada push a `main` dispara un deploy de producción; cada rama/PR genera un preview deployment automático.
 - Dominios: `omnara-ecommerce.vercel.app` (+ alias por equipo/rama).
 - Build con Turbopack (`bundler: turbopack` en la metadata de cada deployment).
-- **Supabase** aloja Postgres/Auth/Storage; las migraciones de este proyecto se aplicaron directamente contra el proyecto en vivo (no hay carpeta `supabase/migrations` en el repo — el historial de cambios de esquema vive en el propio Supabase, no en git).
+- **Supabase** aloja Postgres/Auth/Storage. Los cambios de esquema posteriores a las tablas iniciales están versionados como SQL en `supabase/migrations` (aplicados al proyecto en orden); las tablas y políticas originales se crearon directamente en Supabase y todavía no están exportadas.
 
 ## 15. Patrones de código recurrentes (para mantener consistencia futura)
 
@@ -280,3 +324,21 @@ Todas las rutas anteriores existen bajo `/es/...` y `/en/...` (prefijo de locale
 - **Controles optimistas admin** (estado de pedido, rol de usuario, tracking number): `useState` local + `useTransition`, revierte en `catch` y muestra `toast.error`.
 - **Guards de acceso:** `requireRole()` en Server Components de página; nunca se confía solo en ocultar el link de navegación.
 - **Nunca se confía en el cliente para precio/descuento/stock** — todo se revalida server-side antes de tocar Stripe o la BD.
+
+
+## 16. Calidad: pruebas, integración continua y migraciones
+
+- **Pruebas unitarias** (Vitest, `npm test`): 32 casos sobre envío, conversión y formato de moneda, validación de productos, negocios, códigos promocionales y direcciones, la ventana de 30 días de devoluciones y el renderizado de correos (incluido el escape de HTML).
+- **CI** (`.github/workflows/ci.yml`): `npm run lint`, `npm run typecheck` y `npm test` en cada pull request y en cada push a `main` y `development`. El build de producción lo hace Vercel.
+- **Reglas de base de datos:** se verificaron con scripts SQL dentro de transacciones que se revierten (límites, permisos, disparadores, flujos completos); no forman parte de la CI.
+- **Lockfile:** se fijaron `@emnapi/core` y `@emnapi/runtime` para que `npm ci` funcione en Linux con un lockfile generado en Windows.
+
+## 17. Seguridad y privacidad añadidas
+
+- **Validación en servidor** con zod (`src/lib/validation.ts`, `src/lib/addresses.ts`) en productos, negocios, códigos promocionales, variantes, direcciones, devoluciones, preguntas y contacto.
+- **Contacto:** sin INSERT público directo; `submit_contact_message` valida y limita a 3 mensajes por correo y 40 en total por hora; la acción del servidor añade un campo trampa y, si hay claves, verifica el CAPTCHA.
+- **CAPTCHA** (Cloudflare Turnstile): el componente no hace nada sin `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; la política CSP solo permite el dominio de Cloudflare cuando hay clave.
+- **Bitácora de administradores:** disparadores que registran quién cambió qué columnas, solo para acciones de administradores, sin copiar datos personales y sin posibilidad de editar o borrar.
+- **Almacenamiento:** el bucket `product-images` limita tamaño (5 MB) y tipos, y cada vendedor solo escribe en su carpeta; `seller-documents` es privado y solo lo leen administradores.
+- **Privacidad:** aviso y términos reales, exportación de datos del usuario y solicitudes de eliminación atendidas por un administrador.
+- **Ajustes que solo se hacen en el panel de Supabase:** protección contra contraseñas filtradas y CAPTCHA de autenticación.
