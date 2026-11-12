@@ -1,7 +1,8 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Store } from "lucide-react";
-import { getBusinessBySlug, getProductsByBusiness } from "@/lib/supabase/queries";
+import { getBusinessBySlug, getBusinessRatings, getProductsByBusiness } from "@/lib/supabase/queries";
+import { BusinessRatingBadge } from "@/components/shop/business-rating";
 import { ProductCard } from "@/components/shop/product-card";
 
 export default async function BusinessStorefrontPage({
@@ -16,7 +17,10 @@ export default async function BusinessStorefrontPage({
     notFound();
   }
 
-  const products = await getProductsByBusiness(business.owner_id);
+  const [products, ratings] = await Promise.all([
+    getProductsByBusiness(business.owner_id),
+    getBusinessRatings([business.id]),
+  ]);
 
   const t = {
     empty: locale === "en" ? "This business has no active products yet." : "Este negocio todavía no tiene productos activos.",
@@ -43,6 +47,8 @@ export default async function BusinessStorefrontPage({
           </div>
           <h1 className="pb-1 text-2xl font-semibold tracking-tight">{business.name}</h1>
         </div>
+
+        <BusinessRatingBadge rating={ratings.get(business.id)} locale={locale} className="mt-3" />
 
         {business.description ? (
           <p className="mt-4 max-w-2xl text-muted-foreground">{business.description}</p>

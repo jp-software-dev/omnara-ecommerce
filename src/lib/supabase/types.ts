@@ -993,7 +993,14 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      business_ratings: {
+        Row: {
+          avg_rating: number | null
+          business_id: string | null
+          review_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_list_users: {

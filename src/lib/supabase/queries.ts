@@ -475,7 +475,7 @@ export async function getBusinessByOwnerId(ownerId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("businesses")
-    .select("slug, name")
+    .select("id, slug, name")
     .eq("owner_id", ownerId)
     .eq("is_active", true)
     .maybeSingle();
@@ -641,3 +641,26 @@ export async function getReturnsByOrder(orderId: string) {
 }
 
 export type ReturnListItem = Awaited<ReturnType<typeof getMyReturns>>[number];
+
+export type BusinessRating = { avg: number; count: number };
+
+// Seller rating = average of the visible reviews of the business's products
+// (business_ratings view). Businesses without reviews are simply absent.
+export async function getBusinessRatings(businessIds: string[]) {
+  const ratings = new Map<string, BusinessRating>();
+  if (businessIds.length === 0) return ratings;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("business_ratings")
+    .select("business_id, review_count, avg_rating")
+    .in("business_id", businessIds);
+  if (error) throw error;
+
+  for (const row of data) {
+    if (row.business_id && row.avg_rating !== null && row.review_count) {
+      ratings.set(row.business_id, { avg: Number(row.avg_rating), count: row.review_count });
+    }
+  }
+  return ratings;
+}
