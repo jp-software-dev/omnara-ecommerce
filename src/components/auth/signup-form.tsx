@@ -1,6 +1,5 @@
 "use client";
 
-import { captchaEnabled, Turnstile } from "@/components/auth/turnstile";
 import { useState } from "react";
 import { useLocale } from "next-intl";
 import { toast } from "sonner";
@@ -29,7 +28,6 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
   const t = {
     mismatch: en ? "Passwords don't match." : "Las contraseñas no coinciden.",
     tooShort: en ? "Password must be at least 8 characters." : "La contraseña debe tener al menos 8 caracteres.",
-    securityCheck: en ? "Complete the security check." : "Completa la verificación de seguridad.",
     created: en ? "Account created." : "Cuenta creada.",
     checkEmail: en ? "Account created. Check your email to confirm it." : "Cuenta creada. Revisa tu correo para confirmarla.",
     title: en ? "Create your account" : "Crea tu cuenta",
@@ -51,8 +49,6 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
     privacy: en ? "Privacy notice" : "Aviso de privacidad",
   };
   const [loading, setLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [captchaReset, setCaptchaReset] = useState(0);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -71,19 +67,14 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
       return;
     }
 
-    if (captchaEnabled && !captchaToken) {
-      toast.error(t.securityCheck);
-      return;
-    }
     setLoading(true);
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName }, captchaToken: captchaToken ?? undefined },
+      options: { data: { full_name: fullName } },
     });
     setLoading(false);
-    setCaptchaReset((n) => n + 1);
 
     if (error) {
       toast.error(error.message);
@@ -132,7 +123,6 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
                 <FieldDescription>{t.minimum}</FieldDescription>
               </Field>
               <Field>
-                <Turnstile onToken={setCaptchaToken} resetKey={captchaReset} />
                 <Button type="submit" disabled={loading}>
                   {loading ? t.creating : t.create}
                 </Button>

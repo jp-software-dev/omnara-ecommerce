@@ -20,7 +20,7 @@ It was built as a university project (IUEM — *Comercio Electrónico* and *Inge
 * **Trust built in**: reviews only from real buyers (with a database-computed *Verified purchase* badge), seller ratings, public questions and answers, side-by-side product comparison, and a return / refund / dispute flow.
 * **Three roles** — customer, vendor, admin — enforced by Row Level Security in the database, not just in the UI.
 * **Bilingual (ES/EN) and multi-currency (MXN/USD)**, with the amount Stripe charges derived from the same exchange rate shown on screen.
-* **Security and privacy**: server-side validation, an append-only admin audit log, CAPTCHA-ready forms, a rate-limited contact form, real terms and privacy notice, data export and deletion requests.
+* **Security and privacy**: server-side validation, an append-only admin audit log, a rate-limited contact form, real terms and privacy notice, data export and deletion requests.
 * **Quality**: unit tests, CI on every pull request, and the SQL of every database change versioned in `supabase/migrations`.
 
 ## ✨ Features
@@ -55,7 +55,7 @@ It was built as a university project (IUEM — *Comercio Electrónico* and *Inge
 * **Server-authoritative money**: prices, shipping, discounts, refunds and currency conversion are recomputed on the server; the client only chooses *what* to buy.
 * **Signature-verified, idempotent Stripe webhook**, **test-mode lock** on the Stripe client, idempotent refunds, and a CSP plus standard security headers.
 * **Server-side validation** (zod) on products, businesses, promo codes, variants, addresses, returns, questions and the contact form.
-* **Abuse protection**: the contact form only accepts messages through a database function that validates and throttles (3 per address and 40 in total per hour) plus a honeypot; login, signup, recovery and contact are **CAPTCHA-ready** (Cloudflare Turnstile, off until configured).
+* **Abuse protection**: the contact form only accepts messages through a database function that validates and throttles (3 per address and 40 in total per hour) plus a honeypot field.
 * **Admin audit log** (`/admin/bitacora`): who changed which fields, written by triggers, append-only and without copying personal data.
 * **Privacy**: real terms of service and privacy notice (ES/EN), a personal data export (`/cuenta/privacidad`) and account deletion requests handled by an admin.
 * **Least privilege and secrets hygiene**: the service-role key is used in a few narrow places; `.env*` and key formats are git-ignored.
@@ -120,7 +120,7 @@ The last step is the one the course flags as essential ("the store needs to know
 
 | Challenge | How Omnara addresses it |
 | --- | --- |
-| Seguridad informática | RLS, CSP, server-side validation, least-privilege keys, abuse throttling, CAPTCHA-ready forms, admin audit log |
+| Seguridad informática | RLS, CSP, server-side validation, least-privilege keys, abuse throttling, admin audit log |
 | Fraudes | Payment handled by Stripe, webhook signature verification, test-mode lock; sellers are vetted with an identity document before they can sell |
 | Protección de datos personales | Data minimized, RLS scopes it to its owner, private bucket for identity documents, data export and deletion requests, privacy notice |
 | Competencia | Several sellers share one catalog; product comparison, seller ratings and filters help shoppers choose |
@@ -140,7 +140,6 @@ Omnara is a complete teaching marketplace. Known limits and next steps if it wer
 * **Carrier integration** and shipping priced per seller or by weight.
 * **Comparison of the exact same item** across sellers: products have no shared catalogue code (GTIN/model), so "similar" means same category and a different seller.
 * **Restocking on returns** is an explicit action by the seller or an admin (not automatic, because a returned item can arrive damaged), and the parties can't yet attach files to a dispute.
-* **Google sign-in** is built but stays off until you create the Google credentials and set `NEXT_PUBLIC_GOOGLE_AUTH=true` (see the pull request for the steps); it has not been run against real credentials.
 * **Automated tests beyond unit level**: database rules were verified with SQL scripts and are not part of CI, and there are no browser (end-to-end) tests.
 
 ## 🛠 Technologies Used
@@ -179,9 +178,6 @@ You need Node.js 20+ and a Supabase project.
    EMAIL_FROM=
    CRON_SECRET=
    NEXT_PUBLIC_SITE_URL=
-   NEXT_PUBLIC_GOOGLE_AUTH=
-   NEXT_PUBLIC_TURNSTILE_SITE_KEY=
-   TURNSTILE_SECRET_KEY=
    ```
 
    | Variable | Needed for |
@@ -193,8 +189,7 @@ You need Node.js 20+ and a Supabase project.
    | `RESEND_API_KEY`, `EMAIL_FROM` | Sending notification emails. Without them emails are queued and `/admin/correos` says so. |
    | `CRON_SECRET` | Protects `/api/cron/send-emails`, a safety net that re-sends queued emails. |
    | `NEXT_PUBLIC_SITE_URL` | Base URL used for links inside emails. |
-   | `NEXT_PUBLIC_GOOGLE_AUTH` | Set to `true` to show *Continue with Google* once Google is configured in Supabase. |
-   | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile CAPTCHA. Also enable CAPTCHA protection in the Supabase dashboard (Authentication → Attack Protection) with the same secret, and turn on leaked-password protection there. |
+   | *Supabase dashboard settings* | In Authentication → Attack Protection, turn on **leaked-password protection** (it may require a paid Supabase plan). It is a dashboard setting, not something the code can switch on. |
 
 3. **Forward Stripe webhooks** while developing (Stripe CLI), and copy the signing secret it prints into `STRIPE_WEBHOOK_SECRET`:
    ```bash
@@ -213,6 +208,20 @@ You need Node.js 20+ and a Supabase project.
    ```
 
 6. **Onboard a seller.** Have the student sign up, then in `/admin/negocios` pick them as owner and fill in the business details. Their account becomes a vendor automatically and they can manage products from `/admin/productos`.
+
+### Setting up email notifications (Resend)
+
+Order, shipping, return and seller-application emails are sent through [Resend](https://resend.com). Until it is configured the app works normally: emails are queued and `/admin/correos` says they are not being sent.
+
+1. Create a free account at resend.com.
+2. **API Keys → Create API Key** with *Sending access*. Copy it right away (it is shown only once). That is `RESEND_API_KEY`.
+3. Choose the sender, `EMAIL_FROM`:
+   * **To try it quickly:** `Omnara <onboarding@resend.dev>`. Resend's shared test sender normally delivers only to the email address of your own Resend account.
+   * **To email real customers:** under **Domains → Add Domain**, add a domain you own and create the DNS records Resend shows (SPF and DKIM), wait until it says *Verified*, then use an address on it, for example `Omnara <pedidos@yourdomain.com>`.
+4. Put the variables in two places: `.env.local` (to try it locally) and **Vercel → your project → Settings → Environment Variables** for Production and Preview, then redeploy. Optional but useful: `NEXT_PUBLIC_SITE_URL` (your site's address, used for the links inside emails) and `CRON_SECRET` (any long random string, e.g. from `openssl rand -hex 32`).
+5. Check it: sign in as admin, open **Correos**: it should say email is configured. Place a test order (or press *Enviar correos pendientes ahora*) and watch the messages go from *Pendientes* to *Enviados*. If one shows an error, its text appears next to it.
+
+Resend's free plan has sending limits and the shared test sender is not meant for production, so verify your own domain before real use.
 
 ### Scripts
 
