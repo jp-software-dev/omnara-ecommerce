@@ -11,7 +11,7 @@
 
 It was built as a university project (IUEM — *Comercio Electrónico* and *Ingeniería de Software I*) and is organized around the concepts from that course: the participants of an e-commerce operation, the platform's core functions, the payment process, the front-end / back-end split, and the advantages and challenges of selling online. Those mappings are laid out below.
 
-> **Demo safety:** the Stripe client refuses to start with anything but a test-mode key, so Omnara can never process a real charge. Use the test card `4242 4242 4242 4242`, any future expiry and any CVC.
+> **Educational demo project:** Omnara is a teaching project. **No product is real and nothing is actually sold**: products, prices, businesses, orders, tracking numbers, returns and refunds are sample data that simulate an online marketplace. The Stripe client refuses to start with anything but a test-mode key, so it can never process a real charge. Use the test card `4242 4242 4242 4242`, any future expiry and any CVC, and use sample data rather than real personal information.
 
 ## 🌟 Highlights
 
@@ -20,7 +20,7 @@ It was built as a university project (IUEM — *Comercio Electrónico* and *Inge
 * **Trust built in**: reviews only from real buyers (with a database-computed *Verified purchase* badge), seller ratings, public questions and answers, side-by-side product comparison, and a return / refund / dispute flow.
 * **Three roles** — customer, vendor, admin — enforced by Row Level Security in the database, not just in the UI.
 * **Bilingual (ES/EN) and multi-currency (MXN/USD)**, with the amount Stripe charges derived from the same exchange rate shown on screen.
-* **Security and privacy**: server-side validation, an append-only admin audit log, a rate-limited contact form, real terms and privacy notice, data export and deletion requests.
+* **Security and privacy**: server-side validation, an append-only admin audit log, a rate-limited contact form, terms and privacy notice written for an educational demo, data export and deletion requests.
 * **Quality**: unit tests, CI on every pull request, and the SQL of every database change versioned in `supabase/migrations`.
 
 ## ✨ Features
@@ -57,7 +57,7 @@ It was built as a university project (IUEM — *Comercio Electrónico* and *Inge
 * **Server-side validation** (zod) on products, businesses, promo codes, variants, addresses, returns, questions and the contact form.
 * **Abuse protection**: the contact form only accepts messages through a database function that validates and throttles (3 per address and 40 in total per hour) plus a honeypot field.
 * **Admin audit log** (`/admin/bitacora`): who changed which fields, written by triggers, append-only and without copying personal data.
-* **Privacy**: real terms of service and privacy notice (ES/EN), a personal data export (`/cuenta/privacidad`) and account deletion requests handled by an admin.
+* **Privacy**: terms of service and privacy notice (ES/EN) that state this is an educational project with no real sales, a personal data export (`/cuenta/privacidad`) and account deletion requests handled by an admin.
 * **Least privilege and secrets hygiene**: the service-role key is used in a few narrow places; `.env*` and key formats are git-ignored.
 
 ## 🎓 Mapping to the course material
@@ -129,7 +129,7 @@ The last step is the one the course flags as essential ("the store needs to know
 | Confianza del consumidor | Verified-purchase reviews, seller ratings, questions and answers, moderation, public storefronts |
 | Disponibilidad / dependencia tecnológica | Managed hosting on Vercel and Supabase |
 | Costos de envío | Configurable free-shipping threshold and flat rate |
-| Cumplimiento legal | Real terms of service and privacy notice (written as a student project; review with a lawyer before real use) |
+| Cumplimiento legal | Terms of service and privacy notice written for an educational demo: they state that no product is real or sold, payments are test-mode, and shipping, returns and refunds are simulated |
 | Experiencia de usuario | Responsive, bilingual, accessible focus states, reduced-motion support |
 
 ## 🔭 Future work
