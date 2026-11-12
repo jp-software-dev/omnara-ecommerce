@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { returnErrorMessage } from "@/lib/returns";
 import { getStripe } from "@/lib/stripe";
-import { flushEmailsSoon } from "@/lib/email-outbox";
+import { flushEmailsSoon, processEmailOutbox } from "@/lib/email-outbox";
 import { createClient } from "@/lib/supabase/server";
 
 const ORDER_STATUSES = ["pending", "paid", "fulfilled", "cancelled", "refunded"] as const;
@@ -414,6 +414,21 @@ export async function moderateQuestion(questionId: string, hidden: boolean) {
   if (error) throw error;
   revalidatePath("/[locale]/(admin)/admin/preguntas", "page");
   revalidatePath("/[locale]/(shop)/producto/[slug]", "page");
+}
+
+// Sends whatever is waiting in the email queue right now (admin only).
+export async function processEmailsNow() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Debes iniciar sesión.");
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if (profile?.role !== "admin") throw new Error("Solo un administrador puede enviar correos.");
+
+  const result = await processEmailOutbox(50);
+  revalidatePath("/[locale]/(admin)/admin/correos", "page");
+  return result;
 }
 
 export async function markMessageRead(messageId: string) {
