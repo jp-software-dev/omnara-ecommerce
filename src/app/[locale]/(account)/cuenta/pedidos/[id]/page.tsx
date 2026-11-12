@@ -54,9 +54,14 @@ export default async function OrderDetailPage({
     review: locale === "en" ? "Leave a review" : "Dejar reseña",
   };
 
+  // Only items that already shipped are worth reviewing. The database lets a buyer
+  // review from the moment the order is paid, but one order can mix several sellers
+  // who ship separately, so waiting for the whole order to be "fulfilled" meant the
+  // prompt rarely showed up.
   const purchasedProducts = Array.from(
     new Map(
       order.order_items
+        .filter((item) => item.shipped_at)
         .map((item) => ({
           slug: item.product_variants?.products?.slug,
           name: pickLocale(item.product_name_snapshot, locale) || "Producto",
@@ -113,7 +118,7 @@ export default async function OrderDetailPage({
         </div>
       ) : null}
 
-      {order.status === "fulfilled" && purchasedProducts.length > 0 ? (
+      {(order.status === "paid" || order.status === "fulfilled") && purchasedProducts.length > 0 ? (
         <div className="mt-6 rounded-lg border p-5">
           <p className="flex items-center gap-2 font-medium">
             <Star className="size-4" />
