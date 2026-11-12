@@ -5,6 +5,15 @@ import { z } from "zod";
 import { returnErrorMessage } from "@/lib/returns";
 import { getStripe } from "@/lib/stripe";
 import { flushEmailsSoon, processEmailOutbox } from "@/lib/email-outbox";
+import {
+  businessCreateSchema,
+  businessUpdateSchema,
+  myBusinessUpdateSchema,
+  parseOrThrow,
+  productSchema,
+  productUpdateSchema,
+  promoSchema,
+} from "@/lib/validation";
 import { createClient } from "@/lib/supabase/server";
 
 const ORDER_STATUSES = ["pending", "paid", "fulfilled", "cancelled", "refunded"] as const;
@@ -29,7 +38,7 @@ export async function adjustStock(variantId: string, nextQuantity: number) {
   revalidatePath("/[locale]/(admin)/admin/inventario", "page");
 }
 
-export async function createProduct(input: {
+export async function createProduct(rawInput: {
   slug: string;
   nameEs: string;
   nameEn: string;
@@ -38,6 +47,7 @@ export async function createProduct(input: {
   status: string;
   attributes: Record<string, string>;
 }) {
+  const input = parseOrThrow(productSchema, rawInput);
   const supabase = await createClient();
   const {
     data: { user },
@@ -78,7 +88,7 @@ export async function createProduct(input: {
 
 export async function updateProduct(
   productId: string,
-  input: {
+  rawInput: {
     nameEs: string;
     nameEn: string;
     basePriceMxnCents: number;
@@ -87,6 +97,7 @@ export async function updateProduct(
     attributes: Record<string, string>;
   }
 ) {
+  const input = parseOrThrow(productUpdateSchema, rawInput);
   const supabase = await createClient();
   const { error } = await supabase
     .from("products")
@@ -441,13 +452,14 @@ export async function markMessageRead(messageId: string) {
   revalidatePath("/[locale]/(admin)/admin/mensajes", "page");
 }
 
-export async function createPromoCode(input: {
+export async function createPromoCode(rawInput: {
   code: string;
   discountType: "percentage" | "fixed";
   discountValue: number;
   minOrderCents: number;
   usageLimit: number | null;
 }) {
+  const input = parseOrThrow(promoSchema, rawInput);
   const supabase = await createClient();
   const { error } = await supabase.from("promo_codes").insert({
     code: input.code.trim().toUpperCase(),
@@ -494,7 +506,7 @@ function assertBucketImageUrl(url: string) {
   }
 }
 
-export async function createBusiness(input: {
+export async function createBusiness(rawInput: {
   ownerId: string;
   slug: string;
   name: string;
@@ -502,6 +514,7 @@ export async function createBusiness(input: {
   logoUrl: string;
   bannerUrl: string;
 }) {
+  const input = parseOrThrow(businessCreateSchema, rawInput);
   assertValidSlug(input.slug);
   assertBucketImageUrl(input.logoUrl);
   assertBucketImageUrl(input.bannerUrl);
@@ -546,7 +559,7 @@ export async function createBusiness(input: {
 
 export async function updateBusiness(
   businessId: string,
-  input: {
+  rawInput: {
     name: string;
     description: string;
     logoUrl: string;
@@ -554,6 +567,7 @@ export async function updateBusiness(
     isActive: boolean;
   }
 ) {
+  const input = parseOrThrow(businessUpdateSchema, rawInput);
   assertBucketImageUrl(input.logoUrl);
   assertBucketImageUrl(input.bannerUrl);
   const supabase = await createClient();
@@ -572,12 +586,13 @@ export async function updateBusiness(
   revalidatePath("/[locale]/(admin)/admin/mi-negocio", "page");
 }
 
-export async function updateMyBusiness(input: {
+export async function updateMyBusiness(rawInput: {
   name: string;
   description: string;
   logoUrl: string;
   bannerUrl: string;
 }) {
+  const input = parseOrThrow(myBusinessUpdateSchema, rawInput);
   assertBucketImageUrl(input.logoUrl);
   assertBucketImageUrl(input.bannerUrl);
   const supabase = await createClient();
