@@ -459,6 +459,28 @@ export async function resolveDataRequest(requestId: string, status: "done" | "re
   revalidatePath("/[locale]/(account)/cuenta/privacidad", "page");
 }
 
+// Puts a returned item back into stock (once per return). Decided by the item's
+// seller or an admin; the database function re-checks who is calling.
+export async function restockReturnedItem(returnId: string, locale: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("restock_returned_item", { p_return_id: returnId });
+  if (error) {
+    const en = locale === "en";
+    if (error.message.includes("Already restocked")) {
+      throw new Error(en ? "This item was already restocked." : "Este artículo ya se repuso al inventario.");
+    }
+    if (error.message.includes("not approved")) {
+      throw new Error(en ? "Approve the return first." : "Primero hay que aprobar la devolución.");
+    }
+    if (error.message.includes("no longer exists")) {
+      throw new Error(en ? "That product variant no longer exists." : "Esa variante del producto ya no existe.");
+    }
+    throw error;
+  }
+  revalidatePath("/[locale]/(admin)/admin/devoluciones", "layout");
+  revalidatePath("/[locale]/(admin)/admin/inventario", "page");
+}
+
 export async function markMessageRead(messageId: string) {
   const supabase = await createClient();
   const { error } = await supabase

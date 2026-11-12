@@ -6,6 +6,7 @@ import { getReturnDetail } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/format";
 import { DecisionForm } from "../decision-form";
 import { RefundButton } from "../refund-button";
+import { RestockButton } from "../restock-button";
 
 export default async function AdminReturnDetailPage({
   params,
@@ -35,6 +36,24 @@ export default async function AdminReturnDetailPage({
         locale={locale}
         amountLabel={formatPrice(data.refund_amount_cents, data.currency === "USD" ? "USD" : "MXN", locale)}
       />
+    );
+  }
+
+  // Once approved, the seller (or an admin) decides whether the item goes back on sale.
+  if (data.status === "approved" || data.status === "refunded") {
+    const restock = data.restocked_at ? (
+      <p className="text-sm text-muted-foreground">
+        {en ? "Returned to stock on " : "Repuesto al inventario el "}
+        {new Date(data.restocked_at).toLocaleDateString(en ? "en-US" : "es-MX")}.
+      </p>
+    ) : (
+      <RestockButton returnId={data.id} quantity={data.order_items?.quantity ?? 1} locale={locale} />
+    );
+    actions = (
+      <div className="grid gap-4">
+        {actions}
+        {restock}
+      </div>
     );
   }
 

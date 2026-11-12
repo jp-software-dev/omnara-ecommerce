@@ -99,7 +99,7 @@ Proyecto Supabase: `omnara-ecommerce` (`jqgfsbtevkofhwlaxutt`, región `us-west-
 | `app_settings` | Config global, fila única (`id = 1`) | `usd_exchange_rate` (default 18.0), `free_shipping_threshold_mxn_cents` (default 150000 = $1,500 MXN) |
 | `contact_messages` | Buzón de contacto | `name`, `email`, `subject`, `message`, `status` (`new`/`read`) |
 | `seller_applications` | Solicitudes para vender | `user_id`, `business_name`, `description`, `phone`, `document_path` (bucket privado `seller-documents`), `status` (`pending`/`approved`/`rejected`), `rejection_reason`, `reviewed_by` |
-| `return_requests` | Devoluciones (una por artículo) | `order_item_id` (unique), `order_id`, `user_id`, `vendor_id`, `reason`, `details`, `status` (`requested`/`approved`/`rejected`/`escalated`/`closed`/`refunded`), `refund_amount_cents`, `currency`, `stripe_refund_id` |
+| `return_requests` | Devoluciones (una por artículo) | `order_item_id` (unique), `order_id`, `user_id`, `vendor_id`, `reason`, `details`, `status` (`requested`/`approved`/`rejected`/`escalated`/`closed`/`refunded`), `refund_amount_cents`, `currency`, `stripe_refund_id`, `restocked_at` (reposición al inventario) |
 | `return_messages` | Hilo de cada devolución | `return_id`, `author_id`, `author_role` (`buyer`/`vendor`/`admin`), `body` |
 | `product_questions` | Preguntas y respuestas públicas | `product_id`, `user_id`, `question`, `answer`, `answered_by`, `answered_at`, `is_hidden` |
 | `email_outbox` | Cola de notificaciones por correo | `to_email`, `locale`, `template`, `payload`, `status` (`pending`/`sent`/`failed`), `attempts`, `last_error` |
@@ -148,6 +148,7 @@ Las escrituras sensibles no tienen políticas de INSERT/UPDATE: pasan por funcio
 | `vendor_ship_items(order, tracking)` | El vendedor marca sus artículos como enviados; el pedido pasa a enviado cuando no queda nada pendiente |
 | `approve_seller_application(id, slug)` / `reject_seller_application(id, reason)` | Aprobar crea el negocio, promueve al usuario y cierra la solicitud en una transacción |
 | `request_return`, `decide_return`, `escalate_return`, `admin_resolve_return`, `mark_return_refunded`, `add_return_message` | Flujo de devoluciones; el monto del reembolso se calcula en la base |
+| `restock_returned_item(return)` | Repone al inventario el artículo de una devolución aprobada, una sola vez, y registra el movimiento `return` (vendedor del artículo o admin) |
 | `ask_question`, `answer_question`, `moderate_question` | Preguntas y respuestas; límite de 5 preguntas por hora |
 | `moderate_review(id, hidden)` | Ocultar o restaurar una reseña (solo admin) |
 | `submit_contact_message(...)` | Única vía para escribir en `contact_messages`; valida y limita la frecuencia |
@@ -193,7 +194,7 @@ RLS está **habilitado en todas las tablas** de `public`. No hay ninguna tabla d
 - Supabase Auth (email + contraseña). Flujo de registro con confirmación por correo (`signUp` -> mensaje "revisa tu correo").
 - Recuperación de contraseña: `resetPasswordForEmail` -> `/recuperar`, enlace de correo lleva a `/restablecer` -> `updateUser({ password })`. Flujo cliente-only, sin ruta de callback en servidor (implica que el proyecto de Supabase usa el flujo implícito de detección de sesión en URL, no PKCE con code exchange).
 - Sesión mantenida vía cookies HTTP-only, refrescada en cada request por `updateSession()` (`src/lib/supabase/middleware.ts`), invocada desde `src/proxy.ts`.
-- **Login con Google:** botón presente en la UI pero es un stub (`toast` "se conecta en la siguiente fase") — requiere credenciales OAuth de Google Cloud Console que no pueden generarse desde el código; fuera de alcance por diseño.
+- **Login con Google:** implementado con `signInWithOAuth` y la ruta `/api/auth/callback` (intercambia el código por una sesión y redirige a un destino fijo, sin parámetro `next`). Está apagado por defecto: el botón solo aparece con `NEXT_PUBLIC_GOOGLE_AUTH=true`, después de configurar el proveedor en Supabase y Google Cloud.
 - `requireRole(allowedRoles, locale)` (`src/lib/supabase/auth-helpers.ts`) — guard de servidor usado en todas las páginas de `(admin)`: redirige a `/login` si no hay sesión, a `/` si el rol no matchea.
 
 ## 8. Pagos (Stripe) — flujo completo
@@ -274,7 +275,7 @@ Los negocios pausados se excluyen del home, categorías, búsqueda y más vendid
 - Cuenta: `/cuenta/direcciones`, `/cuenta/devoluciones`, `/cuenta/devoluciones/[id]`, `/cuenta/privacidad`.
 - Panel (admin y vendedor): `/admin/devoluciones`, `/admin/devoluciones/[id]`, `/admin/preguntas`, `/admin/mi-negocio` (vendedor).
 - Panel (solo admin): `/admin/solicitudes`, `/admin/negocios`, `/admin/resenas`, `/admin/correos`, `/admin/bitacora`, `/admin/privacidad`.
-- API: `GET /api/account/export` (descarga de datos del usuario), `GET|POST /api/cron/send-emails` (protegida con `CRON_SECRET`).
+- API: `GET /api/account/export` (descarga de datos del usuario), `GET|POST /api/cron/send-emails` (protegida con `CRON_SECRET`). `GET /api/auth/callback` (retorno de OAuth).
 
 
 ### API
@@ -299,6 +300,7 @@ Todas las rutas anteriores existen bajo `/es/...` y `/en/...` (prefijo de locale
 | `RESEND_API_KEY`, `EMAIL_FROM` | Envío de correos (sin ellos quedan en cola) | No |
 | `CRON_SECRET` | Protege `/api/cron/send-emails` | No |
 | `NEXT_PUBLIC_SITE_URL` | Enlaces dentro de los correos | No |
+| `NEXT_PUBLIC_GOOGLE_AUTH` | `true` muestra el botón de Google (tras configurarlo en Supabase) | No |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | CAPTCHA (Cloudflare Turnstile); activar también en el panel de Supabase | No |
 
 `.env.example` documenta las 5. Ni `.env.local` ni `.env.example` están versionados en git (`.gitignore`: `.env*`).

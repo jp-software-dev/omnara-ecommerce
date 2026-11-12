@@ -178,6 +178,7 @@ Acceso restringido por rol; un vendedor ve el mismo panel pero **solo sus propio
 3. Si se aprueba, el administrador ejecuta el **reembolso por Stripe** al método de pago original.
 4. Comprador, vendedor y administrador conversan en un hilo hasta que el caso se resuelve. Los artículos de productos propios de Omnara pasan directo al administrador.
 5. Cuando todos los artículos de un pedido se reembolsan, el pedido queda como reembolsado.
+6. Con la devolución aprobada, el vendedor (o el administrador) puede **reponer el artículo al inventario**, una sola vez por devolución, si regresó en condiciones de venderse.
 
 ## 17. Preguntas y respuestas
 
@@ -192,10 +193,10 @@ Acceso restringido por rol; un vendedor ve el mismo panel pero **solo sus propio
 
 ## 19. Fuera de alcance / pendiente (transparencia)
 
-- **Login con Google:** el botón es un marcador; requiere credenciales de Google Cloud y Supabase.
+- **Login con Google:** está construido pero apagado hasta que se creen las credenciales de Google Cloud y Supabase y se active `NEXT_PUBLIC_GOOGLE_AUTH`; no se ha probado con credenciales reales.
 - **Reparto de pagos por vendedor (Stripe Connect):** un carrito es un pedido y el dinero no se divide entre vendedores.
 - **Paqueterías** y envío por vendedor o por peso.
-- **Reposición automática de inventario** al aprobar una devolución.
+- **Reposición automática de inventario** al aprobar una devolución: hoy es una acción manual del vendedor o del administrador (un artículo devuelto puede llegar dañado).
 - **Comparar el mismo artículo exacto** entre vendedores (haría falta un código o modelo común).
 - **Pruebas de extremo a extremo** en navegador; las reglas de la base se verificaron con scripts SQL fuera de la integración continua.
 - **Texto legal revisado por un abogado:** los términos y el aviso son de un proyecto escolar.

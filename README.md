@@ -139,8 +139,8 @@ Omnara is a complete teaching marketplace. Known limits and next steps if it wer
 * **Per-seller payouts** with Stripe Connect and a platform commission: today one cart is one order and the money is not split.
 * **Carrier integration** and shipping priced per seller or by weight.
 * **Comparison of the exact same item** across sellers: products have no shared catalogue code (GTIN/model), so "similar" means same category and a different seller.
-* **Restocking on returns** is not automatic, and sellers can't yet respond to a dispute with attachments.
-* **Google sign-in** (needs credentials from Google Cloud and Supabase) — the button is still a placeholder.
+* **Restocking on returns** is an explicit action by the seller or an admin (not automatic, because a returned item can arrive damaged), and the parties can't yet attach files to a dispute.
+* **Google sign-in** is built but stays off until you create the Google credentials and set `NEXT_PUBLIC_GOOGLE_AUTH=true` (see the pull request for the steps); it has not been run against real credentials.
 * **Automated tests beyond unit level**: database rules were verified with SQL scripts and are not part of CI, and there are no browser (end-to-end) tests.
 
 ## 🛠 Technologies Used
@@ -179,6 +179,7 @@ You need Node.js 20+ and a Supabase project.
    EMAIL_FROM=
    CRON_SECRET=
    NEXT_PUBLIC_SITE_URL=
+   NEXT_PUBLIC_GOOGLE_AUTH=
    NEXT_PUBLIC_TURNSTILE_SITE_KEY=
    TURNSTILE_SECRET_KEY=
    ```
@@ -192,6 +193,7 @@ You need Node.js 20+ and a Supabase project.
    | `RESEND_API_KEY`, `EMAIL_FROM` | Sending notification emails. Without them emails are queued and `/admin/correos` says so. |
    | `CRON_SECRET` | Protects `/api/cron/send-emails`, a safety net that re-sends queued emails. |
    | `NEXT_PUBLIC_SITE_URL` | Base URL used for links inside emails. |
+   | `NEXT_PUBLIC_GOOGLE_AUTH` | Set to `true` to show *Continue with Google* once Google is configured in Supabase. |
    | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile CAPTCHA. Also enable CAPTCHA protection in the Supabase dashboard (Authentication → Attack Protection) with the same secret, and turn on leaked-password protection there. |
 
 3. **Forward Stripe webhooks** while developing (Stripe CLI), and copy the signing secret it prints into `STRIPE_WEBHOOK_SECRET`:
