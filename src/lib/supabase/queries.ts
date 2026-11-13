@@ -606,15 +606,25 @@ export async function getReturnDetail(id: string) {
   const { data, error } = await supabase
     .from("return_requests")
     .select(
-      "id, status, reason, details, decision_note, refund_amount_cents, currency, stripe_refund_id, restocked_at, created_at, order_id, user_id, vendor_id, order_items(product_name_snapshot, quantity, unit_price_cents), orders(order_number), return_messages(id, author_role, body, created_at)"
+      "id, status, reason, details, decision_note, refund_amount_cents, currency, stripe_refund_id, restocked_at, created_at, order_id, user_id, vendor_id, order_items(product_name_snapshot, quantity, unit_price_cents), orders(order_number), return_messages(id, author_role, body, created_at, attachment_path)"
     )
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
-  if (data) {
-    data.return_messages.sort((a, b) => a.created_at.localeCompare(b.created_at));
-  }
-  return data;
+  if (!data) return data;
+
+  data.return_messages.sort((a, b) => a.created_at.localeCompare(b.created_at));
+  // The bucket is private: each photo is shown through a short-lived signed URL.
+  const messages = await Promise.all(
+    data.return_messages.map(async (message) => {
+      if (!message.attachment_path) return { ...message, attachment_url: null as string | null };
+      const { data: signed } = await supabase.storage
+        .from("return-attachments")
+        .createSignedUrl(message.attachment_path, 3600);
+      return { ...message, attachment_url: signed?.signedUrl ?? null };
+    })
+  );
+  return { ...data, return_messages: messages };
 }
 
 // For the order page: which items already have a request, and in which state.
