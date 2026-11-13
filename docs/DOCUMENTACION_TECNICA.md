@@ -330,8 +330,17 @@ Todas las rutas anteriores existen bajo `/es/...` y `/en/...` (prefijo de locale
 
 - **Pruebas unitarias** (Vitest, `npm test`): 32 casos sobre envío, conversión y formato de moneda, validación de productos, negocios, códigos promocionales y direcciones, la ventana de 30 días de devoluciones y el renderizado de correos (incluido el escape de HTML).
 - **CI** (`.github/workflows/ci.yml`): `npm run lint`, `npm run typecheck` y `npm test` en cada pull request y en cada push a `main` y `development`. El build de producción lo hace Vercel.
-- **Reglas de base de datos:** se verificaron con scripts SQL dentro de transacciones que se revierten (límites, permisos, disparadores, flujos completos); no forman parte de la CI.
+- **Reglas de base de datos:** `supabase/tests/database_checks.sql` verifica adjuntos, comisión, pagos simulados y permisos dentro de una transacción que siempre se revierte; no forma parte de la CI. Además hay pruebas unitarias de `pwned`, `shipping` y `model-code`.
 - **Lockfile:** se fijaron `@emnapi/core` y `@emnapi/runtime` para que `npm ci` funcione en Linux con un lockfile generado en Windows.
+
+## 16b. Modo de demostración (sin cuentas externas)
+
+- **Pago simulado:** sin `STRIPE_SECRET_KEY` y con `app_settings.demo_payments_enabled = true`, `createCheckoutSession` llama a `place_demo_order` (SECURITY DEFINER): recalcula precios, envío, promoción y existencias; crea el pedido `DEMO-XXXXXXXX` con `payment_method = 'demo'` y un `demo_token` que protege la confirmación de invitados (`get_demo_order`). Límite de 5 pedidos por comprador y 60 en total por hora. `validate_promo_code` y `best_selling_product_ids` sustituyen a las lecturas con la clave de servicio.
+- **Reembolso simulado:** `refundReturn` registra `demo-refund-…` cuando el pedido es de demostración.
+- **Comisión y pagos simulados:** `app_settings.commission_bps` (300 = 3 %), tabla `seller_payouts`, `order_items.payout_id`, funciones `seller_balance` y `create_simulated_payout` (solo administrador, bloquea las partidas para no pagarlas dos veces, excluye devoluciones abiertas o reembolsadas). Pantalla `/admin/pagos`.
+- **Paqueterías simuladas:** `src/lib/shipping.ts` (guías `SIM-`, tres paqueterías, historial derivado del tiempo) y `ShipmentTimeline` en la página del pedido.
+- **Mismo artículo:** atributo `modelo` en todas las categorías y `getSameModelFromOtherBusinesses`.
+- **Adjuntos en devoluciones:** bucket privado `return-attachments`, políticas por participante de la devolución (`private.is_return_participant`) y `add_return_message(p_id, p_body, p_attachment)`.
 
 ## 17. Seguridad y privacidad añadidas
 
@@ -340,6 +349,6 @@ Todas las rutas anteriores existen bajo `/es/...` y `/en/...` (prefijo de locale
 - **Bitácora de administradores:** disparadores que registran quién cambió qué columnas, solo para acciones de administradores, sin copiar datos personales y sin posibilidad de editar o borrar.
 - **Almacenamiento:** el bucket `product-images` limita tamaño (5 MB) y tipos, y cada vendedor solo escribe en su carpeta; `seller-documents` es privado y solo lo leen administradores.
 - **Privacidad:** aviso y términos redactados para un proyecto educativo de demostración (ningún producto es real; pagos de prueba; envíos y devoluciones simulados), exportación de datos del usuario y solicitudes de eliminación atendidas por un administrador.
-- **Ajuste que solo se hace en el panel de Supabase:** la protección contra contraseñas filtradas (puede requerir un plan de pago).
+- **Contraseñas filtradas:** `src/lib/pwned.ts` consulta el rango de Have I Been Pwned enviando solo los primeros 5 caracteres del hash SHA-1 (k-anonimato) al registrarse o restablecer la contraseña; si el servicio no responde, no bloquea. La opción del panel de Supabase queda como refuerzo opcional.
 
 - **Correos:** cada plantilla añade un aviso de que Omnara es un proyecto educativo de demostración y de que el pedido es de prueba, para que no se confunda con una compra real.

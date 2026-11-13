@@ -67,7 +67,7 @@ Los roles se asignan desde `/admin/usuarios` (solo admin) — antes de esta func
    - Se puede aplicar un **código promocional** — se valida antes de pagar y muestra el descuento reflejado en el total.
    - El **envío** se calcula automáticamente: **gratis a partir de $1,500 MXN** de subtotal; por debajo de ese monto, tarifa fija de **$99 MXN** (equivalente convertido si se paga en USD).
    - Se puede pagar como invitado (solo pidiendo correo) o como cliente autenticado.
-   - El pago se procesa con Stripe, siempre en **modo de prueba** — un banner visible en el checkout lo aclara y da la tarjeta de prueba a usar (`4242 4242 4242 4242`), nunca se cobra dinero real.
+   - Si no hay una clave de Stripe configurada, el pago es **simulado**: un banner lo avisa, se pide la dirección en la misma página y se crea un pedido de ejemplo sin tarjeta ni dinero. Con Stripe configurado, el pago se procesa con Stripe, siempre en **modo de prueba** — un banner visible en el checkout lo aclara y da la tarjeta de prueba a usar (`4242 4242 4242 4242`), nunca se cobra dinero real.
 3. Tras pagar, la página de confirmación muestra el recibo completo (ver §7) y limpia el carrito.
 
 ### Códigos promocionales activos actualmente
