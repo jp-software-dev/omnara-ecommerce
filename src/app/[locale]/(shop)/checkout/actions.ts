@@ -7,8 +7,11 @@ import { getStripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
 import {
   getAppSettings,
+  getMyAddresses,
   getVariantsForCheckout,
-  validatePromoCode, getMyAddresses } from "@/lib/supabase/queries";
+  validatePromoCode,
+} from "@/lib/supabase/queries";
+import { addressSchema, type AddressInput } from "@/lib/addresses";
 import { pickLocale, convertToUsd } from "@/lib/format";
 import { computeShippingCents, FLAT_SHIPPING_MXN_CENTS } from "@/lib/shipping";
 
@@ -37,6 +40,10 @@ export async function getCheckoutContext() {
   return {
     freeShippingThresholdMxnCents: settings.free_shipping_threshold_mxn_cents,
     addresses,
+    signedIn: Boolean(user),
+    // Without a Stripe key the checkout can run as a simulated payment, but only
+    // while an admin has left the demo switch on in app_settings.
+    demoPayments: !process.env.STRIPE_SECRET_KEY && settings.demo_payments_enabled,
   };
 }
 
@@ -51,6 +58,7 @@ export async function createCheckoutSession({
   currency = "MXN",
   promoCode,
   addressId,
+  demoAddress,
 }: {
   items: CheckoutItemInput[];
   locale: string;
@@ -59,9 +67,17 @@ export async function createCheckoutSession({
   promoCode?: string;
   /** One of the buyer's saved addresses; when absent Stripe collects the address as before. */
   addressId?: string;
+  /** Shipping address typed on the page; only used by the simulated payment. */
+  demoAddress?: AddressInput;
 }) {
   if (items.length === 0) {
     throw new Error("El carrito está vacío.");
+  }
+
+  // No Stripe key: run the simulated payment instead (the database refuses it
+  // unless the demo switch is on). A configured key always uses Stripe.
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return placeDemoOrder({ items, locale, email, currency, promoCode, addressId, demoAddress });
   }
 
   const supabase = await createClient();
@@ -120,6 +136,7 @@ export async function createCheckoutSession({
       variantId: variant.id,
       quantity,
       unitAmountCents,
+      mxnCents,
       name: pickLocale(variant.products.name, locale),
     };
   });
@@ -139,11 +156,18 @@ export async function createCheckoutSession({
   let discountCents = 0;
   let appliedPromoCode: string | null = null;
   if (promoCode) {
-    // Re-validate server-side against the subtotal in the session's currency —
-    // never trust a discount amount computed on the client.
-    const validation = await validatePromoCode(promoCode, subtotalCents);
+    // Re-validate server-side — never trust a discount amount computed on the
+    // client. Codes are valued in MXN, so check against the MXN subtotal and convert
+    // the result when paying in USD (a fixed code used to be applied as if its MXN
+    // cents were USD cents).
+    const subtotalMxnCents = lineItems.reduce((sum, item) => sum + item.mxnCents * item.quantity, 0);
+    const validation = await validatePromoCode(promoCode, subtotalMxnCents);
     if (validation.valid) {
-      discountCents = validation.discountCents;
+      discountCents =
+        currency === "USD"
+          ? convertToUsd(validation.discountCents, appSettings.usd_exchange_rate)
+          : validation.discountCents;
+      discountCents = Math.min(discountCents, subtotalCents);
       appliedPromoCode = promoCode.trim().toUpperCase();
     }
   }
@@ -215,4 +239,113 @@ export async function createCheckoutSession({
   }
 
   redirect(session.url);
+}
+
+// ---------------------------------------------------------------------------
+// Simulated payment (educational demo). The database function place_demo_order
+// recomputes prices, shipping, discount and stock itself and refuses to run unless
+// the demo switch is on, so nothing here is trusted: this only gathers the shipping
+// address and turns the database's errors into readable messages.
+function demoOrderError(message: string, locale: string) {
+  const en = locale === "en";
+  const known: [string, string, string][] = [
+    ["disabled", "Los pagos no están configurados en este momento.", "Payments are not available right now."],
+    ["Out of stock", "Uno de los productos está agotado.", "One of the products is sold out."],
+    ["Product not available", "Uno de los productos ya no está disponible.", "One of the products is no longer available."],
+    ["Too many demo orders", "Hiciste muchos pedidos de prueba. Intenta de nuevo en una hora.", "You placed many test orders. Try again in an hour."],
+    ["valid email", "Escribe un correo válido para tu pedido.", "Enter a valid email for your order."],
+    ["Invalid quantity", "La cantidad de un producto no es válida.", "A product quantity is not valid."],
+  ];
+  const hit = known.find(([needle]) => message.includes(needle));
+  return hit ? (en ? hit[2] : hit[1]) : en ? "We couldn't place the order. Try again." : "No pudimos crear el pedido. Intenta de nuevo.";
+}
+
+async function placeDemoOrder({
+  items,
+  locale,
+  email,
+  currency = "MXN",
+  promoCode,
+  addressId,
+  demoAddress,
+}: {
+  items: CheckoutItemInput[];
+  locale: string;
+  email?: string;
+  currency?: "MXN" | "USD";
+  promoCode?: string;
+  addressId?: string;
+  demoAddress?: AddressInput;
+}) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  type Ship = {
+    name: string | null;
+    address: {
+      line1: string;
+      line2: string | null;
+      city: string;
+      state: string;
+      postal_code: string;
+      country: string;
+    };
+  };
+  let ship: Ship;
+
+  if (addressId) {
+    if (!user) throw new Error("Inicia sesión para usar una dirección guardada.");
+    const { data: address } = await supabase
+      .from("addresses")
+      .select("recipient_name, line1, line2, city, state, postal_code, country")
+      .eq("id", addressId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!address) throw new Error("No se encontró la dirección elegida.");
+    ship = {
+      name: address.recipient_name,
+      address: {
+        line1: address.line1,
+        line2: address.line2,
+        city: address.city,
+        state: address.state,
+        postal_code: address.postal_code,
+        country: address.country,
+      },
+    };
+  } else if (demoAddress) {
+    const parsed = addressSchema.safeParse(demoAddress);
+    if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "La dirección no es válida.");
+    const a = parsed.data;
+    ship = {
+      name: a.recipientName,
+      address: {
+        line1: a.line1,
+        line2: a.line2 || null,
+        city: a.city,
+        state: a.state,
+        postal_code: a.postalCode,
+        country: a.country,
+      },
+    };
+  } else {
+    throw new Error("Escribe la dirección de envío.");
+  }
+
+  const { data, error } = await supabase.rpc("place_demo_order", {
+    p_items: items.map((item) => ({ variant_id: item.variantId, quantity: item.quantity })),
+    p_currency: currency,
+    p_email: email ?? "",
+    p_promo: promoCode ?? "",
+    p_ship: ship,
+  });
+  if (error) throw new Error(demoOrderError(error.message, locale));
+
+  const result = data as { order_id: string; token: string } | null;
+  if (!result?.order_id || !result.token) {
+    throw new Error(demoOrderError("", locale));
+  }
+  redirect(`/${locale}/checkout/confirmacion?demo_order=${result.order_id}&token=${result.token}`);
 }
