@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { shipMyItems } from "../../actions";
+import { generateSimulatedTracking, SIM_CARRIERS, type SimCarrierCode } from "@/lib/shipping";
 
 export function ShipMyItems({
   locale,
@@ -23,6 +24,7 @@ export function ShipMyItems({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [tracking, setTracking] = useState(initialTracking);
+  const [carrier, setCarrier] = useState<SimCarrierCode>(SIM_CARRIERS[0].code);
 
   const en = locale === "en";
   const t = {
@@ -35,6 +37,10 @@ export function ShipMyItems({
     ship: en ? "Mark my items as shipped" : "Marcar mis artículos como enviados",
     update: en ? "Update tracking" : "Actualizar rastreo",
     done: en ? "Saved." : "Guardado.",
+    generate: en ? "Generate simulated label" : "Generar guía simulada",
+    simHint: en
+      ? "Demo carriers: no real carrier is contacted; the customer sees a simulated tracking history."
+      : "Paqueterías de demostración: no se contacta a ninguna paquetería real; el cliente ve un seguimiento simulado.",
   };
 
   const canShip = orderStatus === "paid" || orderStatus === "fulfilled";
@@ -70,6 +76,30 @@ export function ShipMyItems({
               {shipped ? t.update : t.ship}
             </Button>
           </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <select
+              aria-label={en ? "Carrier" : "Paquetería"}
+              value={carrier}
+              disabled={pending}
+              onChange={(event) => setCarrier(event.target.value as SimCarrierCode)}
+              className="h-9 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+            >
+              {SIM_CARRIERS.map((item) => (
+                <option key={item.code} value={item.code} className="text-foreground">
+                  {item.name}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={() => setTracking(generateSimulatedTracking(carrier))}
+            >
+              {t.generate}
+            </Button>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">{t.simHint}</p>
         </>
       ) : (
         <p className="mt-1 text-sm text-muted-foreground">{t.notPaid}</p>
