@@ -5,6 +5,7 @@ import { useLocale } from "next-intl";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { checkPasswordLeaked } from "@/app/actions/password";
 import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +29,9 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
   const t = {
     mismatch: en ? "Passwords don't match." : "Las contraseñas no coinciden.",
     tooShort: en ? "Password must be at least 8 characters." : "La contraseña debe tener al menos 8 caracteres.",
+    leaked: en
+      ? "That password appears in known data breaches. Choose a different one."
+      : "Esa contraseña aparece en filtraciones de datos conocidas. Elige otra.",
     created: en ? "Account created." : "Cuenta creada.",
     checkEmail: en ? "Account created. Check your email to confirm it." : "Cuenta creada. Revisa tu correo para confirmarla.",
     title: en ? "Create your account" : "Crea tu cuenta",
@@ -68,6 +72,11 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
     }
 
     setLoading(true);
+    if (await checkPasswordLeaked(password)) {
+      setLoading(false);
+      toast.error(t.leaked);
+      return;
+    }
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
       email,
