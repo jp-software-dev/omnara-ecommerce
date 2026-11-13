@@ -80,6 +80,7 @@ export default function CheckoutPage({
     email: locale === "en" ? "Email" : "Correo electrónico",
     pay: locale === "en" ? "Pay (demo mode)" : "Pagar (modo demo)",
     paying: locale === "en" ? "Redirecting to Stripe..." : "Redirigiendo a Stripe...",
+    placing: locale === "en" ? "Placing your order..." : "Creando tu pedido...",
     subtotal: locale === "en" ? "Subtotal" : "Subtotal",
     shipping: locale === "en" ? "Shipping" : "Envío",
     free: locale === "en" ? "Free" : "Gratis",
@@ -319,7 +320,7 @@ export default function CheckoutPage({
       </Field>
 
       <Button size="lg" className="mt-6 w-full" onClick={handlePay} disabled={loading}>
-        {loading ? t.paying : t.pay}
+        {loading ? (demoPayments ? t.placing : t.paying) : t.pay}
       </Button>
     </main>
   );
