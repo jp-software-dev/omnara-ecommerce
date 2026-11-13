@@ -7,15 +7,15 @@ export function DemoBanner({ locale }: { locale: string }) {
       <p>
         {locale === "en" ? (
           <>
-            <strong className="font-semibold">Demo store — test mode only.</strong>{" "}
-            No real charges are ever made. Use the test card{" "}
+            <strong className="font-semibold">Educational demo — test mode only.</strong>{" "}
+            No product is real or actually sold, and no real charge is ever made. Use the test card{" "}
             <span className="font-mono">4242 4242 4242 4242</span>, any future
             expiry date, and any CVC.
           </>
         ) : (
           <>
-            <strong className="font-semibold">Tienda demo — solo modo de prueba.</strong>{" "}
-            Nunca se realizan cargos reales. Usa la tarjeta de prueba{" "}
+            <strong className="font-semibold">Demostración educativa — solo modo de prueba.</strong>{" "}
+            Ningún producto es real ni se vende realmente, y nunca se realizan cargos reales. Usa la tarjeta de prueba{" "}
             <span className="font-mono">4242 4242 4242 4242</span>, cualquier
             fecha de vencimiento futura y cualquier CVC.
           </>

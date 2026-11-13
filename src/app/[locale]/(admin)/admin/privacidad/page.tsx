@@ -23,8 +23,8 @@ export default async function AdminDataRequestsPage({ params }: { params: Promis
       <h1 className="text-2xl font-semibold tracking-tight">{en ? "Data requests" : "Solicitudes de datos"}</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
         {en
-          ? "Account deletion requests. Nothing is deleted automatically: remove or anonymise the account yourself (orders and payments may need to be kept for legal reasons), then mark the request as done."
-          : "Solicitudes para eliminar una cuenta. Nada se borra automáticamente: elimina o anonimiza la cuenta tú mismo (los pedidos y pagos pueden tener que conservarse por obligaciones legales) y luego marca la solicitud como atendida."}{" "}
+          ? "Account deletion requests. Nothing is deleted automatically: remove or anonymise the account yourself (this is an educational project with no real sales, so test orders can be kept or removed as you see fit), then mark the request as done."
+          : "Solicitudes para eliminar una cuenta. Nada se borra automáticamente: elimina o anonimiza la cuenta tú mismo (es un proyecto educativo sin ventas reales, así que los pedidos de prueba se pueden conservar o quitar según decidas) y luego marca la solicitud como atendida."}{" "}
         <span className="font-medium text-foreground">
           {pending} {en ? "pending" : "pendientes"}
         </span>

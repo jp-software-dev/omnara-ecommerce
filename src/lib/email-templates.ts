@@ -60,7 +60,7 @@ const RETURN_STATUS_TEXT: Record<string, Record<Locale, string>> = {
   },
 };
 
-export function renderEmail(template: string, locale: Locale, payload: Payload): RenderedEmail | null {
+function renderBase(template: string, locale: Locale, payload: Payload): RenderedEmail | null {
   const en = locale === "en";
   const order = esc(payload.order_number);
   const item = esc(nameOf(payload.item_name, locale));
@@ -173,4 +173,19 @@ export function renderEmail(template: string, locale: Locale, payload: Payload):
     default:
       return null;
   }
+}
+
+// Omnara is an educational demo: every email says so, so a test order can never be
+// mistaken for a real purchase when it lands in someone's inbox.
+const DEMO_NOTICE: Record<Locale, string> = {
+  es: "Omnara es un proyecto educativo de demostración: este pedido es de prueba, ningún producto es real y no se cobró ni se enviará nada.",
+  en: "Omnara is an educational demo project: this order is a test, no product is real and nothing was charged or will be shipped.",
+};
+
+export function renderEmail(template: string, locale: Locale, payload: Payload): RenderedEmail | null {
+  const rendered = renderBase(template, locale, payload);
+  if (!rendered) return null;
+  const notice = `<p style="margin-top:16px;padding:10px 12px;background:#fff7e6;border:1px solid #f0c36d;border-radius:6px;color:#7a5200;font-size:12px">${esc(DEMO_NOTICE[locale])}</p>`;
+  return { ...rendered, html: rendered.html.replace("</body>", `${notice}
+</body>`) };
 }
