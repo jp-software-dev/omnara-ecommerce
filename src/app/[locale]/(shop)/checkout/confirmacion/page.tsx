@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { DemoBanner } from "@/components/shop/demo-banner";
 import { ClearCartOnMount } from "@/components/shop/clear-cart-on-mount";
 import { OrderInvoice } from "@/components/shop/order-invoice";
-import { getOrderBySessionId } from "./actions";
+import { getDemoOrder, getOrderBySessionId } from "./actions";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -15,20 +15,25 @@ export default async function CheckoutConfirmationPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ session_id?: string }>;
+  searchParams: Promise<{ session_id?: string; demo_order?: string; token?: string }>;
 }) {
   const { locale } = await params;
-  const { session_id: sessionId } = await searchParams;
+  const { session_id: sessionId, demo_order: demoOrderId, token } = await searchParams;
+  const isDemo = Boolean(demoOrderId && token);
 
-  if (!sessionId) {
+  if (!sessionId && !isDemo) {
     redirect({ href: "/", locale });
     return null;
   }
 
-  let order = await getOrderBySessionId(sessionId);
-  for (let attempt = 0; attempt < 5 && !order; attempt++) {
+  // A simulated order already exists when we get here; a Stripe one may still be
+  // waiting for its webhook, hence the short retry loop.
+  let order = isDemo
+    ? await getDemoOrder(demoOrderId as string, token as string)
+    : await getOrderBySessionId(sessionId as string);
+  for (let attempt = 0; attempt < 5 && !order && !isDemo; attempt++) {
     await sleep(800);
-    order = await getOrderBySessionId(sessionId);
+    order = await getOrderBySessionId(sessionId as string);
   }
 
   const t = {
@@ -58,7 +63,7 @@ export default async function CheckoutConfirmationPage({
       </div>
 
       <div className="mt-6">
-        <DemoBanner locale={locale} />
+        <DemoBanner locale={locale} simulated={isDemo} />
       </div>
 
       <div className="mt-6">

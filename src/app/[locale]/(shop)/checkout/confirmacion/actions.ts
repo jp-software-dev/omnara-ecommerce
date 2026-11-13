@@ -2,6 +2,8 @@
 
 import { getStripe } from "@/lib/stripe";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { createClient } from "@/lib/supabase/server";
+import type { InvoiceOrder } from "@/components/shop/order-invoice";
 
 /**
  * The Stripe session id is only ever disclosed to the buyer via the success
@@ -27,4 +29,16 @@ export async function getOrderBySessionId(sessionId: string) {
     .maybeSingle();
 
   return order;
+}
+
+/**
+ * Confirmation of a SIMULATED order. The unguessable per-order token (shown only in
+ * the redirect after checkout) is the proof of ownership, exactly like the Stripe
+ * session id is for real orders, so guests can see their receipt too.
+ */
+export async function getDemoOrder(orderId: string, token: string): Promise<InvoiceOrder | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_demo_order", { p_order: orderId, p_token: token });
+  if (error || !data || typeof data !== "object" || Array.isArray(data)) return null;
+  return data as unknown as InvoiceOrder;
 }

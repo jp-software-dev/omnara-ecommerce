@@ -367,7 +367,7 @@ export async function refundReturn(returnId: string, locale: string) {
 
   const { data: request, error } = await supabase
     .from("return_requests")
-    .select("id, status, refund_amount_cents, currency, order_id, orders(stripe_payment_intent_id)")
+    .select("id, status, refund_amount_cents, currency, order_id, orders(stripe_payment_intent_id, payment_method)")
     .eq("id", returnId)
     .single();
   if (error) throw error;
@@ -376,7 +376,19 @@ export async function refundReturn(returnId: string, locale: string) {
   }
   const paymentIntentId = request.orders?.stripe_payment_intent_id;
   if (!paymentIntentId) {
-    throw new Error("Este pedido no tiene un pago de Stripe asociado, no se puede reembolsar.");
+    if (request.orders?.payment_method !== "demo") {
+      throw new Error("Este pedido no tiene un pago de Stripe asociado, no se puede reembolsar.");
+    }
+    // A simulated (demo) order was never charged, so there is nothing to send back
+    // through Stripe: the refund is recorded as simulated.
+    const { error: simulatedError } = await supabase.rpc("mark_return_refunded", {
+      p_id: request.id,
+      p_refund_id: `demo-refund-${request.id.slice(0, 8)}`,
+    });
+    if (simulatedError) throw new Error(returnErrorMessage(simulatedError.message, locale));
+    revalidateReturns();
+    revalidatePath("/[locale]/(admin)/admin/pedidos", "layout");
+    return;
   }
 
   let stripe;

@@ -75,18 +75,21 @@ export type Database = {
       }
       app_settings: {
         Row: {
+          demo_payments_enabled: boolean
           free_shipping_threshold_mxn_cents: number
           id: number
           updated_at: string
           usd_exchange_rate: number
         }
         Insert: {
+          demo_payments_enabled?: boolean
           free_shipping_threshold_mxn_cents?: number
           id?: number
           updated_at?: string
           usd_exchange_rate?: number
         }
         Update: {
+          demo_payments_enabled?: boolean
           free_shipping_threshold_mxn_cents?: number
           id?: number
           updated_at?: string
@@ -409,6 +412,7 @@ export type Database = {
           created_at: string
           currency: string
           customer_email: string | null
+          demo_token: string | null
           discount_cents: number
           id: string
           order_number: string
@@ -430,6 +434,7 @@ export type Database = {
           created_at?: string
           currency?: string
           customer_email?: string | null
+          demo_token?: string | null
           discount_cents?: number
           id?: string
           order_number: string
@@ -451,6 +456,7 @@ export type Database = {
           created_at?: string
           currency?: string
           customer_email?: string | null
+          demo_token?: string | null
           discount_cents?: number
           id?: string
           order_number?: string
@@ -1255,6 +1261,22 @@ export type Database = {
       resolve_data_request: {
         Args: { p_id: string; p_status: string; p_note: string }
         Returns: undefined
+      }
+      validate_promo_code: {
+        Args: { p_code: string; p_subtotal_mxn_cents: number }
+        Returns: Json
+      }
+      best_selling_product_ids: {
+        Args: { p_limit?: number }
+        Returns: { product_id: string; units: number }[]
+      }
+      place_demo_order: {
+        Args: { p_items: Json; p_currency: string; p_email: string; p_promo: string; p_ship: Json }
+        Returns: Json
+      }
+      get_demo_order: {
+        Args: { p_order: string; p_token: string }
+        Returns: Json
       }
       restock_returned_item: {
         Args: { p_return_id: string }
