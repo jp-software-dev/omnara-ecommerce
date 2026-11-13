@@ -136,11 +136,10 @@ The last step is the one the course flags as essential ("the store needs to know
 
 Omnara is a complete teaching marketplace. Known limits and next steps if it were taken toward production:
 
-* **Per-seller payouts** with Stripe Connect and a platform commission: today one cart is one order and the money is not split.
-* **Carrier integration** and shipping priced per seller or by weight.
-* **Comparison of the exact same item** across sellers: products have no shared catalogue code (GTIN/model), so "similar" means same category and a different seller.
-* **Restocking on returns** is an explicit action by the seller or an admin (not automatic, because a returned item can arrive damaged), and the parties can't yet attach files to a dispute.
-* **Automated tests beyond unit level**: database rules were verified with SQL scripts and are not part of CI, and there are no browser (end-to-end) tests.
+* **Real money movement.** Seller payouts and the 3% commission exist as a *simulated* ledger (no money moves). Splitting a real payment between sellers would need Stripe Connect, which requires an account and onboarding for every seller.
+* **Real carriers.** Labels and tracking are simulated (three demo carriers, `SIM-` numbers). Real rates and labels would need a carrier contract and API.
+* **Restocking on returns** is an explicit action by the seller or an admin (not automatic, because a returned item can arrive damaged).
+* **Browser (end-to-end) tests.** Unit tests run in CI and the database rules have a re-runnable SQL script (`supabase/tests/database_checks.sql`, always rolled back) that is not part of CI.
 
 ## 🛠 Technologies Used
 
@@ -184,12 +183,12 @@ You need Node.js 20+ and a Supabase project.
    | --- | --- |
    | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Everything that reads or writes data |
    | `SUPABASE_SERVICE_ROLE_KEY` | Promo-code validation, best-sellers, Stripe webhook, order confirmation. **Server-only: never expose it to the browser.** |
-   | `STRIPE_SECRET_KEY` | Checkout. Must be a test key (`sk_test_…`) or the app refuses to start Stripe. |
+   | `STRIPE_SECRET_KEY` | Checkout with Stripe. Must be a test key (`sk_test_…`) or the app refuses to start Stripe. **Leave it unset to use the simulated payment** (see *Demo mode*). |
    | `STRIPE_WEBHOOK_SECRET` | Verifying webhook signatures so orders can be created |
    | `RESEND_API_KEY`, `EMAIL_FROM` | Sending notification emails. Without them emails are queued and `/admin/correos` says so. |
    | `CRON_SECRET` | Protects `/api/cron/send-emails`, a safety net that re-sends queued emails. |
    | `NEXT_PUBLIC_SITE_URL` | Base URL used for links inside emails. |
-   | *Supabase dashboard settings* | In Authentication → Attack Protection, turn on **leaked-password protection** (it may require a paid Supabase plan). It is a dashboard setting, not something the code can switch on. |
+   | *Leaked passwords* | Handled by the app: sign-up and password reset check the password against the Have I Been Pwned range API sending only the first 5 characters of its SHA-1 hash (k-anonymity; it fails open if the service is down). Supabase's own dashboard option is optional on top of that. |
 
 3. **Forward Stripe webhooks** while developing (Stripe CLI), and copy the signing secret it prints into `STRIPE_WEBHOOK_SECRET`:
    ```bash
@@ -208,6 +207,17 @@ You need Node.js 20+ and a Supabase project.
    ```
 
 6. **Onboard a seller.** Have the student sign up, then in `/admin/negocios` pick them as owner and fill in the business details. Their account becomes a vendor automatically and they can manage products from `/admin/productos`.
+
+### Demo mode: simulated payments, payouts and carriers
+
+Omnara is an educational demo, so nothing needs a payment account to be tried end to end:
+
+* **Simulated payment.** With no `STRIPE_SECRET_KEY` and `app_settings.demo_payments_enabled = true`, the checkout shows a *Simulated payment* banner and an address form, and creates a sample order (`DEMO-XXXXXXXX`) in the database with `place_demo_order`. Prices, shipping, promo codes and stock are recomputed in the database; guests get a confirmation link with an unguessable token; at most 5 demo orders per buyer and 60 in total per hour. Approving a return of such an order records a simulated refund. To turn it off: `update public.app_settings set demo_payments_enabled = false;`. Setting a Stripe key switches checkout back to Stripe.
+* **Commission and payouts.** Omnara keeps 3% (`app_settings.commission_bps = 300`) of each shipped item. `/admin/pagos` shows what each seller is owed and lets an admin record a **simulated** payout (a ledger entry; items with an open or refunded return are held back and an item can never be paid twice). Sellers see their own balance and history on the same page.
+* **Simulated carriers.** Sellers pick a demo carrier (Omnara Express, DemoPaq, EcoEnvíos) and generate a `SIM-` label; the customer's order page shows a tracking history that advances with time.
+* **Same item across businesses.** Every category has a *Model code* attribute; products with the same code sold by other businesses appear first under "Same item at other businesses".
+* **Dispute photos.** Buyer, seller and admin can attach a JPG/PNG/WebP (up to 3 MB) to a return message; the bucket is private and photos are shown through signed URLs.
+* **Database checks.** `supabase/tests/database_checks.sql` re-runs the database rules in a transaction that is always rolled back.
 
 ### Setting up email notifications (Resend)
 
