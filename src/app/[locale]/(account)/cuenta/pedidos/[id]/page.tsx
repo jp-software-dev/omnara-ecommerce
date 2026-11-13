@@ -7,6 +7,7 @@ import { OrderInvoice } from "@/components/shop/order-invoice";
 import { RequestReturnForm } from "@/components/shop/request-return-form";
 import { isReturnEligible, statusLabel } from "@/lib/returns";
 import { Badge } from "@/components/ui/badge";
+import { ShipmentTimeline } from "@/components/shop/shipment-timeline";
 
 export default async function OrderDetailPage({
   params,
@@ -84,6 +85,21 @@ export default async function OrderDetailPage({
       <div className="mt-4">
         <OrderInvoice order={order} locale={locale} />
       </div>
+
+      {Array.from(
+        new Map(
+          order.order_items
+            .filter((item) => item.shipped_at && item.tracking_number)
+            .map((item) => [item.tracking_number, item])
+        ).values()
+      ).map((item) => (
+        <ShipmentTimeline
+          key={item.tracking_number}
+          tracking={item.tracking_number}
+          shippedAt={item.shipped_at}
+          locale={locale}
+        />
+      ))}
 
       {returnableItems.length > 0 ? (
         <div className="mt-6 rounded-lg border p-5">

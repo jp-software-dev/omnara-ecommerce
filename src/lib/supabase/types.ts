@@ -75,6 +75,7 @@ export type Database = {
       }
       app_settings: {
         Row: {
+          commission_bps: number
           demo_payments_enabled: boolean
           free_shipping_threshold_mxn_cents: number
           id: number
@@ -82,6 +83,7 @@ export type Database = {
           usd_exchange_rate: number
         }
         Insert: {
+          commission_bps?: number
           demo_payments_enabled?: boolean
           free_shipping_threshold_mxn_cents?: number
           id?: number
@@ -89,6 +91,7 @@ export type Database = {
           usd_exchange_rate?: number
         }
         Update: {
+          commission_bps?: number
           demo_payments_enabled?: boolean
           free_shipping_threshold_mxn_cents?: number
           id?: number
@@ -341,6 +344,53 @@ export type Database = {
             columns: ["warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seller_payouts: {
+        Row: {
+          commission_bps: number
+          commission_mxn_cents: number
+          created_at: string
+          created_by: string | null
+          gross_mxn_cents: number
+          id: string
+          items_count: number
+          net_mxn_cents: number
+          reference: string
+          vendor_id: string
+        }
+        Insert: {
+          commission_bps: number
+          commission_mxn_cents: number
+          created_at?: string
+          created_by?: string | null
+          gross_mxn_cents: number
+          id?: string
+          items_count: number
+          net_mxn_cents: number
+          reference: string
+          vendor_id: string
+        }
+        Update: {
+          commission_bps?: number
+          commission_mxn_cents?: number
+          created_at?: string
+          created_by?: string | null
+          gross_mxn_cents?: number
+          id?: string
+          items_count?: number
+          net_mxn_cents?: number
+          reference?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_payouts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -989,6 +1039,7 @@ export type Database = {
       return_messages: {
         Row: {
           author_id: string
+          attachment_path: string | null
           author_role: string
           body: string
           created_at: string
@@ -1005,6 +1056,7 @@ export type Database = {
         }
         Update: {
           author_id?: string
+          attachment_path?: string | null
           author_role?: string
           body?: string
           created_at?: string
@@ -1274,6 +1326,14 @@ export type Database = {
         Args: { p_items: Json; p_currency: string; p_email: string; p_promo: string; p_ship: Json }
         Returns: Json
       }
+      seller_balance: {
+        Args: { p_vendor?: string }
+        Returns: Json
+      }
+      create_simulated_payout: {
+        Args: { p_vendor: string }
+        Returns: string
+      }
       get_demo_order: {
         Args: { p_order: string; p_token: string }
         Returns: Json
@@ -1291,7 +1351,7 @@ export type Database = {
         Returns: undefined
       }
       add_return_message: {
-        Args: { p_id: string; p_body: string }
+        Args: { p_id: string; p_body: string; p_attachment?: string }
         Returns: undefined
       }
       approve_seller_application: {

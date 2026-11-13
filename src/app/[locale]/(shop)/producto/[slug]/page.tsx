@@ -8,6 +8,7 @@ import {
   getViewer,
   getBusinessRatings,
   getReviewEligibility,
+  getSameModelFromOtherBusinesses,
   getSimilarFromOtherBusinesses,
   getRelatedProducts,
 } from "@/lib/supabase/queries";
@@ -54,15 +55,28 @@ export default async function ProductPage({
   }
 
   const category = product.categories;
-  const [reviews, questions, viewer, eligibility, similarElsewhere, relatedProducts, business] = await Promise.all([
+  const [reviews, questions, viewer, eligibility, similarOnly, sameModelElsewhere, relatedProducts, business] = await Promise.all([
     getProductReviews(product.id),
     getProductQuestions(product.id),
     getViewer(),
     getReviewEligibility(product.id),
     getSimilarFromOtherBusinesses(product.category_id, product.id, product.vendor_id),
+    getSameModelFromOtherBusinesses(
+      (product.attributes as Record<string, unknown> | null)?.modelo,
+      product.id,
+      product.vendor_id
+    ),
     getRelatedProducts(product.category_id, product.id, 10),
     product.vendor_id ? getBusinessByOwnerId(product.vendor_id) : Promise.resolve(null),
   ]);
+
+  // The exact same item (same model code) comes first, then similar products.
+  const sameModelIds = new Set(sameModelElsewhere.map((item) => item.id));
+  const similarElsewhere = [
+    ...sameModelElsewhere,
+    ...similarOnly.filter((item) => !sameModelIds.has(item.id)),
+  ].slice(0, 4);
+  const hasSameItem = sameModelElsewhere.length > 0;
 
   const sellerRating = business ? (await getBusinessRatings([business.id])).get(business.id) : undefined;
 
@@ -239,12 +253,22 @@ export default async function ProductPage({
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold tracking-tight">
-                {locale === "en" ? "Compare with other businesses" : "Compara con otros negocios"}
+                {hasSameItem
+                  ? locale === "en"
+                    ? "Same item at other businesses"
+                    : "El mismo artículo en otros negocios"
+                  : locale === "en"
+                    ? "Compare with other businesses"
+                    : "Compara con otros negocios"}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {locale === "en"
-                  ? "Similar products in this category sold by other businesses, cheapest first."
-                  : "Productos similares de esta categoría vendidos por otros negocios, del más barato al más caro."}
+                {hasSameItem
+                  ? locale === "en"
+                    ? "Same model code sold by other businesses, then similar products, cheapest first."
+                    : "Mismo código de modelo en otros negocios, y luego productos similares, del más barato al más caro."
+                  : locale === "en"
+                    ? "Similar products in this category sold by other businesses, cheapest first."
+                    : "Productos similares de esta categoría vendidos por otros negocios, del más barato al más caro."}
               </p>
             </div>
             <Link

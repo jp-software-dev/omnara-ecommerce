@@ -10,6 +10,7 @@ export type AttributeField = {
 // a vendor filling out the form doesn't have to type every spec twice.
 export const CATEGORY_ATTRIBUTES: Record<string, AttributeField[]> = {
   ropa: [
+    { key: "modelo", label: { es: "Código de modelo", en: "Model code" }, type: "text" },
     { key: "material", label: { es: "Material", en: "Material" }, type: "text" },
     {
       key: "genero",
@@ -20,6 +21,7 @@ export const CATEGORY_ATTRIBUTES: Record<string, AttributeField[]> = {
     { key: "temporada", label: { es: "Temporada", en: "Season" }, type: "text" },
   ],
   calzado: [
+    { key: "modelo", label: { es: "Código de modelo", en: "Model code" }, type: "text" },
     { key: "material", label: { es: "Material", en: "Material" }, type: "text" },
     {
       key: "genero",
@@ -40,10 +42,12 @@ export const CATEGORY_ATTRIBUTES: Record<string, AttributeField[]> = {
     },
   ],
   accesorios: [
+    { key: "modelo", label: { es: "Código de modelo", en: "Model code" }, type: "text" },
     { key: "marca", label: { es: "Marca", en: "Brand" }, type: "text" },
     { key: "material", label: { es: "Material", en: "Material" }, type: "text" },
   ],
   hogar: [
+    { key: "modelo", label: { es: "Código de modelo", en: "Model code" }, type: "text" },
     { key: "marca", label: { es: "Marca", en: "Brand" }, type: "text" },
     { key: "material", label: { es: "Material", en: "Material" }, type: "text" },
     { key: "dimensiones", label: { es: "Dimensiones", en: "Dimensions" }, type: "text" },

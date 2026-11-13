@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { escapeLike, normalizeModelCode } from "@/lib/model-code";
 
 // Deactivating a business ("Activo" off in /admin/negocios) is the only
 // pause control an admin has over a seller — it has to actually hide that
@@ -195,7 +196,8 @@ export async function getRelatedProducts(
 
 // Products in the same category sold by OTHER businesses, cheapest first, for the
 // "compare with other businesses" block. Products have no shared catalogue id
-// (no GTIN/model), so "similar" means same category and a different seller.
+// (see getSameModelFromOtherBusinesses for the exact same item), so "similar" means
+// same category and a different seller.
 export async function getSimilarFromOtherBusinesses(
   categoryId: string | null,
   excludeProductId: string,
@@ -215,6 +217,40 @@ export async function getSimilarFromOtherBusinesses(
     .neq("id", excludeProductId);
 
   // PostgREST's neq drops NULL vendors, so spell the "different seller" rule out.
+  query = vendorId
+    ? query.or(`vendor_id.is.null,vendor_id.neq.${vendorId}`)
+    : query.not("vendor_id", "is", null);
+
+  if (inactiveVendorIds.length > 0) {
+    query = query.not("vendor_id", "in", inactiveVendorFilter(inactiveVendorIds));
+  }
+
+  const { data, error } = await query.order("base_price_mxn_cents", { ascending: true }).limit(limit);
+  if (error) throw error;
+  return data;
+}
+
+// Products with the SAME model code (the `modelo` attribute) sold by other
+// businesses, cheapest first: the exact same item, not just a similar one.
+export async function getSameModelFromOtherBusinesses(
+  modelCode: unknown,
+  excludeProductId: string,
+  vendorId: string | null,
+  limit = 4
+) {
+  const model = normalizeModelCode(modelCode);
+  if (!model) return [];
+
+  const supabase = await createClient();
+  const inactiveVendorIds = await getInactiveVendorIds(supabase);
+
+  let query = supabase
+    .from("products")
+    .select("id, slug, name, base_price_mxn_cents, businesses(name, slug), product_images(url, position)")
+    .eq("status", "active")
+    .neq("id", excludeProductId)
+    .ilike("attributes->>modelo", escapeLike(model));
+
   query = vendorId
     ? query.or(`vendor_id.is.null,vendor_id.neq.${vendorId}`)
     : query.not("vendor_id", "is", null);
@@ -570,15 +606,25 @@ export async function getReturnDetail(id: string) {
   const { data, error } = await supabase
     .from("return_requests")
     .select(
-      "id, status, reason, details, decision_note, refund_amount_cents, currency, stripe_refund_id, restocked_at, created_at, order_id, user_id, vendor_id, order_items(product_name_snapshot, quantity, unit_price_cents), orders(order_number), return_messages(id, author_role, body, created_at)"
+      "id, status, reason, details, decision_note, refund_amount_cents, currency, stripe_refund_id, restocked_at, created_at, order_id, user_id, vendor_id, order_items(product_name_snapshot, quantity, unit_price_cents), orders(order_number), return_messages(id, author_role, body, created_at, attachment_path)"
     )
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
-  if (data) {
-    data.return_messages.sort((a, b) => a.created_at.localeCompare(b.created_at));
-  }
-  return data;
+  if (!data) return data;
+
+  data.return_messages.sort((a, b) => a.created_at.localeCompare(b.created_at));
+  // The bucket is private: each photo is shown through a short-lived signed URL.
+  const messages = await Promise.all(
+    data.return_messages.map(async (message) => {
+      if (!message.attachment_path) return { ...message, attachment_url: null as string | null };
+      const { data: signed } = await supabase.storage
+        .from("return-attachments")
+        .createSignedUrl(message.attachment_path, 3600);
+      return { ...message, attachment_url: signed?.signedUrl ?? null };
+    })
+  );
+  return { ...data, return_messages: messages };
 }
 
 // For the order page: which items already have a request, and in which state.

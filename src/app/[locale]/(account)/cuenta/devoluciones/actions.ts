@@ -44,9 +44,13 @@ export async function escalateReturn(returnId: string, note: string, locale: str
 }
 
 // Used by the buyer, the seller and the admin: the database decides who may post.
-export async function postReturnMessage(returnId: string, body: string, locale: string) {
+export async function postReturnMessage(returnId: string, body: string, locale: string, attachmentPath?: string) {
   const supabase = await createClient();
-  const { error } = await supabase.rpc("add_return_message", { p_id: returnId, p_body: body });
+  const { error } = await supabase.rpc("add_return_message", {
+    p_id: returnId,
+    p_body: body,
+    ...(attachmentPath ? { p_attachment: attachmentPath } : {}),
+  });
   if (error) throw new Error(returnErrorMessage(error.message, locale));
   revalidateReturns();
 }
