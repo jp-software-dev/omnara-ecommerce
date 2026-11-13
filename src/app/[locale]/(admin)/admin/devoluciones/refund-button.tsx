@@ -21,8 +21,8 @@ export function RefundButton({
 
   function refund() {
     const message = en
-      ? `Refund ${amountLabel} to the customer through Stripe? This can't be undone.`
-      : `¿Reembolsar ${amountLabel} al cliente por Stripe? No se puede deshacer.`;
+      ? `Refund ${amountLabel} to the customer? Through Stripe for a Stripe order; simulated (no money moves) for a demo order. This can't be undone.`
+      : `¿Reembolsar ${amountLabel} al cliente? Por Stripe si el pedido fue con Stripe; simulado (no se mueve dinero) si es un pedido de demostración. No se puede deshacer.`;
     if (!window.confirm(message)) return;
 
     startTransition(async () => {
@@ -40,8 +40,8 @@ export function RefundButton({
     <div className="grid gap-2">
       <p className="text-sm">
         {en
-          ? "Approved. Send the money back to the customer's card through Stripe."
-          : "Aprobada. Devuelve el dinero a la tarjeta del cliente por Stripe."}
+          ? "Approved. Refund the customer (through Stripe, or simulated for a demo order)."
+          : "Aprobada. Reembolsa al cliente (por Stripe, o simulado si es un pedido de demostración)."}
       </p>
       <Button type="button" size="sm" className="justify-self-start" disabled={pending} onClick={refund}>
         {en ? `Refund ${amountLabel}` : `Reembolsar ${amountLabel}`}
