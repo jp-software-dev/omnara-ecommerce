@@ -69,6 +69,7 @@ export function AddToCartModal({
         <div className="flex flex-col gap-2 pt-1">
           <Button
             size="lg"
+            nativeButton={false}
             className="w-full"
             render={
               <Link href="/checkout" onClick={() => onOpenChange(false)}>
@@ -78,6 +79,7 @@ export function AddToCartModal({
           />
           <Button
             size="lg"
+            nativeButton={false}
             variant="outline"
             className="w-full"
             render={
