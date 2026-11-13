@@ -339,5 +339,7 @@ Todas las rutas anteriores existen bajo `/es/...` y `/en/...` (prefijo de locale
 - **Contacto:** sin INSERT público directo; `submit_contact_message` valida y limita a 3 mensajes por correo y 40 en total por hora; la acción del servidor añade un campo trampa contra bots.
 - **Bitácora de administradores:** disparadores que registran quién cambió qué columnas, solo para acciones de administradores, sin copiar datos personales y sin posibilidad de editar o borrar.
 - **Almacenamiento:** el bucket `product-images` limita tamaño (5 MB) y tipos, y cada vendedor solo escribe en su carpeta; `seller-documents` es privado y solo lo leen administradores.
-- **Privacidad:** aviso y términos reales, exportación de datos del usuario y solicitudes de eliminación atendidas por un administrador.
+- **Privacidad:** aviso y términos redactados para un proyecto educativo de demostración (ningún producto es real; pagos de prueba; envíos y devoluciones simulados), exportación de datos del usuario y solicitudes de eliminación atendidas por un administrador.
 - **Ajuste que solo se hace en el panel de Supabase:** la protección contra contraseñas filtradas (puede requerir un plan de pago).
+
+- **Correos:** cada plantilla añade un aviso de que Omnara es un proyecto educativo de demostración y de que el pedido es de prueba, para que no se confunda con una compra real.

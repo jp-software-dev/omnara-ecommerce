@@ -3,19 +3,19 @@ import { LegalDocument, type LegalSection } from "@/components/shop/legal-docume
 
 const ES: LegalSection[] = [
   {
-    heading: "Quién es responsable",
+    heading: "Quién es responsable y de qué se trata",
     paragraphs: [
-      "Omnara es un marketplace desarrollado como proyecto académico del IUEM. El equipo del proyecto es responsable del tratamiento de los datos personales descritos en este aviso. Puedes contactarnos desde la página de Contacto.",
-      "Omnara funciona en modo de prueba: los pagos se hacen con Stripe en modo de prueba y nunca se realiza un cargo real.",
+      "Omnara es un marketplace de demostración desarrollado como proyecto académico del IUEM, con fines educativos. El equipo del proyecto es responsable de los datos personales descritos en este aviso. Puedes contactarnos desde la página de Contacto.",
+      "Omnara no es una tienda real: ningún producto es real ni se vende realmente, y los pagos se hacen con Stripe en modo de prueba, sin ningún cobro real. Por eso te recomendamos usar datos de ejemplo y no información personal que no quieras compartir.",
     ],
   },
   {
     heading: "Qué datos guardamos",
     items: [
       "Cuenta: nombre, correo electrónico y contraseña (la contraseña se guarda cifrada por el servicio de autenticación; nosotros no la vemos). También tu rol (cliente, vendedor o administrador) y tus preferencias de idioma y moneda.",
-      "Pedidos: artículos, montos, correo de contacto, dirección de envío, número de rastreo y estado.",
+      "Pedidos de prueba: artículos, montos, correo de contacto, dirección de envío, número de rastreo de ejemplo y estado.",
       "Direcciones guardadas: las que tú registras en tu libreta.",
-      "Reseñas, preguntas a vendedores, lista de favoritos, devoluciones y los mensajes que intercambias en ellas.",
+      "Reseñas, preguntas a vendedores, lista de favoritos, devoluciones de prueba y los mensajes que intercambias en ellas.",
       "Si solicitas vender: los datos de tu negocio, tu teléfono y el documento de identificación que subes.",
       "Mensajes que nos envías por el formulario de contacto.",
       "En tu navegador (no en nuestros servidores): tu carrito, la lista de productos que comparas, tu moneda y el tema visual.",
@@ -23,21 +23,22 @@ const ES: LegalSection[] = [
   },
   {
     heading: "Para qué los usamos",
+    paragraphs: ["Solo para que el proyecto funcione y con fines educativos. No los usamos para publicidad ni con fines comerciales."],
     items: [
-      "Crear y mantener tu cuenta, procesar tus compras y gestionar envíos, devoluciones y reembolsos.",
-      "Enviarte correos sobre tus pedidos y devoluciones (confirmación, envío, resultado de una devolución). No enviamos publicidad.",
-      "Verificar a los vendedores antes de aprobar su negocio.",
+      "Crear y mantener tu cuenta y simular compras, envíos, devoluciones y reembolsos.",
+      "Enviarte correos de demostración sobre tus pedidos y devoluciones de prueba, cuando el envío de correos está configurado.",
+      "Revisar las solicitudes de quienes participan como vendedores en el ejercicio.",
       "Atender tus mensajes, prevenir abusos y mantener un registro de los cambios que hacen los administradores.",
     ],
   },
   {
     heading: "Con quién se comparten",
     items: [
-      "Los vendedores: cuando compras, el vendedor de cada artículo recibe los datos del pedido necesarios para enviarlo, que incluyen tu nombre, dirección de envío y correo de contacto. No ven tus otros pedidos ni tus datos de cuenta.",
-      "Stripe procesa el pago. Los datos de tu tarjeta los captura Stripe y nunca pasan por nuestros servidores.",
+      "Los negocios participantes: en una compra de prueba, el negocio de cada artículo ve los datos del pedido, que incluyen tu nombre, dirección de envío y correo de contacto. No ven tus otros pedidos ni tus datos de cuenta. Por eso conviene usar datos de ejemplo.",
+      "Stripe procesa el pago en modo de prueba: no se realiza ningún cobro real y no debes ingresar una tarjeta real.",
       "Supabase aloja la base de datos, la autenticación y los archivos; Vercel aloja el sitio; Resend envía los correos cuando está configurado.",
       "El documento de identificación de quien solicita vender se guarda en un espacio privado y solo lo pueden ver los administradores.",
-      "No vendemos tus datos ni los usamos para publicidad.",
+      "No vendemos tus datos.",
     ],
   },
   {
@@ -49,14 +50,14 @@ const ES: LegalSection[] = [
   {
     heading: "Cuánto tiempo los conservamos",
     paragraphs: [
-      "Conservamos los datos de tu cuenta mientras la mantengas. Los registros de pedidos, pagos y devoluciones se conservan el tiempo necesario para cumplir obligaciones legales y resolver disputas; si eliminas tu cuenta, esos registros se conservan sin tus datos de contacto cuando sea posible.",
+      "Es un proyecto educativo: los datos se conservan mientras dure el proyecto y pueden borrarse en cualquier momento, por ejemplo al reiniciar la base de demostración o al terminar el curso. Como no hay ventas reales, los pedidos y pagos de esta plataforma no son operaciones comerciales reales.",
     ],
   },
   {
     heading: "Tus derechos (acceso, rectificación, cancelación y oposición)",
     items: [
       "Acceso: puedes descargar una copia de tus datos en formato JSON desde Mi cuenta → Privacidad.",
-      "Rectificación: puedes editar tus direcciones y, si necesitas corregir otro dato, escribirnos desde Contacto.",
+      "Rectificación: puedes editar tus direcciones y, para corregir cualquier otro dato, escribirnos desde Contacto.",
       "Cancelación: puedes solicitar la eliminación de tu cuenta desde Mi cuenta → Privacidad. Un administrador la atiende y te avisa.",
       "Oposición: puedes pedirnos dejar de usar tus datos para un fin concreto escribiéndonos desde Contacto.",
     ],
@@ -69,19 +70,19 @@ const ES: LegalSection[] = [
 
 const EN: LegalSection[] = [
   {
-    heading: "Who is responsible",
+    heading: "Who is responsible and what this is about",
     paragraphs: [
-      "Omnara is a marketplace built as an academic project at IUEM. The project team is responsible for the personal data described in this notice. You can reach us from the Contact page.",
-      "Omnara runs in test mode: payments use Stripe in test mode and no real charge is ever made.",
+      "Omnara is a demonstration marketplace built as an academic project at IUEM, for educational purposes. The project team is responsible for the personal data described in this notice. You can reach us from the Contact page.",
+      "Omnara is not a real store: no product is real or actually sold, and payments use Stripe in test mode, with no real charge. For that reason we recommend using sample data and not personal information you don't want to share.",
     ],
   },
   {
     heading: "What data we keep",
     items: [
       "Account: name, email and password (the password is stored encrypted by the authentication service; we never see it). Also your role (customer, seller or administrator) and your language and currency preferences.",
-      "Orders: items, amounts, contact email, shipping address, tracking number and status.",
+      "Test orders: items, amounts, contact email, shipping address, sample tracking number and status.",
       "Saved addresses: the ones you add to your address book.",
-      "Reviews, questions to sellers, your wishlist, returns and the messages you exchange in them.",
+      "Reviews, questions to sellers, your wishlist, test returns and the messages you exchange in them.",
       "If you apply to sell: your business details, phone number and the identity document you upload.",
       "Messages you send through the contact form.",
       "In your browser (not on our servers): your cart, the products you compare, your currency and the visual theme.",
@@ -89,21 +90,22 @@ const EN: LegalSection[] = [
   },
   {
     heading: "What we use it for",
+    paragraphs: ["Only to make the project work and for educational purposes. We do not use it for advertising or commercial purposes."],
     items: [
-      "Creating and maintaining your account, processing your purchases and handling shipping, returns and refunds.",
-      "Emailing you about your orders and returns (confirmation, shipment, return outcome). We send no advertising.",
-      "Verifying sellers before approving their business.",
+      "Creating and maintaining your account and simulating purchases, shipping, returns and refunds.",
+      "Emailing you demonstration messages about your test orders and returns, when email sending is configured.",
+      "Reviewing the applications of people taking part as sellers in the exercise.",
       "Answering your messages, preventing abuse and keeping a record of the changes administrators make.",
     ],
   },
   {
     heading: "Who it is shared with",
     items: [
-      "Sellers: when you buy, the seller of each item receives the order details needed to ship it, including your name, shipping address and contact email. They do not see your other orders or your account data.",
-      "Stripe processes the payment. Your card details are captured by Stripe and never pass through our servers.",
+      "Participating businesses: in a test purchase, the business behind each item sees the order details, which include your name, shipping address and contact email. They do not see your other orders or your account data. That is why sample data is a good idea.",
+      "Stripe processes the payment in test mode: no real charge is made and you must not enter a real card.",
       "Supabase hosts the database, authentication and files; Vercel hosts the site; Resend sends the emails when configured.",
       "The identity document of someone applying to sell is kept in a private space that only administrators can see.",
-      "We do not sell your data or use it for advertising.",
+      "We do not sell your data.",
     ],
   },
   {
@@ -115,7 +117,7 @@ const EN: LegalSection[] = [
   {
     heading: "How long we keep it",
     paragraphs: [
-      "We keep your account data while you keep the account. Order, payment and return records are kept as long as needed to meet legal obligations and resolve disputes; if you delete your account, those records are kept without your contact details where possible.",
+      "This is an educational project: data is kept while the project lasts and may be deleted at any time, for example when the demo database is reset or the course ends. Because there are no real sales, the orders and payments on this platform are not real commercial operations.",
     ],
   },
   {
@@ -141,6 +143,11 @@ export default async function PrivacyPage({ params }: { params: Promise<{ locale
     <LegalDocument
       title={en ? "Privacy notice" : "Aviso de privacidad"}
       updated={en ? "Last updated: November 12, 2026" : "Última actualización: 12 de noviembre de 2026"}
+      notice={
+        en
+          ? "Educational test project: no product is real or actually sold. Please use sample data."
+          : "Proyecto educativo de prueba: ningún producto es real ni se vende realmente. Usa datos de ejemplo."
+      }
       intro={
         en
           ? "This notice explains what personal data Omnara handles, why, and what you can do about it."

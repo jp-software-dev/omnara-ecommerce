@@ -67,8 +67,8 @@ export default async function PrivacyAccountPage({ params }: { params: Promise<{
         <h2 className="font-semibold">{en ? "Delete my account" : "Eliminar mi cuenta"}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {en
-            ? "Send a request and an administrator will review it and let you know. Order, payment and return records may be kept, without your contact details where possible, to meet legal obligations."
-            : "Envía una solicitud y un administrador la revisará y te avisará. Los registros de pedidos, pagos y devoluciones pueden conservarse, sin tus datos de contacto cuando sea posible, para cumplir obligaciones legales."}
+            ? "Send a request and an administrator will review it and let you know. This is an educational project with no real sales, so the test orders you made may be kept while the project lasts, without your contact details where possible."
+            : "Envía una solicitud y un administrador la revisará y te avisará. Este es un proyecto educativo sin ventas reales, así que los pedidos de prueba que hiciste pueden conservarse mientras dure el proyecto, sin tus datos de contacto cuando sea posible."}
         </p>
         <div className="mt-3">
           {hasPending ? (

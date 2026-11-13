@@ -126,7 +126,7 @@ Acceso restringido por rol; un vendedor ve el mismo panel pero **solo sus propio
 
 - **`/contacto`** — formulario (nombre, correo, asunto opcional, mensaje) que llega directo a la bandeja de admin.
 - **`/ayuda`** — centro de ayuda con preguntas frecuentes (rastreo de pedido, métodos de pago, guía de tallas, cambio de moneda) y una sección de envíos y devoluciones.
-- El pie de página enlaza a ayuda, envíos/devoluciones, contacto, términos de servicio y aviso de privacidad (documentos de ejemplo, marcados explícitamente como tales, para fines de demo).
+- El pie de página enlaza a ayuda, envíos/devoluciones, contacto, términos de servicio y aviso de privacidad, y dice que es un proyecto educativo de demostración. Los términos y el aviso de privacidad dejan claro que **ningún producto es real ni se vende realmente**, que los pagos son de prueba y que los envíos, devoluciones y reembolsos son simulados.
 
 ## 11. Idiomas y monedas
 
@@ -188,7 +188,7 @@ Acceso restringido por rol; un vendedor ve el mismo panel pero **solo sus propio
 ## 18. Direcciones guardadas, privacidad y notificaciones
 
 - **Direcciones** (`/cuenta/direcciones`): hasta 10, una predeterminada, solo México o Estados Unidos. Al pagar, el comprador elige una guardada o captura otra en Stripe.
-- **Privacidad** (`/cuenta/privacidad`): descarga de los datos propios en JSON y solicitud de eliminación de la cuenta, que atiende un administrador (los pedidos y pagos se conservan por obligaciones legales). Los términos y el aviso de privacidad están en `/terminos` y `/privacidad`, en español e inglés.
+- **Privacidad** (`/cuenta/privacidad`): descarga de los datos propios en JSON y solicitud de eliminación de la cuenta, que atiende un administrador (al ser un proyecto educativo sin ventas reales, los pedidos de prueba pueden conservarse mientras dure el proyecto). Los términos y el aviso de privacidad están en `/terminos` y `/privacidad`, en español e inglés.
 - **Correos**: confirmación de pedido, nueva venta (al vendedor), artículo enviado con rastreo, novedades de devoluciones, disputas (a administradores) y decisión de una solicitud de vendedor. Se envían solo cuando hay un proveedor de correo configurado.
 
 ## 19. Fuera de alcance / pendiente (transparencia)
@@ -198,4 +198,4 @@ Acceso restringido por rol; un vendedor ve el mismo panel pero **solo sus propio
 - **Reposición automática de inventario** al aprobar una devolución: hoy es una acción manual del vendedor o del administrador (un artículo devuelto puede llegar dañado).
 - **Comparar el mismo artículo exacto** entre vendedores (haría falta un código o modelo común).
 - **Pruebas de extremo a extremo** en navegador; las reglas de la base se verificaron con scripts SQL fuera de la integración continua.
-- **Texto legal revisado por un abogado:** los términos y el aviso son de un proyecto escolar.
+- **Texto legal:** los términos y el aviso están redactados para un proyecto educativo de demostración. Si Omnara se usara para vender de verdad, habría que reescribirlos con asesoría legal.

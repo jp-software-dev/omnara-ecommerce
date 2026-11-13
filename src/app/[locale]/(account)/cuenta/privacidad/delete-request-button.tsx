@@ -13,8 +13,8 @@ export function DeleteRequestButton({ locale }: { locale: string }) {
 
   function request() {
     const message = en
-      ? "Request deletion of your account? An administrator will review it. Orders and payments may be kept for legal reasons."
-      : "¿Solicitar la eliminación de tu cuenta? Un administrador la revisará. Los pedidos y pagos pueden conservarse por obligaciones legales.";
+      ? "Request deletion of your account? An administrator will review it. Test orders may be kept while the project lasts."
+      : "¿Solicitar la eliminación de tu cuenta? Un administrador la revisará. Los pedidos de prueba pueden conservarse mientras dure el proyecto.";
     if (!window.confirm(message)) return;
 
     startTransition(async () => {

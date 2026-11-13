@@ -12,7 +12,7 @@ export async function Footer() {
         <div className="flex flex-col gap-6 sm:flex-row sm:justify-between">
           <div>
             <p className="font-semibold text-foreground">{t("brand")}</p>
-            <p className="mt-1 max-w-xs">Todo en un solo lugar.</p>
+            <p className="mt-1 max-w-xs">{locale === "en" ? "Everything in one place (demo)." : "Todo en un solo lugar (demo)."}</p>
           </div>
           <div className="flex gap-10">
             <div className="flex flex-col gap-2">
@@ -34,7 +34,10 @@ export async function Footer() {
           </div>
         </div>
         <p className="mt-8 border-t pt-6">
-          © {year} {t("brand")}. Todos los derechos reservados.
+          © {year} {t("brand")}.{" "}
+          {locale === "en"
+            ? "Educational demo project: no product is real or actually sold."
+            : "Proyecto educativo de demostración: ningún producto es real ni se vende realmente."}
         </p>
       </div>
     </footer>
