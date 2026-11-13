@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type { Database } from "@/lib/supabase/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -130,40 +129,16 @@ export async function getNewArrivals(limit = 8) {
 }
 
 export async function getBestSellers(limit = 8) {
-  // order_items is RLS-scoped to buyer/vendor/admin, so a normal storefront
-  // visitor can't see enough rows to compute a sitewide aggregate — this is
-  // a read-only sales-count rollup (no order/customer details returned),
-  // the same class of exception the Stripe webhook already uses.
-  let db;
-  try {
-    db = createServiceRoleClient();
-  } catch {
-    // SUPABASE_SERVICE_ROLE_KEY not configured in this environment yet —
-    // hide the section rather than crash the homepage.
-    return [];
-  }
-
-  const { data: items, error } = await db
-    .from("order_items")
-    .select("quantity, product_variants(product_id)");
-
+  // Sitewide sales ranking from a SECURITY DEFINER function that returns only
+  // product ids and unit counts (no orders, no customers), so the storefront
+  // needs no service-role key. Orders that were refunded or cancelled don't count.
+  const supabase = await createClient();
+  const { data: ranking, error } = await supabase.rpc("best_selling_product_ids", { p_limit: limit });
   if (error) throw error;
 
-  const totals = new Map<string, number>();
-  for (const item of items) {
-    const productId = item.product_variants?.product_id;
-    if (!productId) continue;
-    totals.set(productId, (totals.get(productId) ?? 0) + item.quantity);
-  }
-
-  const topProductIds = [...totals.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([id]) => id);
-
+  const topProductIds = (ranking ?? []).map((row) => row.product_id);
   if (topProductIds.length === 0) return [];
 
-  const supabase = await createClient();
   const inactiveVendorIds = await getInactiveVendorIds(supabase);
   let productsQuery = supabase
     .from("products")
@@ -371,7 +346,7 @@ export async function getAppSettings() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("app_settings")
-    .select("usd_exchange_rate, free_shipping_threshold_mxn_cents")
+    .select("usd_exchange_rate, free_shipping_threshold_mxn_cents, demo_payments_enabled")
     .eq("id", 1)
     .single();
 
@@ -383,48 +358,24 @@ export type PromoCodeValidation =
   | { valid: true; discountCents: number; discountType: "percentage" | "fixed" }
   | { valid: false; reason: "not_found" | "expired" | "limit_reached" | "min_order" };
 
-// promo_codes is admin-only under RLS (see promo_codes_admin_all), so validating a
-// customer-entered code has to go through the service-role client — same exception
-// getBestSellers already relies on for a public, read-only, non-sensitive lookup.
+// promo_codes is admin-only under RLS, so a customer-entered code is checked by a
+// SECURITY DEFINER function (validate_promo_code) that returns only the verdict and
+// the discount, never the table. No service-role key is needed.
 // Convention: discount_value is 0-100 for "percentage", and MXN cents for "fixed"
 // (matching every other *_cents column in this schema).
 export async function validatePromoCode(
   rawCode: string,
   subtotalMxnCents: number
 ): Promise<PromoCodeValidation> {
-  let db;
-  try {
-    db = createServiceRoleClient();
-  } catch {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("validate_promo_code", {
+    p_code: rawCode,
+    p_subtotal_mxn_cents: Math.round(subtotalMxnCents),
+  });
+  if (error || !data || typeof data !== "object" || Array.isArray(data)) {
     return { valid: false, reason: "not_found" };
   }
-
-  const code = rawCode.trim().toUpperCase();
-  const { data: promo } = await db
-    .from("promo_codes")
-    .select("discount_type, discount_value, min_order_cents, expires_at, usage_limit, times_used, is_active")
-    .eq("code", code)
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (!promo) return { valid: false, reason: "not_found" };
-  if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
-    return { valid: false, reason: "expired" };
-  }
-  if (promo.usage_limit !== null && promo.times_used >= promo.usage_limit) {
-    return { valid: false, reason: "limit_reached" };
-  }
-  if (subtotalMxnCents < promo.min_order_cents) {
-    return { valid: false, reason: "min_order" };
-  }
-
-  const discountType = promo.discount_type as "percentage" | "fixed";
-  const discountCents =
-    discountType === "percentage"
-      ? Math.round((subtotalMxnCents * promo.discount_value) / 100)
-      : Math.round(promo.discount_value);
-
-  return { valid: true, discountCents: Math.min(discountCents, subtotalMxnCents), discountType };
+  return data as PromoCodeValidation;
 }
 
 export async function getOrderDetail(orderId: string) {
