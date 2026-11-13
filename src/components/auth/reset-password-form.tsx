@@ -5,6 +5,7 @@ import { useLocale } from "next-intl";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { checkPasswordLeaked } from "@/app/actions/password";
 import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,9 @@ export function ResetPasswordForm({ className, ...props }: React.ComponentProps<
     mismatch: en ? "Passwords don't match." : "Las contraseñas no coinciden.",
     tooShort: en ? "Password must be at least 8 characters." : "La contraseña debe tener al menos 8 caracteres.",
     expired: en ? "The link expired or was already used — request a new one." : "El enlace expiró o ya se usó — solicita uno nuevo.",
+    leaked: en
+      ? "That password appears in known data breaches. Choose a different one."
+      : "Esa contraseña aparece en filtraciones de datos conocidas. Elige otra.",
     updated: en ? "Password updated." : "Contraseña actualizada.",
     title: en ? "Choose a new password" : "Elige una nueva contraseña",
     subtitle: en ? "Use at least 8 characters" : "Usa al menos 8 caracteres",
@@ -51,6 +55,11 @@ export function ResetPasswordForm({ className, ...props }: React.ComponentProps<
     }
 
     setLoading(true);
+    if (await checkPasswordLeaked(password)) {
+      setLoading(false);
+      toast.error(t.leaked);
+      return;
+    }
     const supabase = createClient();
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
