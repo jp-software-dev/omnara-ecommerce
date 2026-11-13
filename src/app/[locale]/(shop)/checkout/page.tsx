@@ -32,6 +32,18 @@ export default function CheckoutPage({
   // Saved addresses of a signed-in buyer; `addressId === null` means "enter it in Stripe".
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
   const [addressId, setAddressId] = useState<string | null>(null);
+  // Simulated payment (no Stripe configured): the address is typed here instead of in Stripe.
+  const [demoPayments, setDemoPayments] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  const [demoAddr, setDemoAddr] = useState({
+    recipientName: "",
+    line1: "",
+    line2: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "MX" as "MX" | "US",
+  });
   const [promoInput, setPromoInput] = useState("");
   const [promoChecking, setPromoChecking] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountMxnCents: number } | null>(
@@ -44,6 +56,8 @@ export default function CheckoutPage({
       setAddresses(ctx.addresses);
       // Preselect the default address (they come back default first).
       setAddressId(ctx.addresses.find((address) => address.is_default)?.id ?? null);
+      setDemoPayments(ctx.demoPayments);
+      setSignedIn(ctx.signedIn);
     });
   }, []);
 
@@ -84,6 +98,14 @@ export default function CheckoutPage({
         ? "Another address (I'll enter it on the payment page)"
         : "Otra dirección (la escribo en la página de pago)",
     manageAddresses: locale === "en" ? "Manage my addresses" : "Administrar mis direcciones",
+    emailRequired: locale === "en" ? "Enter your email so we can show your order." : "Escribe tu correo para mostrarte tu pedido.",
+    recipient: locale === "en" ? "Recipient" : "Quién recibe",
+    line1: locale === "en" ? "Street and number" : "Calle y número",
+    line2: locale === "en" ? "Apartment, reference (optional)" : "Interior, referencias (opcional)",
+    city: locale === "en" ? "City" : "Ciudad",
+    state: locale === "en" ? "State" : "Estado",
+    postal: locale === "en" ? "Postal code" : "Código postal",
+    sampleData: locale === "en" ? "Use sample data: nothing is really shipped." : "Usa datos de ejemplo: en realidad no se envía nada.",
     empty: locale === "en" ? "Your bag is empty." : "Tu carrito está vacío.",
     browse: locale === "en" ? "Browse products" : "Ver productos",
   };
@@ -106,6 +128,10 @@ export default function CheckoutPage({
   }
 
   async function handlePay() {
+    if (demoPayments && !signedIn && !email.trim()) {
+      toast.error(t.emailRequired);
+      return;
+    }
     setLoading(true);
     try {
       await createCheckoutSession({
@@ -115,6 +141,7 @@ export default function CheckoutPage({
         currency,
         promoCode: appliedPromo?.code,
         addressId: addressId ?? undefined,
+        demoAddress: demoPayments && addressId === null ? demoAddr : undefined,
       });
     } catch (error) {
       setLoading(false);
@@ -144,7 +171,7 @@ export default function CheckoutPage({
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
       <h1 className="mb-6 text-2xl font-semibold tracking-tight">{t.title}</h1>
-      <DemoBanner locale={locale} />
+      <DemoBanner locale={locale} simulated={demoPayments} />
 
       <ul className="mt-6 divide-y">
         {items.map((item) => (
@@ -251,6 +278,32 @@ export default function CheckoutPage({
           <Link href="/cuenta/direcciones" className="mt-2 inline-block text-xs underline underline-offset-4">
             {t.manageAddresses}
           </Link>
+        </fieldset>
+      ) : null}
+
+      {demoPayments && addressId === null ? (
+        <fieldset className="mt-6 grid gap-3">
+          <legend className="mb-1 text-sm font-medium">{t.shipTo}</legend>
+          <p className="text-xs text-muted-foreground">{t.sampleData}</p>
+          <Input aria-label={t.recipient} placeholder={t.recipient} maxLength={60} value={demoAddr.recipientName} onChange={(e) => setDemoAddr({ ...demoAddr, recipientName: e.target.value })} />
+          <Input aria-label={t.line1} placeholder={t.line1} maxLength={80} value={demoAddr.line1} onChange={(e) => setDemoAddr({ ...demoAddr, line1: e.target.value })} />
+          <Input aria-label={t.line2} placeholder={t.line2} maxLength={80} value={demoAddr.line2} onChange={(e) => setDemoAddr({ ...demoAddr, line2: e.target.value })} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input aria-label={t.city} placeholder={t.city} maxLength={50} value={demoAddr.city} onChange={(e) => setDemoAddr({ ...demoAddr, city: e.target.value })} />
+            <Input aria-label={t.state} placeholder={t.state} maxLength={50} value={demoAddr.state} onChange={(e) => setDemoAddr({ ...demoAddr, state: e.target.value })} />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input aria-label={t.postal} placeholder={t.postal} maxLength={10} value={demoAddr.postalCode} onChange={(e) => setDemoAddr({ ...demoAddr, postalCode: e.target.value })} />
+            <select
+              aria-label="País"
+              value={demoAddr.country}
+              onChange={(e) => setDemoAddr({ ...demoAddr, country: e.target.value === "US" ? "US" : "MX" })}
+              className="h-9 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+            >
+              <option value="MX" className="text-foreground">México</option>
+              <option value="US" className="text-foreground">United States</option>
+            </select>
+          </div>
         </fieldset>
       ) : null}
 
