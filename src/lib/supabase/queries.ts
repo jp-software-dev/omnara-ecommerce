@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { escapeLike, normalizeModelCode } from "@/lib/model-code";
 
 // Deactivating a business ("Activo" off in /admin/negocios) is the only
 // pause control an admin has over a seller — it has to actually hide that
@@ -195,7 +196,8 @@ export async function getRelatedProducts(
 
 // Products in the same category sold by OTHER businesses, cheapest first, for the
 // "compare with other businesses" block. Products have no shared catalogue id
-// (no GTIN/model), so "similar" means same category and a different seller.
+// (see getSameModelFromOtherBusinesses for the exact same item), so "similar" means
+// same category and a different seller.
 export async function getSimilarFromOtherBusinesses(
   categoryId: string | null,
   excludeProductId: string,
@@ -215,6 +217,40 @@ export async function getSimilarFromOtherBusinesses(
     .neq("id", excludeProductId);
 
   // PostgREST's neq drops NULL vendors, so spell the "different seller" rule out.
+  query = vendorId
+    ? query.or(`vendor_id.is.null,vendor_id.neq.${vendorId}`)
+    : query.not("vendor_id", "is", null);
+
+  if (inactiveVendorIds.length > 0) {
+    query = query.not("vendor_id", "in", inactiveVendorFilter(inactiveVendorIds));
+  }
+
+  const { data, error } = await query.order("base_price_mxn_cents", { ascending: true }).limit(limit);
+  if (error) throw error;
+  return data;
+}
+
+// Products with the SAME model code (the `modelo` attribute) sold by other
+// businesses, cheapest first: the exact same item, not just a similar one.
+export async function getSameModelFromOtherBusinesses(
+  modelCode: unknown,
+  excludeProductId: string,
+  vendorId: string | null,
+  limit = 4
+) {
+  const model = normalizeModelCode(modelCode);
+  if (!model) return [];
+
+  const supabase = await createClient();
+  const inactiveVendorIds = await getInactiveVendorIds(supabase);
+
+  let query = supabase
+    .from("products")
+    .select("id, slug, name, base_price_mxn_cents, businesses(name, slug), product_images(url, position)")
+    .eq("status", "active")
+    .neq("id", excludeProductId)
+    .ilike("attributes->>modelo", escapeLike(model));
+
   query = vendorId
     ? query.or(`vendor_id.is.null,vendor_id.neq.${vendorId}`)
     : query.not("vendor_id", "is", null);
