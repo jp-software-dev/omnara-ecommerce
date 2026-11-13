@@ -99,6 +99,16 @@ export function ReturnDetail({
                   {new Date(message.created_at).toLocaleString(locale === "en" ? "en-US" : "es-MX")}
                 </p>
                 <p className="mt-1 whitespace-pre-wrap">{message.body}</p>
+                {message.attachment_url ? (
+                  <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={message.attachment_url}
+                      alt={locale === "en" ? "Attached photo" : "Foto adjunta"}
+                      className="max-h-48 rounded-md border"
+                    />
+                  </a>
+                ) : null}
               </li>
             ))}
           </ul>

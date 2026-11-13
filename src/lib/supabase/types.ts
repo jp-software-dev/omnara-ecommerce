@@ -1039,6 +1039,7 @@ export type Database = {
       return_messages: {
         Row: {
           author_id: string
+          attachment_path: string | null
           author_role: string
           body: string
           created_at: string
@@ -1055,6 +1056,7 @@ export type Database = {
         }
         Update: {
           author_id?: string
+          attachment_path?: string | null
           author_role?: string
           body?: string
           created_at?: string
@@ -1349,7 +1351,7 @@ export type Database = {
         Returns: undefined
       }
       add_return_message: {
-        Args: { p_id: string; p_body: string }
+        Args: { p_id: string; p_body: string; p_attachment?: string }
         Returns: undefined
       }
       approve_seller_application: {
