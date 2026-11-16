@@ -348,6 +348,110 @@ export type Database = {
           },
         ]
       }
+      shipment_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          id: string
+          note: string | null
+          occurred_at: string
+          shipment_id: string
+          source: string
+          status: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          occurred_at?: string
+          shipment_id: string
+          source: string
+          status: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          occurred_at?: string
+          shipment_id?: string
+          source?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipments: {
+        Row: {
+          carrier: string | null
+          completed_at: string | null
+          created_at: string
+          delivered_at: string | null
+          estimated_delivery_at: string | null
+          id: string
+          order_id: string
+          ship_by: string | null
+          shipped_at: string | null
+          status: string
+          tracking_number: string | null
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          carrier?: string | null
+          completed_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          estimated_delivery_at?: string | null
+          id?: string
+          order_id: string
+          ship_by?: string | null
+          shipped_at?: string | null
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          carrier?: string | null
+          completed_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          estimated_delivery_at?: string | null
+          id?: string
+          order_id?: string
+          ship_by?: string | null
+          shipped_at?: string | null
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seller_payouts: {
         Row: {
           commission_bps: number
@@ -397,10 +501,13 @@ export type Database = {
       }
       order_items: {
         Row: {
+          completed_at: string | null
+          delivered_at: string | null
           id: string
           order_id: string
           product_name_snapshot: Json
           quantity: number
+          shipment_id: string | null
           shipped_at: string | null
           tracking_number: string | null
           unit_price_cents: number
@@ -409,10 +516,13 @@ export type Database = {
           vendor_id: string | null
         }
         Insert: {
+          completed_at?: string | null
+          delivered_at?: string | null
           id?: string
           order_id: string
           product_name_snapshot: Json
           quantity: number
+          shipment_id?: string | null
           shipped_at?: string | null
           tracking_number?: string | null
           unit_price_cents: number
@@ -421,10 +531,13 @@ export type Database = {
           vendor_id?: string | null
         }
         Update: {
+          completed_at?: string | null
+          delivered_at?: string | null
           id?: string
           order_id?: string
           product_name_snapshot?: Json
           quantity?: number
+          shipment_id?: string | null
           shipped_at?: string | null
           tracking_number?: string | null
           unit_price_cents?: number
@@ -1325,6 +1438,18 @@ export type Database = {
       place_demo_order: {
         Args: { p_items: Json; p_currency: string; p_email: string; p_promo: string; p_ship: Json }
         Returns: Json
+      }
+      shipment_timeline: {
+        Args: { p_shipment: string }
+        Returns: { step_order: number; status: string; at: string | null; done: boolean }[]
+      }
+      confirm_delivery: {
+        Args: { p_shipment: string }
+        Returns: undefined
+      }
+      advance_order_shipments: {
+        Args: { p_order: string }
+        Returns: number
       }
       seller_balance: {
         Args: { p_vendor?: string }

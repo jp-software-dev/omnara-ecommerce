@@ -264,6 +264,45 @@ export async function getSameModelFromOtherBusinesses(
   return data;
 }
 
+export type TrackedShipment = {
+  id: string;
+  status: string;
+  carrier: string | null;
+  tracking_number: string | null;
+  sellerName: string | null;
+  steps: { step_order: number; status: string; at: string | null; done: boolean }[];
+};
+
+// Every shipment of an order with its timeline (real times for what happened, projected
+// times for what is left). Reading goes through RLS, so only the buyer, the seller or an
+// admin get rows.
+export async function getOrderTracking(orderId: string): Promise<TrackedShipment[]> {
+  const supabase = await createClient();
+  const { data: shipments, error } = await supabase
+    .from("shipments")
+    .select("id, status, carrier, tracking_number, vendor_id, created_at")
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  if (!shipments || shipments.length === 0) return [];
+
+  const vendorIds = [...new Set(shipments.map((shipment) => shipment.vendor_id))];
+  const [{ data: businesses }, ...timelines] = await Promise.all([
+    supabase.from("businesses").select("owner_id, name").in("owner_id", vendorIds),
+    ...shipments.map((shipment) => supabase.rpc("shipment_timeline", { p_shipment: shipment.id })),
+  ]);
+  const names = new Map((businesses ?? []).map((business) => [business.owner_id, business.name]));
+
+  return shipments.map((shipment, index) => ({
+    id: shipment.id,
+    status: shipment.status,
+    carrier: shipment.carrier,
+    tracking_number: shipment.tracking_number,
+    sellerName: names.get(shipment.vendor_id) ?? null,
+    steps: (timelines[index]?.data ?? []) as TrackedShipment["steps"],
+  }));
+}
+
 export async function getWishlistProducts(userId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -330,7 +369,9 @@ export async function getReviewEligibility(productId: string): Promise<ReviewEli
       .select("id, orders!inner(user_id, status), product_variants!inner(product_id)")
       .eq("product_variants.product_id", productId)
       .eq("orders.user_id", user.id)
-      .in("orders.status", ["paid", "fulfilled"])
+      .in("orders.status", ["paid", "fulfilled", "completed"])
+      // the customer has to confirm the delivery before reviewing
+      .not("completed_at", "is", null)
       .limit(1),
   ]);
 
@@ -419,7 +460,7 @@ export async function getOrderDetail(orderId: string) {
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "id, order_number, status, currency, subtotal_cents, shipping_cents, discount_cents, promo_code, total_cents, shipping_address_snapshot, tracking_number, created_at, user_id, order_items(id, quantity, unit_price_cents, product_name_snapshot, variant_attrs_snapshot, vendor_id, shipped_at, tracking_number, product_variants(product_id, products(slug)))"
+      "id, order_number, status, currency, subtotal_cents, shipping_cents, discount_cents, promo_code, total_cents, shipping_address_snapshot, tracking_number, created_at, user_id, order_items(id, quantity, unit_price_cents, product_name_snapshot, variant_attrs_snapshot, vendor_id, shipped_at, delivered_at, completed_at, shipment_id, tracking_number, product_variants(product_id, products(slug)))"
     )
     .eq("id", orderId)
     .maybeSingle();

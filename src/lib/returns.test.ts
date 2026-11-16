@@ -11,6 +11,10 @@ import {
 const DAY = 24 * 60 * 60 * 1000;
 const shippedAt = "2026-11-01T12:00:00.000Z";
 const shippedMs = new Date(shippedAt).getTime();
+// Items that belong to a shipment count from the delivery; this one was delivered a day later.
+const deliveredAt = "2026-11-02T12:00:00.000Z";
+const deliveredMs = new Date(deliveredAt).getTime();
+const delivered = { shipment_id: "s1", shipped_at: shippedAt, delivered_at: deliveredAt };
 
 describe("return eligibility", () => {
   it("allows a shipped item of a paid or fulfilled order inside the window", () => {
@@ -30,6 +34,24 @@ describe("return eligibility", () => {
     for (const status of ["pending", "cancelled", "refunded"]) {
       expect(isReturnEligible({ shipped_at: shippedAt }, status, shippedMs)).toBe(false);
     }
+  });
+});
+
+describe("return eligibility from the delivery", () => {
+  it("counts the 30 days from the delivery, not from the shipping", () => {
+    const deadline = deliveredMs + RETURN_WINDOW_DAYS * DAY;
+    expect(isReturnEligible(delivered, "completed", deadline)).toBe(true);
+    expect(isReturnEligible(delivered, "completed", deadline + 1)).toBe(false);
+    // 31 days after shipping is still inside the window because it was delivered a day later
+    expect(isReturnEligible(delivered, "fulfilled", shippedMs + 31 * DAY - 1)).toBe(true);
+  });
+
+  it("is not available until the item is delivered", () => {
+    expect(isReturnEligible({ shipment_id: "s1", shipped_at: shippedAt, delivered_at: null }, "fulfilled", shippedMs + DAY)).toBe(false);
+  });
+
+  it("accepts completed orders", () => {
+    expect(isReturnEligible(delivered, "completed", deliveredMs + DAY)).toBe(true);
   });
 });
 

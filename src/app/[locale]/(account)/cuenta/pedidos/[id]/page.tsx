@@ -1,13 +1,13 @@
 import { ArrowLeft, Star } from "lucide-react";
 import { Link, redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getOrderDetail, getReturnsByOrder } from "@/lib/supabase/queries";
+import { getOrderDetail, getOrderTracking, getReturnsByOrder } from "@/lib/supabase/queries";
 import { pickLocale } from "@/lib/format";
 import { OrderInvoice } from "@/components/shop/order-invoice";
 import { RequestReturnForm } from "@/components/shop/request-return-form";
 import { isReturnEligible, statusLabel } from "@/lib/returns";
 import { Badge } from "@/components/ui/badge";
-import { ShipmentTimeline } from "@/components/shop/shipment-timeline";
+import { ShipmentTracker } from "@/components/shop/shipment-tracker";
 
 export default async function OrderDetailPage({
   params,
@@ -25,6 +25,10 @@ export default async function OrderDetailPage({
     return null;
   }
 
+  // Lazy scheduler: opening an order applies any step that is already due, so the
+  // timeline is right even before the periodic job has run. Errors are not fatal.
+  await supabase.rpc("advance_order_shipments", { p_order: id });
+
   const order = await getOrderDetail(id);
 
   // RLS also lets a vendor see an order that includes their own item — but this
@@ -34,7 +38,7 @@ export default async function OrderDetailPage({
     return null;
   }
 
-  const returnsByItem = await getReturnsByOrder(order.id);
+  const [returnsByItem, tracking] = await Promise.all([getReturnsByOrder(order.id), getOrderTracking(order.id)]);
   const returnableItems = order.order_items.filter(
     (item) => returnsByItem.has(item.id) || isReturnEligible(item, order.status)
   );
@@ -55,14 +59,13 @@ export default async function OrderDetailPage({
     review: locale === "en" ? "Leave a review" : "Dejar reseña",
   };
 
-  // Only items that already shipped are worth reviewing. The database lets a buyer
-  // review from the moment the order is paid, but one order can mix several sellers
-  // who ship separately, so waiting for the whole order to be "fulfilled" meant the
-  // prompt rarely showed up.
+  // A review is offered once the customer has confirmed the delivery of that item
+  // (completed_at). One order can mix several sellers who ship separately, so this is
+  // decided per item, not per order.
   const purchasedProducts = Array.from(
     new Map(
       order.order_items
-        .filter((item) => item.shipped_at)
+        .filter((item) => item.completed_at)
         .map((item) => ({
           slug: item.product_variants?.products?.slug,
           name: pickLocale(item.product_name_snapshot, locale) || "Producto",
@@ -86,20 +89,7 @@ export default async function OrderDetailPage({
         <OrderInvoice order={order} locale={locale} />
       </div>
 
-      {Array.from(
-        new Map(
-          order.order_items
-            .filter((item) => item.shipped_at && item.tracking_number)
-            .map((item) => [item.tracking_number, item])
-        ).values()
-      ).map((item) => (
-        <ShipmentTimeline
-          key={item.tracking_number}
-          tracking={item.tracking_number}
-          shippedAt={item.shipped_at}
-          locale={locale}
-        />
-      ))}
+      <ShipmentTracker shipments={tracking} locale={locale} />
 
       {returnableItems.length > 0 ? (
         <div className="mt-6 rounded-lg border p-5">

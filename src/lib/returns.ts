@@ -50,13 +50,16 @@ export const isSettled = (status: string) => status === "refunded" || status ===
  * the same rule when the request is created; this only decides what to show.
  */
 export function isReturnEligible(
-  item: { shipped_at?: string | null },
+  item: { shipped_at?: string | null; delivered_at?: string | null; shipment_id?: string | null },
   orderStatus: string,
   now = Date.now()
 ) {
-  if (orderStatus !== "paid" && orderStatus !== "fulfilled") return false;
-  if (!item.shipped_at) return false;
-  const deadline = new Date(item.shipped_at).getTime() + RETURN_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  if (orderStatus !== "paid" && orderStatus !== "fulfilled" && orderStatus !== "completed") return false;
+  // The window runs from the DELIVERY. Items without a shipment (sold by the platform
+  // itself) keep counting from the moment they shipped.
+  const since = item.shipment_id ? item.delivered_at : item.shipped_at;
+  if (!since) return false;
+  const deadline = new Date(since).getTime() + RETURN_WINDOW_DAYS * 24 * 60 * 60 * 1000;
   return now <= deadline;
 }
 
@@ -67,6 +70,7 @@ export function returnErrorMessage(message: string, locale: string): string {
     ["not eligible", { es: "Este pedido no admite devoluciones.", en: "This order doesn't accept returns." }],
     ["not shipped", { es: "El artículo todavía no se ha enviado.", en: "The item hasn't shipped yet." }],
     ["has not shipped", { es: "El artículo todavía no se ha enviado.", en: "The item hasn't shipped yet." }],
+    ["not been delivered", { es: "El artículo todavía no se ha entregado.", en: "The item hasn't been delivered yet." }],
     ["window has closed", { es: "Ya pasaron los 30 días para devolver este artículo.", en: "The 30-day return window has closed." }],
     ["already requested", { es: "Ya pediste la devolución de este artículo.", en: "You already requested a return for this item." }],
     ["already settled", { es: "Esta devolución ya está resuelta.", en: "This return is already settled." }],
