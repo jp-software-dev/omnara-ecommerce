@@ -53,7 +53,9 @@ begin
     if v_vendor is null then
       raise notice 'SKIP: no order items, payout checks skipped';
     else
-      update public.order_items set shipped_at = coalesce(shipped_at, now()) where vendor_id = v_vendor;
+      update public.order_items
+         set shipped_at = coalesce(shipped_at, now()), delivered_at = coalesce(delivered_at, now()), completed_at = coalesce(completed_at, now())
+       where vendor_id = v_vendor;
       select commission_bps into v_bps from public.app_settings limit 1;
       v_before := public.seller_balance(v_vendor);
 

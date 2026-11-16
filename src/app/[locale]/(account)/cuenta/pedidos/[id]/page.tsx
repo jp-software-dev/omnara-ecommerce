@@ -55,14 +55,13 @@ export default async function OrderDetailPage({
     review: locale === "en" ? "Leave a review" : "Dejar reseña",
   };
 
-  // Only items that already shipped are worth reviewing. The database lets a buyer
-  // review from the moment the order is paid, but one order can mix several sellers
-  // who ship separately, so waiting for the whole order to be "fulfilled" meant the
-  // prompt rarely showed up.
+  // A review is offered once the customer has confirmed the delivery of that item
+  // (completed_at). One order can mix several sellers who ship separately, so this is
+  // decided per item, not per order.
   const purchasedProducts = Array.from(
     new Map(
       order.order_items
-        .filter((item) => item.shipped_at)
+        .filter((item) => item.completed_at)
         .map((item) => ({
           slug: item.product_variants?.products?.slug,
           name: pickLocale(item.product_name_snapshot, locale) || "Producto",

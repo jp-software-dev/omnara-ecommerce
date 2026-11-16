@@ -501,6 +501,8 @@ export type Database = {
       }
       order_items: {
         Row: {
+          completed_at: string | null
+          delivered_at: string | null
           id: string
           order_id: string
           product_name_snapshot: Json
@@ -514,6 +516,8 @@ export type Database = {
           vendor_id: string | null
         }
         Insert: {
+          completed_at?: string | null
+          delivered_at?: string | null
           id?: string
           order_id: string
           product_name_snapshot: Json
@@ -527,6 +531,8 @@ export type Database = {
           vendor_id?: string | null
         }
         Update: {
+          completed_at?: string | null
+          delivered_at?: string | null
           id?: string
           order_id?: string
           product_name_snapshot?: Json
@@ -1432,6 +1438,14 @@ export type Database = {
       place_demo_order: {
         Args: { p_items: Json; p_currency: string; p_email: string; p_promo: string; p_ship: Json }
         Returns: Json
+      }
+      confirm_delivery: {
+        Args: { p_shipment: string }
+        Returns: undefined
+      }
+      advance_order_shipments: {
+        Args: { p_order: string }
+        Returns: number
       }
       seller_balance: {
         Args: { p_vendor?: string }
