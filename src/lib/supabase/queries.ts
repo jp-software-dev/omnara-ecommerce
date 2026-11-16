@@ -330,7 +330,9 @@ export async function getReviewEligibility(productId: string): Promise<ReviewEli
       .select("id, orders!inner(user_id, status), product_variants!inner(product_id)")
       .eq("product_variants.product_id", productId)
       .eq("orders.user_id", user.id)
-      .in("orders.status", ["paid", "fulfilled"])
+      .in("orders.status", ["paid", "fulfilled", "completed"])
+      // the customer has to confirm the delivery before reviewing
+      .not("completed_at", "is", null)
       .limit(1),
   ]);
 
@@ -419,7 +421,7 @@ export async function getOrderDetail(orderId: string) {
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "id, order_number, status, currency, subtotal_cents, shipping_cents, discount_cents, promo_code, total_cents, shipping_address_snapshot, tracking_number, created_at, user_id, order_items(id, quantity, unit_price_cents, product_name_snapshot, variant_attrs_snapshot, vendor_id, shipped_at, tracking_number, product_variants(product_id, products(slug)))"
+      "id, order_number, status, currency, subtotal_cents, shipping_cents, discount_cents, promo_code, total_cents, shipping_address_snapshot, tracking_number, created_at, user_id, order_items(id, quantity, unit_price_cents, product_name_snapshot, variant_attrs_snapshot, vendor_id, shipped_at, delivered_at, completed_at, shipment_id, tracking_number, product_variants(product_id, products(slug)))"
     )
     .eq("id", orderId)
     .maybeSingle();

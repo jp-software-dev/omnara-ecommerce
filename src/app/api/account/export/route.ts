@@ -30,7 +30,7 @@ export async function GET() {
       supabase
         .from("orders")
         .select(
-          "order_number, status, currency, subtotal_cents, shipping_cents, discount_cents, promo_code, total_cents, customer_email, shipping_address_snapshot, tracking_number, created_at, order_items(product_name_snapshot, variant_attrs_snapshot, unit_price_cents, quantity, shipped_at, tracking_number)"
+          "order_number, status, currency, subtotal_cents, shipping_cents, discount_cents, promo_code, total_cents, customer_email, shipping_address_snapshot, tracking_number, created_at, order_items(product_name_snapshot, variant_attrs_snapshot, unit_price_cents, quantity, shipped_at, delivered_at, completed_at, tracking_number)"
         )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
