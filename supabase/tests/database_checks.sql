@@ -193,7 +193,45 @@ begin
     end if;
   end;
 
-  -- 5. A non-admin cannot read another seller's balance or create payouts ---
+  -- 5. Business calendar (America/Mexico_City, Mon-Sat 08:00-20:00, no holidays) ---
+  declare
+    v_tz text;
+  begin
+    select timezone into v_tz from public.shipping_calendar where id = 1;
+    -- inside the window: unchanged
+    if private.next_business_time(timestamp '2026-11-09 10:00' at time zone v_tz)
+       <> timestamp '2026-11-09 10:00' at time zone v_tz then
+      raise exception 'FAIL: a working moment must not move';
+    end if;
+    -- after closing: next morning
+    if private.next_business_time(timestamp '2026-11-09 21:00' at time zone v_tz)
+       <> timestamp '2026-11-10 08:00' at time zone v_tz then
+      raise exception 'FAIL: after closing the next business time is the next morning';
+    end if;
+    -- Saturday night, Sunday off and Monday 16 Nov 2026 is a holiday: Tuesday morning
+    if private.next_business_time(timestamp '2026-11-14 21:00' at time zone v_tz)
+       <> timestamp '2026-11-17 08:00' at time zone v_tz then
+      raise exception 'FAIL: weekend plus holiday must skip to Tuesday 08:00';
+    end if;
+    -- before opening: same day at opening
+    if private.next_business_time(timestamp '2026-11-10 05:00' at time zone v_tz)
+       <> timestamp '2026-11-10 08:00' at time zone v_tz then
+      raise exception 'FAIL: before opening the next business time is opening';
+    end if;
+    -- Christmas (a Friday in 2026) is skipped
+    if private.next_business_time(timestamp '2026-12-25 10:00' at time zone v_tz)
+       <> timestamp '2026-12-26 08:00' at time zone v_tz then
+      raise exception 'FAIL: a holiday must be skipped';
+    end if;
+    -- the 24-hour shipping promise is not limited to business hours
+    if (select business_hours_only from public.shipment_step_rules where status = 'shipped')
+       or (select offset_minutes from public.shipment_step_rules where status = 'shipped') <> 1440
+       or (select from_status from public.shipment_step_rules where status = 'shipped') <> 'confirmed' then
+      raise exception 'FAIL: shipping must be due exactly 24 hours after payment';
+    end if;
+  end;
+
+  -- 6. A non-admin cannot read another seller's balance or create payouts ---
   perform set_config('request.jwt.claims',
     json_build_object('sub', '00000000-0000-0000-0000-0000000000aa', 'role', 'authenticated')::text, true);
   begin
