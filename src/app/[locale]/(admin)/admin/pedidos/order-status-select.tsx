@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { updateOrderStatus } from "../actions";
 
-const STATUS_VALUES = ["pending", "paid", "fulfilled", "cancelled", "refunded"] as const;
+const STATUS_VALUES = ["pending", "paid", "fulfilled", "completed", "cancelled", "refunded"] as const;
 
 export function OrderStatusSelect({
   orderId,

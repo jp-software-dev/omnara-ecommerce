@@ -16,6 +16,7 @@ const STATUS_LABELS: Record<string, { es: string; en: string }> = {
   pending: { es: "Pendiente", en: "Pending" },
   paid: { es: "Pagado", en: "Paid" },
   fulfilled: { es: "Enviado", en: "Fulfilled" },
+  completed: { es: "Completado", en: "Completed" },
   cancelled: { es: "Cancelado", en: "Cancelled" },
   refunded: { es: "Reembolsado", en: "Refunded" },
 };

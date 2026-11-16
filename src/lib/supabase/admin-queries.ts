@@ -112,7 +112,7 @@ export async function getSalesAnalytics(days = 30) {
       .select(
         "order_id, quantity, unit_price_cents, product_name_snapshot, orders!inner(created_at, status, currency), product_variants(product_id)"
       )
-      .in("orders.status", ["paid", "fulfilled"])
+      .in("orders.status", ["paid", "fulfilled", "completed"])
       .gte("orders.created_at", since.toISOString()),
     getAppSettings(),
   ]);

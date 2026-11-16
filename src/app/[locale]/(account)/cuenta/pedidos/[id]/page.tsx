@@ -124,7 +124,7 @@ export default async function OrderDetailPage({
         </div>
       ) : null}
 
-      {(order.status === "paid" || order.status === "fulfilled") && purchasedProducts.length > 0 ? (
+      {(order.status === "paid" || order.status === "fulfilled" || order.status === "completed") && purchasedProducts.length > 0 ? (
         <div className="mt-6 rounded-lg border p-5">
           <p className="flex items-center gap-2 font-medium">
             <Star className="size-4" />
