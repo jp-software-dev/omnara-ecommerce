@@ -348,6 +348,69 @@ export type Database = {
           },
         ]
       }
+      shipments: {
+        Row: {
+          carrier: string | null
+          completed_at: string | null
+          created_at: string
+          delivered_at: string | null
+          estimated_delivery_at: string | null
+          id: string
+          order_id: string
+          ship_by: string | null
+          shipped_at: string | null
+          status: string
+          tracking_number: string | null
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          carrier?: string | null
+          completed_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          estimated_delivery_at?: string | null
+          id?: string
+          order_id: string
+          ship_by?: string | null
+          shipped_at?: string | null
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          carrier?: string | null
+          completed_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          estimated_delivery_at?: string | null
+          id?: string
+          order_id?: string
+          ship_by?: string | null
+          shipped_at?: string | null
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seller_payouts: {
         Row: {
           commission_bps: number
@@ -401,6 +464,7 @@ export type Database = {
           order_id: string
           product_name_snapshot: Json
           quantity: number
+          shipment_id: string | null
           shipped_at: string | null
           tracking_number: string | null
           unit_price_cents: number
@@ -413,6 +477,7 @@ export type Database = {
           order_id: string
           product_name_snapshot: Json
           quantity: number
+          shipment_id?: string | null
           shipped_at?: string | null
           tracking_number?: string | null
           unit_price_cents: number
@@ -425,6 +490,7 @@ export type Database = {
           order_id?: string
           product_name_snapshot?: Json
           quantity?: number
+          shipment_id?: string | null
           shipped_at?: string | null
           tracking_number?: string | null
           unit_price_cents?: number
