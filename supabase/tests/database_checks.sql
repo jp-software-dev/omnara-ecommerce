@@ -231,7 +231,67 @@ begin
     end if;
   end;
 
-  -- 6. A non-admin cannot read another seller's balance or create payouts ---
+  -- 6. The scheduler, with a simulated clock ----------------------------------
+  -- A shipment confirmed on Tuesday 10 Nov 2026 at 10:00 (Mexico City) must reach each
+  -- step at the time the rules and the calendar say, and be idempotent.
+  declare
+    v_tz text;
+    v_ord uuid;
+    v_sh uuid;
+    v_expected text[][] := array[
+      array['2026-11-10 11:00', 'confirmed'],
+      array['2026-11-10 13:00', 'preparing'],
+      array['2026-11-11 11:00', 'shipped'],
+      array['2026-11-11 17:00', 'in_transit'],
+      array['2026-11-13 09:00', 'arrived_state'],
+      array['2026-11-14 09:00', 'out_for_delivery'],
+      array['2026-11-14 15:00', 'delivered']
+    ];
+    i int;
+  begin
+    select timezone into v_tz from public.shipping_calendar where id = 1;
+    select id into v_ord from public.orders limit 1;
+    if v_ord is not null then
+      insert into public.shipments (order_id, vendor_id, created_at, ship_by)
+      select v_ord, p.id, timestamp '2026-11-10 10:00' at time zone v_tz, timestamp '2026-11-11 10:00' at time zone v_tz
+        from public.profiles p
+       where p.id not in (select vendor_id from public.shipments where order_id = v_ord)
+       limit 1
+      returning id into v_sh;
+
+      for i in 1 .. array_length(v_expected, 1) loop
+        perform private.advance_shipment(v_sh, v_expected[i][1]::timestamp at time zone v_tz);
+        if (select status from public.shipments where id = v_sh) <> v_expected[i][2] then
+          raise exception 'FAIL: at % the shipment should be % but is %', v_expected[i][1], v_expected[i][2],
+            (select status from public.shipments where id = v_sh);
+        end if;
+      end loop;
+
+      if (select tracking_number from public.shipments where id = v_sh) not like 'SIM-EXP-%' then
+        raise exception 'FAIL: a shipment shipped by the system must get a simulated label';
+      end if;
+      if private.advance_shipment(v_sh, timestamp '2026-11-30 12:00' at time zone v_tz) <> 0 then
+        raise exception 'FAIL: a delivered shipment must not advance by itself (the customer closes it)';
+      end if;
+      if (select occurred_at at time zone v_tz from public.shipment_events
+           where shipment_id = v_sh and status = 'arrived_state') <> timestamp '2026-11-13 08:00' then
+        raise exception 'FAIL: catch-up events must be stamped with the time they were due';
+      end if;
+
+      -- the order is completed once the customer has closed every one of its shipments
+      -- (earlier checks leave other shipments of this order in different states)
+      perform private.advance_due_shipments(now() + interval '60 days');
+      if exists (select 1 from public.shipments where order_id = v_ord and status in ('confirmed', 'preparing', 'shipped', 'in_transit', 'arrived_state', 'out_for_delivery')) then
+        raise exception 'FAIL: the scheduler left a shipment on the way after 60 days';
+      end if;
+      perform private.record_shipment_event(s.id, 'completed', 'customer') from public.shipments s where s.order_id = v_ord and s.status = 'delivered';
+      if (select status from public.orders where id = v_ord) <> 'completed' then
+        raise exception 'FAIL: the order should be completed once the customer closed every shipment';
+      end if;
+    end if;
+  end;
+
+  -- 7. A non-admin cannot read another seller's balance or create payouts ---
   perform set_config('request.jwt.claims',
     json_build_object('sub', '00000000-0000-0000-0000-0000000000aa', 'role', 'authenticated')::text, true);
   begin
