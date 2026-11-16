@@ -2,12 +2,13 @@ import { Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const STEPS = ["pending", "paid", "fulfilled"] as const;
+const STEPS = ["pending", "paid", "fulfilled", "completed"] as const;
 
 const STEP_LABELS: Record<(typeof STEPS)[number], { es: string; en: string }> = {
   pending: { es: "Pendiente", en: "Pending" },
   paid: { es: "Pagado", en: "Paid" },
   fulfilled: { es: "Enviado", en: "Shipped" },
+  completed: { es: "Completado", en: "Completed" },
 };
 
 const TERMINAL_LABELS: Record<string, { es: string; en: string }> = {
