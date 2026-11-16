@@ -5,8 +5,8 @@
 -- Supabase MCP `execute_sql`). A failing check raises an exception that starts with
 -- "FAIL:"; when everything passes the last notice says "ALL CHECKS PASSED".
 --
--- Needs: at least one admin in public.profiles. The payout check also needs one
--- order item; it is skipped with a notice when there is none.
+-- Needs: at least one admin in public.profiles. The payout and shipment checks also
+-- need one order; they are skipped with a notice when there is none.
 
 begin;
 
@@ -78,7 +78,58 @@ begin
     end if;
   end;
 
-  -- 3. A non-admin cannot read another seller's balance or create payouts ---
+  -- 3. Shipments -----------------------------------------------------------
+  declare
+    v_order public.orders%rowtype;
+    v_other uuid;
+    v_count_before int;
+  begin
+    select * into v_order from public.orders limit 1;
+    if v_order.id is null then
+      raise notice 'SKIP: no orders, shipment checks skipped';
+    else
+      if exists (select 1 from public.order_items where vendor_id is not null and shipment_id is null) then
+        raise exception 'FAIL: an item with a seller has no shipment';
+      end if;
+
+      select id into v_other from public.profiles
+       where id not in (select vendor_id from public.order_items where order_id = v_order.id and vendor_id is not null)
+       limit 1;
+      select count(*) into v_count_before from public.shipments where order_id = v_order.id;
+
+      insert into public.order_items (order_id, product_name_snapshot, quantity, unit_price_cents, vendor_id)
+      values (v_order.id, '{"es":"t","en":"t"}', 1, 100, v_other),
+             (v_order.id, '{"es":"t","en":"t"}', 1, 100, v_other);
+      if (select count(*) from public.shipments where order_id = v_order.id) <> v_count_before + 1 then
+        raise exception 'FAIL: two items of the same new seller must share ONE new shipment';
+      end if;
+      if (select ship_by - created_at from public.shipments where order_id = v_order.id and vendor_id = v_other) > interval '24 hours 1 minute' then
+        raise exception 'FAIL: a new shipment must have a 24-hour ship_by deadline';
+      end if;
+
+      update public.order_items set shipped_at = now(), tracking_number = 'SIM-EXP-1234567890'
+       where order_id = v_order.id and vendor_id = v_other;
+      if (select status from public.shipments where order_id = v_order.id and vendor_id = v_other) <> 'shipped' then
+        raise exception 'FAIL: shipping every item of a seller must move that shipment to shipped';
+      end if;
+      if exists (select 1 from public.shipments where order_id = v_order.id and vendor_id <> v_other and status = 'shipped')
+         and exists (select 1 from public.order_items where order_id = v_order.id and vendor_id <> v_other and shipped_at is null) then
+        raise exception 'FAIL: shipping one seller must not move another seller''s shipment';
+      end if;
+
+      begin
+        insert into public.shipments (order_id, vendor_id) values (v_order.id, v_other);
+        -- the superuser running this script bypasses RLS; the real guarantee is that
+        -- no INSERT policy exists for authenticated users
+      exception when unique_violation then null;
+      end;
+      if exists (select 1 from pg_policies where tablename = 'shipments' and cmd <> 'SELECT') then
+        raise exception 'FAIL: shipments must have no write policies';
+      end if;
+    end if;
+  end;
+
+  -- 4. A non-admin cannot read another seller's balance or create payouts ---
   perform set_config('request.jwt.claims',
     json_build_object('sub', '00000000-0000-0000-0000-0000000000aa', 'role', 'authenticated')::text, true);
   begin
