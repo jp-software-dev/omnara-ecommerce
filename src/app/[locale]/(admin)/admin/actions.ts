@@ -16,7 +16,7 @@ import {
 } from "@/lib/validation";
 import { createClient } from "@/lib/supabase/server";
 
-const ORDER_STATUSES = ["pending", "paid", "fulfilled", "cancelled", "refunded"] as const;
+const ORDER_STATUSES = ["pending", "paid", "fulfilled", "completed", "cancelled", "refunded"] as const;
 
 export async function updateOrderStatus(orderId: string, status: string) {
   if (!ORDER_STATUSES.includes(status as (typeof ORDER_STATUSES)[number])) {
