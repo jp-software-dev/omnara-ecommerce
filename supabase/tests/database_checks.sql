@@ -129,7 +129,71 @@ begin
     end if;
   end;
 
-  -- 4. A non-admin cannot read another seller's balance or create payouts ---
+  -- 4. Shipment events and the status machine ---------------------------------
+  declare
+    v_ship uuid;
+    v_err text;
+  begin
+    -- a brand-new shipment for a seller that has none in the first order
+    insert into public.shipments (order_id, vendor_id)
+    select o.id, p.id
+      from (select id from public.orders limit 1) o
+      join public.profiles p on p.id not in (select vendor_id from public.shipments where order_id = o.id)
+     limit 1
+    returning id into v_ship;
+
+    if v_ship is not null then
+      if not exists (select 1 from public.shipment_events where shipment_id = v_ship and status = 'confirmed') then
+        raise exception 'FAIL: every shipment must start with a confirmed event';
+      end if;
+
+      perform private.record_shipment_event(v_ship, 'preparing', 'system');
+      perform private.record_shipment_event(v_ship, 'shipped', 'vendor');
+      perform private.record_shipment_event(v_ship, 'in_transit', 'system');
+      perform private.record_shipment_event(v_ship, 'arrived_state', 'system');
+      perform private.record_shipment_event(v_ship, 'out_for_delivery', 'system');
+      perform private.record_shipment_event(v_ship, 'delivered', 'system');
+
+      begin
+        perform private.record_shipment_event(v_ship, 'in_transit', 'system');
+        raise exception 'FAIL: a shipment moved backwards';
+      exception when others then
+        if sqlerrm not like 'Invalid shipment transition%' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+      begin
+        perform private.record_shipment_event(v_ship, 'cancelled', 'admin');
+        raise exception 'FAIL: a shipped shipment was cancelled';
+      exception when others then
+        if sqlerrm <> 'A shipment can only be cancelled before it ships' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+
+      perform private.record_shipment_event(v_ship, 'completed', 'customer');
+      if (select completed_at from public.shipments where id = v_ship) is null then
+        raise exception 'FAIL: completed_at was not set';
+      end if;
+      begin
+        perform private.record_shipment_event(v_ship, 'delivered', 'system');
+        raise exception 'FAIL: a completed shipment was reopened';
+      exception when others then
+        if sqlerrm <> 'This shipment is already closed' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+
+      begin
+        update public.shipment_events set note = 'x' where shipment_id = v_ship;
+        raise exception 'FAIL: an event was edited';
+      exception when others then
+        if sqlerrm <> 'Shipment events cannot be changed or deleted' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+      begin
+        delete from public.shipment_events where shipment_id = v_ship;
+        raise exception 'FAIL: an event was deleted';
+      exception when others then
+        if sqlerrm <> 'Shipment events cannot be changed or deleted' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+    end if;
+  end;
+
+  -- 5. A non-admin cannot read another seller's balance or create payouts ---
   perform set_config('request.jwt.claims',
     json_build_object('sub', '00000000-0000-0000-0000-0000000000aa', 'role', 'authenticated')::text, true);
   begin
