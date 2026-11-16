@@ -264,6 +264,45 @@ export async function getSameModelFromOtherBusinesses(
   return data;
 }
 
+export type TrackedShipment = {
+  id: string;
+  status: string;
+  carrier: string | null;
+  tracking_number: string | null;
+  sellerName: string | null;
+  steps: { step_order: number; status: string; at: string | null; done: boolean }[];
+};
+
+// Every shipment of an order with its timeline (real times for what happened, projected
+// times for what is left). Reading goes through RLS, so only the buyer, the seller or an
+// admin get rows.
+export async function getOrderTracking(orderId: string): Promise<TrackedShipment[]> {
+  const supabase = await createClient();
+  const { data: shipments, error } = await supabase
+    .from("shipments")
+    .select("id, status, carrier, tracking_number, vendor_id, created_at")
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  if (!shipments || shipments.length === 0) return [];
+
+  const vendorIds = [...new Set(shipments.map((shipment) => shipment.vendor_id))];
+  const [{ data: businesses }, ...timelines] = await Promise.all([
+    supabase.from("businesses").select("owner_id, name").in("owner_id", vendorIds),
+    ...shipments.map((shipment) => supabase.rpc("shipment_timeline", { p_shipment: shipment.id })),
+  ]);
+  const names = new Map((businesses ?? []).map((business) => [business.owner_id, business.name]));
+
+  return shipments.map((shipment, index) => ({
+    id: shipment.id,
+    status: shipment.status,
+    carrier: shipment.carrier,
+    tracking_number: shipment.tracking_number,
+    sellerName: names.get(shipment.vendor_id) ?? null,
+    steps: (timelines[index]?.data ?? []) as TrackedShipment["steps"],
+  }));
+}
+
 export async function getWishlistProducts(userId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase

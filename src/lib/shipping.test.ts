@@ -3,7 +3,8 @@ import {
   carrierName,
   generateSimulatedTracking,
   isSimulatedTracking,
-  trackingTimeline,
+  SHIPMENT_STEPS,
+  shipmentStepLabel,
 } from "@/lib/shipping";
 
 describe("simulated tracking numbers", () => {
@@ -21,16 +22,29 @@ describe("simulated tracking numbers", () => {
   });
 });
 
-describe("trackingTimeline", () => {
-  const shipped = "2026-11-10T12:00:00Z";
-  const at = (hours: number) => Date.parse(shipped) + hours * 3_600_000;
-
-  it("only the pickup is done right after shipping", () => {
-    expect(trackingTimeline(shipped, at(0)).map((s) => s.done)).toEqual([true, false, false, false]);
+describe("shipment steps", () => {
+  it("has the eight steps of the cycle in order, ending when the customer closes it", () => {
+    expect(SHIPMENT_STEPS).toEqual([
+      "confirmed",
+      "preparing",
+      "shipped",
+      "in_transit",
+      "arrived_state",
+      "out_for_delivery",
+      "delivered",
+      "completed",
+    ]);
   });
 
-  it("advances with time and ends delivered after 60 hours", () => {
-    expect(trackingTimeline(shipped, at(13)).map((s) => s.done)).toEqual([true, true, false, false]);
-    expect(trackingTimeline(shipped, at(60)).map((s) => s.done)).toEqual([true, true, true, true]);
+  it("labels every step in both languages", () => {
+    for (const step of [...SHIPMENT_STEPS, "cancelled"]) {
+      expect(shipmentStepLabel(step, "es")).not.toBe(step);
+      expect(shipmentStepLabel(step, "en")).not.toBe(step);
+    }
+    expect(shipmentStepLabel("arrived_state", "es")).toBe("Ya llegó a tu estado");
+  });
+
+  it("falls back to the raw key for an unknown step", () => {
+    expect(shipmentStepLabel("teleported", "es")).toBe("teleported");
   });
 });

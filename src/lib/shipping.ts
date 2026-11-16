@@ -36,36 +36,46 @@ export function carrierName(tracking: string | null | undefined): string | null 
   return SIM_CARRIERS.find((carrier) => carrier.code === match?.[1])?.name ?? null;
 }
 
-export type TimelineStep = { key: "picked_up" | "in_transit" | "out_for_delivery" | "delivered"; at: Date; done: boolean };
+// The steps of a shipment, in order. The database moves a shipment through them on a
+// real-time schedule; the customer closes the last one.
+export const SHIPMENT_STEPS = [
+  "confirmed",
+  "preparing",
+  "shipped",
+  "in_transit",
+  "arrived_state",
+  "out_for_delivery",
+  "delivered",
+  "completed",
+] as const;
 
-const HOUR = 3_600_000;
-// Hours after shipping at which each step is reached.
-const OFFSETS: [TimelineStep["key"], number][] = [
-  ["picked_up", 0],
-  ["in_transit", 12],
-  ["out_for_delivery", 48],
-  ["delivered", 60],
-];
+export type ShipmentStep = (typeof SHIPMENT_STEPS)[number] | "cancelled";
 
-export function trackingTimeline(shippedAt: string | Date, now: number = Date.now()): TimelineStep[] {
-  const start = new Date(shippedAt).getTime();
-  return OFFSETS.map(([key, hours]) => ({
-    key,
-    at: new Date(start + hours * HOUR),
-    done: now >= start + hours * HOUR,
-  }));
+const STEP_LABELS: Record<ShipmentStep, { es: string; en: string }> = {
+  confirmed: { es: "Pedido confirmado y pagado", en: "Order confirmed and paid" },
+  preparing: { es: "Se está preparando tu pedido", en: "We are preparing your order" },
+  shipped: { es: "Tu pedido fue enviado", en: "Your order has shipped" },
+  in_transit: { es: "En tránsito", en: "In transit" },
+  arrived_state: { es: "Ya llegó a tu estado", en: "Arrived in your state" },
+  out_for_delivery: { es: "En reparto a tu domicilio", en: "Out for delivery to your address" },
+  delivered: { es: "Entregado", en: "Delivered" },
+  completed: { es: "Recibido y cerrado por ti", en: "Received and closed by you" },
+  cancelled: { es: "Envío cancelado", en: "Shipment cancelled" },
+};
+
+export function shipmentStepLabel(step: string, locale: string): string {
+  const label = STEP_LABELS[step as ShipmentStep];
+  return label ? label[locale === "en" ? "en" : "es"] : step;
 }
 
-export function timelineLabel(key: TimelineStep["key"], locale: string): string {
-  const en = locale === "en";
-  switch (key) {
-    case "picked_up":
-      return en ? "Picked up by the carrier" : "Recolectado por la paquetería";
-    case "in_transit":
-      return en ? "In transit" : "En tránsito";
-    case "out_for_delivery":
-      return en ? "Out for delivery" : "En reparto";
-    case "delivered":
-      return en ? "Delivered" : "Entregado";
-  }
+/** Dates are shown in Mexico City time whatever the server's timezone is. */
+export function formatShipmentTime(value: string | Date, locale: string): string {
+  return new Date(value).toLocaleString(locale === "en" ? "en-US" : "es-MX", {
+    timeZone: "America/Mexico_City",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

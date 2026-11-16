@@ -1439,6 +1439,10 @@ export type Database = {
         Args: { p_items: Json; p_currency: string; p_email: string; p_promo: string; p_ship: Json }
         Returns: Json
       }
+      shipment_timeline: {
+        Args: { p_shipment: string }
+        Returns: { step_order: number; status: string; at: string | null; done: boolean }[]
+      }
       confirm_delivery: {
         Args: { p_shipment: string }
         Returns: undefined
