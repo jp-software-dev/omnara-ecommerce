@@ -29,7 +29,7 @@ export async function Header({ locale }: { locale: string }) {
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4">
         <Sheet>
           <SheetTrigger
             className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "md:hidden")}
@@ -88,7 +88,7 @@ export async function Header({ locale }: { locale: string }) {
 
         <SearchBar locale={locale} />
 
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
           <Button
             variant="ghost"
             size="icon"

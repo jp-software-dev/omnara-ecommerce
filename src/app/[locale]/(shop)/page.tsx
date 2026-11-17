@@ -52,7 +52,7 @@ export default async function HomePage({
               {category.imageUrl ? (
                 <Image
                   src={category.imageUrl}
-                  alt={pickLocale(category.name, locale)}
+                  alt=""
                   fill
                   sizes="(min-width: 1024px) 20vw, 33vw"
                   className="object-cover transition-transform duration-(--duration-expressive) ease-(--ease-expressive) group-hover:scale-105"
