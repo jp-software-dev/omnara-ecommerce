@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Heart } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useWishlistStore } from "@/stores/wishlist-store";
 import { cn } from "@/lib/utils";
 
 export function WishlistButton({
@@ -17,35 +17,14 @@ export function WishlistButton({
   className?: string;
 }) {
   const router = useRouter();
-  const [isFavorite, setIsFavorite] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pop, setPop] = useState(false);
+  // One shared load for every heart on the page (see wishlist-store).
+  const isFavorite = useWishlistStore((state) => state.ids.includes(productId));
 
   useEffect(() => {
-    let active = true;
-
-    async function checkInitialState() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data } = await supabase
-        .from("wishlists")
-        .select("id")
-        .eq("product_id", productId)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (active) setIsFavorite(Boolean(data));
-    }
-
-    checkInitialState();
-    return () => {
-      active = false;
-    };
-  }, [productId]);
+    void useWishlistStore.getState().load();
+  }, []);
 
   async function toggle(event: React.MouseEvent) {
     event.preventDefault();
@@ -53,6 +32,8 @@ export function WishlistButton({
     if (loading) return;
 
     setLoading(true);
+    // Loaded only when someone presses a heart, not with the first JavaScript of the page.
+    const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
     const {
       data: { user },
@@ -75,10 +56,10 @@ export function WishlistButton({
         .delete()
         .eq("product_id", productId)
         .eq("user_id", user.id);
-      setIsFavorite(false);
+      useWishlistStore.getState().setFavorite(productId, false);
     } else {
       await supabase.from("wishlists").insert({ product_id: productId, user_id: user.id });
-      setIsFavorite(true);
+      useWishlistStore.getState().setFavorite(productId, true);
       setPop(true);
       setTimeout(() => setPop(false), 280);
     }
