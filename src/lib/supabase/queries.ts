@@ -82,8 +82,8 @@ export async function getFeaturedProducts(limit = 8, client?: SupabaseClient<Dat
   return data;
 }
 
-export async function getProductsByCategory(categorySlug: string) {
-  const supabase = await createClient();
+async function getProductsByCategoryCore(client: SupabaseClient<Database>, categorySlug: string) {
+  const supabase = client;
   const { data: category, error: categoryError } = await supabase
     .from("categories")
     .select("id, slug, name")
@@ -210,8 +210,8 @@ export const getCachedAppSettings = unstable_cache(
   { revalidate: 60, tags: ["app-settings"] }
 );
 
-export async function getProductBySlug(slug: string) {
-  const supabase = await createClient();
+async function getProductBySlugCore(client: SupabaseClient<Database>, slug: string) {
+  const supabase = client;
   const { data, error } = await supabase
     .from("products")
     .select(
@@ -225,14 +225,15 @@ export async function getProductBySlug(slug: string) {
   return data;
 }
 
-export async function getRelatedProducts(
+async function getRelatedProductsCore(
+  client: SupabaseClient<Database>,
   categoryId: string | null,
   excludeProductId: string,
   limit = 4
 ) {
   if (!categoryId) return [];
 
-  const supabase = await createClient();
+  const supabase = client;
   const { data, error } = await supabase
     .from("products")
     .select("id, slug, name, base_price_mxn_cents, businesses(name, slug), product_images(url, position)")
@@ -250,7 +251,8 @@ export async function getRelatedProducts(
 // "compare with other businesses" block. Products have no shared catalogue id
 // (see getSameModelFromOtherBusinesses for the exact same item), so "similar" means
 // same category and a different seller.
-export async function getSimilarFromOtherBusinesses(
+async function getSimilarFromOtherBusinessesCore(
+  client: SupabaseClient<Database>,
   categoryId: string | null,
   excludeProductId: string,
   vendorId: string | null,
@@ -258,7 +260,7 @@ export async function getSimilarFromOtherBusinesses(
 ) {
   if (!categoryId) return [];
 
-  const supabase = await createClient();
+  const supabase = client;
   const inactiveVendorIds = await getInactiveVendorIds(supabase);
 
   let query = supabase
@@ -284,7 +286,8 @@ export async function getSimilarFromOtherBusinesses(
 
 // Products with the SAME model code (the `modelo` attribute) sold by other
 // businesses, cheapest first: the exact same item, not just a similar one.
-export async function getSameModelFromOtherBusinesses(
+async function getSameModelFromOtherBusinessesCore(
+  client: SupabaseClient<Database>,
   modelCode: unknown,
   excludeProductId: string,
   vendorId: string | null,
@@ -293,7 +296,7 @@ export async function getSameModelFromOtherBusinesses(
   const model = normalizeModelCode(modelCode);
   if (!model) return [];
 
-  const supabase = await createClient();
+  const supabase = client;
   const inactiveVendorIds = await getInactiveVendorIds(supabase);
 
   let query = supabase
@@ -431,11 +434,11 @@ export async function getReviewEligibility(productId: string): Promise<ReviewEli
   return purchases && purchases.length > 0 ? "can_review" : "not_purchased";
 }
 
-export async function searchProducts(query: string) {
+async function searchProductsCore(client: SupabaseClient<Database>, query: string) {
   const q = query.trim().toLowerCase();
   if (!q) return [];
 
-  const supabase = await createClient();
+  const supabase = client;
   const [{ data, error }, inactiveVendorIds] = await Promise.all([
     supabase
       .from("products")
@@ -552,8 +555,8 @@ export async function getBusinessBySlug(slug: string) {
 // Cheap enough to call per PDP render — a single-row lookup by the unique
 // owner_id FK, not a join, so it stays a separate call instead of bloating
 // every product query with a business join most products don't have.
-export async function getBusinessByOwnerId(ownerId: string) {
-  const supabase = await createClient();
+async function getBusinessByOwnerIdCore(client: SupabaseClient<Database>, ownerId: string) {
+  const supabase = client;
   const { data, error } = await supabase
     .from("businesses")
     .select("id, slug, name")
@@ -737,11 +740,11 @@ export type BusinessRating = { avg: number; count: number };
 
 // Seller rating = average of the visible reviews of the business's products
 // (business_ratings view). Businesses without reviews are simply absent.
-export async function getBusinessRatings(businessIds: string[]) {
+async function getBusinessRatingsCore(client: SupabaseClient<Database>, businessIds: string[]) {
   const ratings = new Map<string, BusinessRating>();
   if (businessIds.length === 0) return ratings;
 
-  const supabase = await createClient();
+  const supabase = client;
   const { data, error } = await supabase
     .from("business_ratings")
     .select("business_id, review_count, avg_rating")
@@ -821,4 +824,73 @@ export async function getMyDataRequests(userId: string) {
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data;
+}
+
+// ---------------------------------------------------------------------------------------
+// Public catalog reads, each in two flavours that share one implementation: the plain one
+// (uses the visitor's session, as before) and getCachedX (cookie-free client, kept for a
+// short time). The pages that anyone can open use the cached ones.
+type WithoutClient<F> = F extends (client: SupabaseClient<Database>, ...args: infer A) => infer R
+  ? (...args: A) => R
+  : never;
+
+function cachedPublic<A extends unknown[], R>(
+  name: string,
+  fn: (client: SupabaseClient<Database>, ...args: A) => Promise<R>,
+  revalidate = 60
+) {
+  return unstable_cache(async (...args: A) => fn(createPublicClient(), ...args), [name], {
+    revalidate,
+    tags: ["catalog"],
+  });
+}
+
+export const getProductsByCategory: WithoutClient<typeof getProductsByCategoryCore> = async (...args) =>
+  getProductsByCategoryCore(await createClient(), ...args);
+export const getCachedProductsByCategory = cachedPublic("products-by-category", getProductsByCategoryCore);
+
+export const getProductBySlug: WithoutClient<typeof getProductBySlugCore> = async (...args) =>
+  getProductBySlugCore(await createClient(), ...args);
+// stock numbers live in this record, so it is kept for a shorter time; checkout re-checks stock
+export const getCachedProductBySlug = cachedPublic("product-by-slug", getProductBySlugCore, 30);
+
+export const getRelatedProducts: WithoutClient<typeof getRelatedProductsCore> = async (...args) =>
+  getRelatedProductsCore(await createClient(), ...args);
+export const getCachedRelatedProducts = cachedPublic("related-products", getRelatedProductsCore);
+
+export const getSimilarFromOtherBusinesses: WithoutClient<typeof getSimilarFromOtherBusinessesCore> = async (
+  ...args
+) => getSimilarFromOtherBusinessesCore(await createClient(), ...args);
+export const getCachedSimilarFromOtherBusinesses = cachedPublic(
+  "similar-other-businesses",
+  getSimilarFromOtherBusinessesCore
+);
+
+export const getSameModelFromOtherBusinesses: WithoutClient<typeof getSameModelFromOtherBusinessesCore> = async (
+  ...args
+) => getSameModelFromOtherBusinessesCore(await createClient(), ...args);
+export const getCachedSameModelFromOtherBusinesses = cachedPublic(
+  "same-model-other-businesses",
+  getSameModelFromOtherBusinessesCore
+);
+
+export const getBusinessByOwnerId: WithoutClient<typeof getBusinessByOwnerIdCore> = async (...args) =>
+  getBusinessByOwnerIdCore(await createClient(), ...args);
+export const getCachedBusinessByOwnerId = cachedPublic("business-by-owner", getBusinessByOwnerIdCore);
+
+export const searchProducts: WithoutClient<typeof searchProductsCore> = async (...args) =>
+  searchProductsCore(await createClient(), ...args);
+export const getCachedSearchProducts = cachedPublic("search-products", searchProductsCore);
+
+export async function getBusinessRatings(businessIds: string[]) {
+  return getBusinessRatingsCore(await createClient(), businessIds);
+}
+
+// A Map does not survive the cache (it is stored as JSON), so the cached function returns
+// the entries and they are turned back into a Map here.
+const cachedRatingEntries = cachedPublic("business-ratings", async (client, businessIds: string[]) => [
+  ...(await getBusinessRatingsCore(client, businessIds)).entries(),
+]);
+export async function getCachedBusinessRatings(businessIds: string[]) {
+  return new Map(await cachedRatingEntries([...businessIds].sort()));
 }

@@ -1,6 +1,6 @@
 import { SearchX } from "lucide-react";
 import { ProductCard } from "@/components/shop/product-card";
-import { searchProducts } from "@/lib/supabase/queries";
+import { getCachedSearchProducts } from "@/lib/supabase/queries";
 
 export default async function SearchPage({
   params,
@@ -11,7 +11,7 @@ export default async function SearchPage({
 }) {
   const { locale } = await params;
   const { q = "" } = await searchParams;
-  const products = q ? await searchProducts(q) : [];
+  const products = q ? await getCachedSearchProducts(q) : [];
 
   const t = {
     title: locale === "en" ? "Search results" : "Resultados de búsqueda",
