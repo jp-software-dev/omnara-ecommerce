@@ -18,6 +18,7 @@ import {
   Wallet,
   Truck,
   CalendarClock,
+  Gauge,
 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { requireRole } from "@/lib/supabase/auth-helpers";
@@ -40,6 +41,7 @@ export default async function AdminLayout({
     { href: "/admin/devoluciones", label: locale === "en" ? "Returns" : "Devoluciones", icon: Undo2 },
     { href: "/admin/preguntas", label: locale === "en" ? "Questions" : "Preguntas", icon: CircleHelp },
     { href: "/admin/analitica", label: locale === "en" ? "Analytics" : "Analítica", icon: BarChart3 },
+    { href: "/admin/cumplimiento", label: locale === "en" ? "Fulfillment" : "Cumplimiento", icon: Gauge },
     { href: "/admin/pagos", label: locale === "en" ? "Payouts" : "Pagos", icon: Wallet },
     ...(role === "vendor"
       ? [{ href: "/admin/mi-negocio", label: locale === "en" ? "My business" : "Mi negocio", icon: Store }]

@@ -429,7 +429,47 @@ begin
     end if;
   end;
 
-  -- 9. A non-admin cannot read another seller's balance or create payouts ---
+  -- 9. Fulfillment analytics: admin sees everything, a seller only their own, others nothing ----
+  declare
+    v_customer uuid := gen_random_uuid();
+    v_seller uuid := gen_random_uuid();
+    v_all jsonb;
+    v_own jsonb;
+  begin
+    insert into auth.users (id, instance_id, aud, role, email, raw_user_meta_data, created_at, updated_at) values
+      (v_customer, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'cust@example.invalid', '{}', now(), now()),
+      (v_seller, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'sel@example.invalid', '{}', now(), now());
+    update public.profiles set role = 'vendor' where id = v_seller;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
+    v_all := public.fulfillment_analytics(365);
+    if v_all ->> 'scope' <> 'admin' then
+      raise exception 'FAIL: an admin must get the whole report';
+    end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', v_seller, 'role', 'authenticated')::text, true);
+    v_own := public.fulfillment_analytics(365);
+    if v_own ->> 'scope' <> 'vendor' then
+      raise exception 'FAIL: a seller must get a seller-scoped report';
+    end if;
+    if (v_own -> 'funnel' ->> 'shipments')::int <> 0 then
+      raise exception 'FAIL: a seller with no shipments must see none (saw %)', v_own -> 'funnel' ->> 'shipments';
+    end if;
+    if jsonb_array_length(v_own -> 'vendors') <> 0 then
+      raise exception 'FAIL: a seller must not see other sellers';
+    end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', v_customer, 'role', 'authenticated')::text, true);
+    begin
+      perform public.fulfillment_analytics(30);
+      raise exception 'FAIL: a customer read the fulfillment report';
+    exception when others then
+      if sqlerrm <> 'Not allowed' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+    end;
+    perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
+  end;
+
+  -- 10. A non-admin cannot read another seller's balance or create payouts ---
   perform set_config('request.jwt.claims',
     json_build_object('sub', '00000000-0000-0000-0000-0000000000aa', 'role', 'authenticated')::text, true);
   begin
