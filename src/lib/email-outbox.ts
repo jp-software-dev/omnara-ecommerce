@@ -2,6 +2,7 @@ import "server-only";
 import { after } from "next/server";
 import { isEmailConfigured, sendEmail } from "@/lib/email";
 import { renderEmail } from "@/lib/email-templates";
+import { withTicket } from "@/lib/email-ticket";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 const MAX_ATTEMPTS = 5;
@@ -42,13 +43,17 @@ export async function processEmailOutbox(limit = 20): Promise<OutboxResult> {
     if (!claimed || claimed.length === 0) continue;
 
     try {
-      const rendered = renderEmail(
+      const locale = row.locale === "en" ? "en" : "es";
+      // The purchase confirmation gets its full ticket and PDF now that the items exist.
+      const { payload, attachments } = await withTicket(
+        db,
         row.template,
-        row.locale === "en" ? "en" : "es",
+        locale,
         (row.payload ?? {}) as Record<string, unknown>
       );
+      const rendered = renderEmail(row.template, locale, payload);
       if (!rendered) throw new Error(`No template for "${row.template}".`);
-      await sendEmail({ to: row.to_email, subject: rendered.subject, html: rendered.html });
+      await sendEmail({ to: row.to_email, subject: rendered.subject, html: rendered.html, attachments });
       await db
         .from("email_outbox")
         .update({ status: "sent", sent_at: new Date().toISOString(), last_error: null })
