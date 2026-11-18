@@ -13,8 +13,8 @@ const ES: LegalSection[] = [
   {
     heading: "Pagos de prueba",
     items: [
-      "Los pagos se procesan con Stripe en modo de prueba: ningún dinero se mueve.",
-      "Para probar el pago usa únicamente la tarjeta de prueba que se muestra en el checkout. No ingreses una tarjeta real.",
+      "El pago es una simulación: al pagar solo se crea un pedido de ejemplo y ningún dinero se mueve. No se necesita tarjeta; no ingreses una tarjeta real en ninguna parte.",
+      "Si en el futuro se configura un procesador de pagos, funcionará únicamente en modo de prueba.",
     ],
   },
   {
@@ -34,9 +34,12 @@ const ES: LegalSection[] = [
   {
     heading: "Pedidos, envíos y devoluciones (simulados)",
     items: [
-      "El costo de envío (fijo, o gratis a partir del monto que se muestra al pagar) es un ejemplo: nada se envía en realidad. Los vendedores de prueba pueden marcar artículos como enviados y escribir un número de rastreo de ejemplo.",
-      "Puedes simular la devolución de un artículo hasta 30 días después de su \"envío\", desde el detalle de tu pedido. El vendedor la revisa; si la rechaza, puedes abrir una disputa y Omnara decide.",
-      "Un reembolso aprobado se registra a través de Stripe en modo de prueba y equivale al precio del artículo menos su parte proporcional de cualquier descuento; el envío no se reembolsa. No se devuelve dinero real porque nunca se cobró.",
+      "El costo de envío (fijo, o gratis a partir del monto que se muestra al pagar) es un ejemplo: nada se envía en realidad. Todos los envíos son dentro de México y son simulados; ninguna paquetería real participa y las guías son de ejemplo.",
+      "Tu pedido sigue un calendario con tiempos reales de ejemplo: se prepara, sale a más tardar 24 horas después de tu pago y avanza por tránsito, llegada a tu estado y reparto solo en horario de paquetería (de lunes a sábado, sin días festivos de México). Una pausa o un incidente de ejemplo puede retrasarlo; siempre se te avisa.",
+      "El pedido se cierra únicamente cuando tú confirmas que lo recibiste (desde tu pedido o, si compraste sin cuenta, con el enlace de tu confirmación). Nunca se cierra solo; te mandamos recordatorios por correo, cuando el envío de correos está configurado.",
+      "Puedes cancelar un envío mientras no haya salido: los artículos regresan al inventario y se simula el reembolso.",
+      "Puedes simular la devolución de un artículo hasta 30 días después de su entrega, desde el detalle de tu pedido, y adjuntar fotos. El vendedor la revisa; si la rechaza, puedes abrir una disputa y Omnara decide.",
+      "Un reembolso aprobado es una simulación y equivale al precio del artículo menos su parte proporcional de cualquier descuento; el envío solo se reembolsa si se cancela todo el pedido. No se devuelve dinero real porque nunca se cobró.",
     ],
   },
   {
@@ -86,8 +89,8 @@ const EN: LegalSection[] = [
   {
     heading: "Test payments",
     items: [
-      "Payments are processed with Stripe in test mode: no money moves.",
-      "To try the payment, use only the test card shown at checkout. Do not enter a real card.",
+      "The payment is a simulation: paying only creates a sample order and no money moves. No card is needed; do not enter a real card anywhere.",
+      "If a payment processor is configured in the future, it will work in test mode only.",
     ],
   },
   {
@@ -107,9 +110,12 @@ const EN: LegalSection[] = [
   {
     heading: "Orders, shipping and returns (simulated)",
     items: [
-      "The shipping cost (flat, or free above the amount shown at checkout) is an example: nothing is really shipped. Test sellers can mark items as shipped and enter a sample tracking number.",
-      "You can simulate returning an item up to 30 days after it was \"shipped\", from your order page. The seller reviews it; if they reject it, you can open a dispute and Omnara decides.",
-      "An approved refund is recorded through Stripe in test mode and equals the item's price minus its proportional share of any discount; shipping is not refunded. No real money is returned because none was ever charged.",
+      "The shipping cost (flat, or free above the amount shown at checkout) is an example: nothing is really shipped. All shipments are inside Mexico and simulated; no real carrier takes part and the tracking numbers are samples.",
+      "Your order follows a calendar with real sample timings: it is prepared, ships within 24 hours of your payment and moves through transit, arrival in your state and delivery only during carrier hours (Monday to Saturday, no Mexican public holidays). A sample pause or incident can delay it; you are always told.",
+      "The order is closed only when you confirm you received it (from your order or, if you bought without an account, with the link of your confirmation). It never closes on its own; we send you email reminders when email sending is configured.",
+      "You can cancel a shipment while it has not left: the items go back to stock and the refund is simulated.",
+      "You can simulate returning an item up to 30 days after it was delivered, from your order page, and attach photos. The seller reviews it; if they reject it, you can open a dispute and Omnara decides.",
+      "An approved refund is a simulation and equals the item's price minus its proportional share of any discount; shipping is only refunded if the whole order is cancelled. No real money is returned because none was ever charged.",
     ],
   },
   {
