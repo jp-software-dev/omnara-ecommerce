@@ -1,16 +1,16 @@
 import { notFound } from "next/navigation";
 import { Store } from "lucide-react";
 import {
-  getBusinessByOwnerId,
-  getProductBySlug,
+  getCachedBusinessByOwnerId,
+  getCachedProductBySlug,
   getProductQuestions,
   getProductReviews,
   getViewer,
-  getBusinessRatings,
+  getCachedBusinessRatings,
   getReviewEligibility,
-  getSameModelFromOtherBusinesses,
-  getSimilarFromOtherBusinesses,
-  getRelatedProducts,
+  getCachedSameModelFromOtherBusinesses,
+  getCachedSimilarFromOtherBusinesses,
+  getCachedRelatedProducts,
 } from "@/lib/supabase/queries";
 import { pickLocale } from "@/lib/format";
 import { getCategoryAttributeFields } from "@/lib/category-attributes";
@@ -48,7 +48,7 @@ export default async function ProductPage({
 }) {
   const { slug, locale } = await params;
 
-  const product = await getProductBySlug(slug).catch(() => null);
+  const product = await getCachedProductBySlug(slug).catch(() => null);
 
   if (!product) {
     notFound();
@@ -60,14 +60,14 @@ export default async function ProductPage({
     getProductQuestions(product.id),
     getViewer(),
     getReviewEligibility(product.id),
-    getSimilarFromOtherBusinesses(product.category_id, product.id, product.vendor_id),
-    getSameModelFromOtherBusinesses(
+    getCachedSimilarFromOtherBusinesses(product.category_id, product.id, product.vendor_id),
+    getCachedSameModelFromOtherBusinesses(
       (product.attributes as Record<string, unknown> | null)?.modelo,
       product.id,
       product.vendor_id
     ),
-    getRelatedProducts(product.category_id, product.id, 10),
-    product.vendor_id ? getBusinessByOwnerId(product.vendor_id) : Promise.resolve(null),
+    getCachedRelatedProducts(product.category_id, product.id, 10),
+    product.vendor_id ? getCachedBusinessByOwnerId(product.vendor_id) : Promise.resolve(null),
   ]);
 
   // The exact same item (same model code) comes first, then similar products.
@@ -78,7 +78,7 @@ export default async function ProductPage({
   ].slice(0, 4);
   const hasSameItem = sameModelElsewhere.length > 0;
 
-  const sellerRating = business ? (await getBusinessRatings([business.id])).get(business.id) : undefined;
+  const sellerRating = business ? (await getCachedBusinessRatings([business.id])).get(business.id) : undefined;
 
   const attributeValues = (product.attributes as Record<string, string> | null) ?? {};
   const attributeFields = getCategoryAttributeFields(category?.slug).filter(
