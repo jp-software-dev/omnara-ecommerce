@@ -99,7 +99,8 @@ describe("address validation", () => {
   it("requires 5 digits for Mexico and allows ZIP+4 for the United States", () => {
     expect(addressSchema.safeParse({ ...address, postalCode: "9700" }).success).toBe(false);
     expect(addressSchema.safeParse({ ...address, postalCode: "97000-1234" }).success).toBe(false);
-    expect(addressSchema.safeParse({ ...address, country: "US", postalCode: "73301-1234" }).success).toBe(true);
+    // deliveries are domestic: an address outside Mexico is refused
+    expect(addressSchema.safeParse({ ...address, country: "US", postalCode: "73301" }).success).toBe(false);
   });
 
   it("rejects other countries and over-long fields", () => {

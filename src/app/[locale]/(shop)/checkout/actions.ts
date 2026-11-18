@@ -220,7 +220,7 @@ export async function createCheckoutSession({
 
   // With a saved address we already know where it ships; otherwise Stripe asks, as before.
   if (!shipTo) {
-    sessionParams.shipping_address_collection = { allowed_countries: ["MX", "US"] };
+    sessionParams.shipping_address_collection = { allowed_countries: ["MX"] };
   }
 
   if (discountCents > 0) {
