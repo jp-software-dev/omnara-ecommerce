@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { returnErrorMessage } from "@/lib/returns";
 import { getStripe } from "@/lib/stripe";
@@ -15,6 +15,11 @@ import {
   promoSchema,
 } from "@/lib/validation";
 import { createClient } from "@/lib/supabase/server";
+
+// The storefront keeps the catalog in a short cache; a change made here must show up at once.
+function invalidateCatalog() {
+  revalidateTag("catalog", "max");
+}
 
 const ORDER_STATUSES = ["pending", "paid", "fulfilled", "completed", "cancelled", "refunded"] as const;
 
@@ -83,6 +88,7 @@ export async function createProduct(rawInput: {
     throw error;
   }
   revalidatePath("/[locale]/(admin)/admin/productos", "page");
+  invalidateCatalog();
   return data.id;
 }
 
@@ -112,6 +118,7 @@ export async function updateProduct(
 
   if (error) throw error;
   revalidatePath("/[locale]/(admin)/admin/productos", "page");
+  invalidateCatalog();
 }
 
 const variantSchema = z.object({
@@ -148,6 +155,7 @@ export async function addVariant(
     throw error;
   }
   revalidatePath("/[locale]/(admin)/admin/productos", "layout");
+  invalidateCatalog();
 }
 
 export async function deleteVariant(variantId: string) {
@@ -161,6 +169,7 @@ export async function deleteVariant(variantId: string) {
     throw error;
   }
   revalidatePath("/[locale]/(admin)/admin/productos", "layout");
+  invalidateCatalog();
 }
 
 const PRODUCT_IMAGES_PREFIX = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/`;
@@ -188,6 +197,7 @@ export async function addProductImage(productId: string, url: string, altText?: 
   });
   if (error) throw error;
   revalidatePath("/[locale]/(admin)/admin/productos", "layout");
+  invalidateCatalog();
 }
 
 export async function deleteProductImage(imageId: string) {
@@ -208,6 +218,7 @@ export async function deleteProductImage(imageId: string) {
       .remove([image.url.slice(PRODUCT_IMAGES_PREFIX.length)]);
   }
   revalidatePath("/[locale]/(admin)/admin/productos", "layout");
+  invalidateCatalog();
 }
 
 export async function makeImagePrimary(productId: string, imageId: string) {
@@ -232,6 +243,7 @@ export async function makeImagePrimary(productId: string, imageId: string) {
     if (updateError) throw updateError;
   }
   revalidatePath("/[locale]/(admin)/admin/productos", "layout");
+  invalidateCatalog();
 }
 
 export async function deleteProduct(productId: string) {
@@ -239,6 +251,7 @@ export async function deleteProduct(productId: string) {
   const { error } = await supabase.from("products").delete().eq("id", productId);
   if (error) throw error;
   revalidatePath("/[locale]/(admin)/admin/productos", "page");
+  invalidateCatalog();
 }
 
 export async function updateOrderTracking(orderId: string, trackingNumber: string) {
@@ -296,6 +309,7 @@ export async function approveApplication(applicationId: string, slug: string) {
   flushEmailsSoon();
   revalidatePath("/[locale]/(admin)/admin/solicitudes", "page");
   revalidatePath("/[locale]/(admin)/admin/negocios", "page");
+  invalidateCatalog();
   revalidatePath("/[locale]/(admin)/admin/usuarios", "page");
 }
 
@@ -605,6 +619,7 @@ export async function createBusiness(rawInput: {
   if (businessError) throw businessError;
 
   revalidatePath("/[locale]/(admin)/admin/negocios", "page");
+  invalidateCatalog();
   revalidatePath("/[locale]/(admin)/admin/usuarios", "page");
 }
 
@@ -634,7 +649,9 @@ export async function updateBusiness(
     .eq("id", businessId);
   if (error) throw error;
   revalidatePath("/[locale]/(admin)/admin/negocios", "page");
+  invalidateCatalog();
   revalidatePath("/[locale]/(admin)/admin/mi-negocio", "page");
+  invalidateCatalog();
 }
 
 export async function updateMyBusiness(rawInput: {
@@ -669,4 +686,5 @@ export async function updateMyBusiness(rawInput: {
     throw new Error("No se encontró un negocio asociado a tu cuenta.");
   }
   revalidatePath("/[locale]/(admin)/admin/mi-negocio", "page");
+  invalidateCatalog();
 }
