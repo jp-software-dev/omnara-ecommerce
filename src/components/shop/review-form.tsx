@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -39,6 +38,8 @@ export function ReviewForm({ productId, locale }: { productId: string; locale: s
       return;
     }
 
+    // Loaded when the form is submitted, not with the first JavaScript of the product page.
+    const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
     const {
       data: { user },

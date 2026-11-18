@@ -3,7 +3,7 @@
 import { useRouter } from "@/i18n/navigation";
 import { User, LogOut, UserRound } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useWishlistStore } from "@/stores/wishlist-store";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -40,8 +40,10 @@ export function AccountMenu({
   }
 
   async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    // Loaded only when someone signs out, not with the first JavaScript of the page.
+    const { createClient } = await import("@/lib/supabase/client");
+    await createClient().auth.signOut();
+    useWishlistStore.getState().reset();
     router.refresh();
   }
 
