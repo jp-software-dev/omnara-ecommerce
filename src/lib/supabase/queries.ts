@@ -1,4 +1,6 @@
+import { unstable_cache } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { Database } from "@/lib/supabase/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { escapeLike, normalizeModelCode } from "@/lib/model-code";
@@ -31,8 +33,8 @@ export async function getCategories() {
   return data;
 }
 
-export async function getCategoryShowcases() {
-  const supabase = await createClient();
+export async function getCategoryShowcases(client?: SupabaseClient<Database>) {
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("categories")
     .select(
@@ -59,8 +61,8 @@ export async function getCategoryShowcases() {
   });
 }
 
-export async function getFeaturedProducts(limit = 8) {
-  const supabase = await createClient();
+export async function getFeaturedProducts(limit = 8, client?: SupabaseClient<Database>) {
+  const supabase = client ?? (await createClient());
   const inactiveVendorIds = await getInactiveVendorIds(supabase);
 
   let query = supabase
@@ -111,8 +113,8 @@ export async function getProductsByCategory(categorySlug: string) {
   return { category, products };
 }
 
-export async function getNewArrivals(limit = 8) {
-  const supabase = await createClient();
+export async function getNewArrivals(limit = 8, client?: SupabaseClient<Database>) {
+  const supabase = client ?? (await createClient());
   const inactiveVendorIds = await getInactiveVendorIds(supabase);
 
   let query = supabase
@@ -129,11 +131,11 @@ export async function getNewArrivals(limit = 8) {
   return data;
 }
 
-export async function getBestSellers(limit = 8) {
+export async function getBestSellers(limit = 8, client?: SupabaseClient<Database>) {
   // Sitewide sales ranking from a SECURITY DEFINER function that returns only
   // product ids and unit counts (no orders, no customers), so the storefront
   // needs no service-role key. Orders that were refunded or cancelled don't count.
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data: ranking, error } = await supabase.rpc("best_selling_product_ids", { p_limit: limit });
   if (error) throw error;
 
@@ -157,6 +159,56 @@ export async function getBestSellers(limit = 8) {
   const order = new Map(topProductIds.map((id, index) => [id, index]));
   return [...products].sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }
+
+// ---------------------------------------------------------------------------------------
+// Cached public reads. The home page and the header used to hit Supabase on every visit
+// (several round trips, one after another). The catalog changes rarely, so it is kept for a
+// minute and refreshed in the background; admin actions that change products, images or
+// businesses call revalidateTag("catalog") so a change shows up right away. Prices on cards
+// are display-only: checkout always recomputes them from the database.
+export const getHomeData = unstable_cache(
+  async () => {
+    const client = createPublicClient();
+    const [showcases, featuredProducts, newArrivals, bestSellers] = await Promise.all([
+      getCategoryShowcases(client),
+      getFeaturedProducts(8, client),
+      getNewArrivals(8, client),
+      getBestSellers(8, client),
+    ]);
+    return { showcases, featuredProducts, newArrivals, bestSellers };
+  },
+  ["home-data-v1"],
+  { revalidate: 60, tags: ["catalog"] }
+);
+
+export const getCachedCategories = unstable_cache(
+  async () => {
+    const { data, error } = await createPublicClient()
+      .from("categories")
+      .select("id, slug, name, position")
+      .order("position");
+    if (error) throw error;
+    return data;
+  },
+  ["categories-v1"],
+  { revalidate: 300, tags: ["catalog"] }
+);
+
+// Only for what is DISPLAYED (the exchange rate shown in the price switcher). Anything that
+// charges money keeps using getAppSettings, which always reads the live row.
+export const getCachedAppSettings = unstable_cache(
+  async () => {
+    const { data, error } = await createPublicClient()
+      .from("app_settings")
+      .select("usd_exchange_rate, free_shipping_threshold_mxn_cents, demo_payments_enabled")
+      .eq("id", 1)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+  ["app-settings-v1"],
+  { revalidate: 60, tags: ["app-settings"] }
+);
 
 export async function getProductBySlug(slug: string) {
   const supabase = await createClient();
