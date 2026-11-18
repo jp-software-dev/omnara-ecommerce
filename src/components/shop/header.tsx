@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { ShoppingBag, Heart, Menu, Search } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { getCategories } from "@/lib/supabase/queries";
+import { getCachedCategories } from "@/lib/supabase/queries";
 import { createClient } from "@/lib/supabase/server";
 import { pickLocale } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,7 @@ import { CurrencySwitcher } from "@/components/shop/currency-switcher";
 
 export async function Header({ locale }: { locale: string }) {
   const t = await getTranslations("common");
-  const categories = await getCategories();
+  const categories = await getCachedCategories();
   const supabase = await createClient();
   const {
     data: { user },

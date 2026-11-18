@@ -6,7 +6,7 @@ import { hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { Providers } from "@/components/providers";
-import { getAppSettings } from "@/lib/supabase/queries";
+import { getCachedAppSettings } from "@/lib/supabase/queries";
 import "../globals.css";
 
 const rubik = Rubik({
@@ -42,8 +42,7 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  const messages = await getMessages();
-  const appSettings = await getAppSettings();
+  const [messages, appSettings] = await Promise.all([getMessages(), getCachedAppSettings()]);
 
   return (
     <html
