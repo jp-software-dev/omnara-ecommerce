@@ -1,4 +1,13 @@
 import { formatPrice } from "@/lib/format";
+import {
+  formatTicketDate,
+  parseTicket,
+  ticketAddressLines,
+  ticketItemLabel,
+  ticketMoney,
+  ticketShipmentStatus,
+  TICKET_NOTICE,
+} from "@/lib/ticket";
 
 type Locale = "es" | "en";
 type Payload = Record<string, unknown>;
@@ -68,6 +77,44 @@ function renderBase(template: string, locale: Locale, payload: Payload): Rendere
   switch (template) {
     case "order_confirmation": {
       const subject = en ? `Order ${payload.order_number} confirmed` : `Pedido ${payload.order_number} confirmado`;
+      const ticket = parseTicket(payload.ticket);
+      if (ticket) {
+        const m = (cents: number) => esc(ticketMoney(cents, ticket, locale));
+        const rows = ticket.items
+          .map(
+            (item) =>
+              `<tr><td style="padding:6px 0;border-bottom:1px solid #eee">${esc(ticketItemLabel(item, locale))}${item.seller ? `<br><span style="color:#777;font-size:12px">${esc(item.seller)}</span>` : ""}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">${item.quantity}</td><td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right">${m(item.unit_price_cents * item.quantity)}</td></tr>`
+          )
+          .join("");
+        const totals = [
+          [en ? "Subtotal" : "Subtotal", m(ticket.subtotal_cents)],
+          ...(ticket.discount_cents > 0
+            ? [[`${en ? "Discount" : "Descuento"}${ticket.promo_code ? ` (${esc(ticket.promo_code)})` : ""}`, `-${m(ticket.discount_cents)}`]]
+            : []),
+          [en ? "Shipping" : "Envío", m(ticket.shipping_cents)],
+        ]
+          .map(([label, value]) => `<tr><td colspan="2" style="padding:3px 0;text-align:right;color:#555">${label}</td><td style="padding:3px 0;text-align:right">${value}</td></tr>`)
+          .join("");
+        const address = ticketAddressLines(ticket).map(esc).join("<br>");
+        const shipments = ticket.shipments
+          .map((s) => `<li>${esc(s.seller ?? "")} — ${esc(ticketShipmentStatus(s.status, locale))}${s.tracking_number ? ` (${esc(s.tracking_number)})` : ""}</li>`)
+          .join("");
+        const viewPath = typeof payload.view_path === "string" && payload.view_path.startsWith("/") ? payload.view_path : `/${locale}`;
+        return {
+          subject,
+          html: layout(
+            subject,
+            `<p>${en ? "Thanks for your purchase!" : "¡Gracias por tu compra!"}</p>
+<p style="background:#fff7e0;border:1px solid #f0d890;border-radius:8px;padding:10px 12px;font-size:12px;color:#5a4a10">${esc(TICKET_NOTICE[locale])}</p>
+<p>${en ? "Order" : "Pedido"}: <strong>${order}</strong><br>${en ? "Date" : "Fecha"}: ${esc(formatTicketDate(ticket.created_at, locale))}${ticket.estimated_delivery_at ? `<br>${en ? "Estimated delivery" : "Entrega estimada"}: <strong>${esc(formatTicketDate(ticket.estimated_delivery_at, locale))}</strong>` : ""}</p>
+<table style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr><th style="text-align:left;padding:6px 0;border-bottom:2px solid #111">${en ? "Product" : "Producto"}</th><th style="padding:6px 8px;border-bottom:2px solid #111">${en ? "Qty" : "Cant."}</th><th style="text-align:right;padding:6px 0;border-bottom:2px solid #111">${en ? "Amount" : "Importe"}</th></tr></thead><tbody>${rows}${totals}<tr><td colspan="2" style="padding:8px 0;text-align:right;font-weight:700">Total</td><td style="padding:8px 0;text-align:right;font-weight:700">${m(ticket.total_cents)}</td></tr></tbody></table>
+${address ? `<p><strong>${en ? "Ship to" : "Enviar a"}</strong><br>${address}</p>` : ""}
+${shipments ? `<p><strong>${en ? "Shipments" : "Envíos"}</strong></p><ul>${shipments}</ul>` : ""}
+<p>${en ? "The PDF of this receipt is attached. We'll keep you posted as your order moves." : "Adjuntamos el PDF de este comprobante. Te avisaremos cuando tu pedido avance."}</p>`,
+            { label: en ? "View my order" : "Ver mi pedido", path: viewPath }
+          ),
+        };
+      }
       return {
         subject,
         html: layout(

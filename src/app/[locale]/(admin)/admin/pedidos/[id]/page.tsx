@@ -41,6 +41,7 @@ export default async function AdminOrderDetailPage({
         <OrderInvoice
           order={order}
           locale={locale}
+          ticketHref={`/api/orders/${order.id}/ticket?lang=${locale}`}
           trackingSlot={
             role === "admin" ? (
               <TrackingInput

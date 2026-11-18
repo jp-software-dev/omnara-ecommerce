@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
+import { flushEmailsSoon } from "@/lib/email-outbox";
 import { createClient } from "@/lib/supabase/server";
 import {
   getAppSettings,
@@ -347,5 +348,8 @@ async function placeDemoOrder({
   if (!result?.order_id || !result.token) {
     throw new Error(demoOrderError("", locale));
   }
+  // The confirmation email (with the ticket) was queued by the database; send it once the
+  // response is out. Nothing happens until email is configured.
+  flushEmailsSoon();
   redirect(`/${locale}/checkout/confirmacion?demo_order=${result.order_id}&token=${result.token}`);
 }

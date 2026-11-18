@@ -86,7 +86,7 @@ export default async function OrderDetailPage({
       </Link>
 
       <div className="mt-4">
-        <OrderInvoice order={order} locale={locale} />
+        <OrderInvoice order={order} locale={locale} ticketHref={`/api/orders/${order.id}/ticket?lang=${locale}`} />
       </div>
 
       <ShipmentTracker shipments={tracking} locale={locale} />
