@@ -32,7 +32,7 @@ export default async function AdminShipmentsPage({
   const { data: shipments } = await query;
   const rows = shipments ?? [];
 
-  const vendorIds = [...new Set(rows.map((row) => row.vendor_id))];
+  const vendorIds = [...new Set(rows.map((row) => row.vendor_id).filter((id): id is string => id !== null))];
   const { data: businesses } = vendorIds.length
     ? await supabase.from("businesses").select("owner_id, name").in("owner_id", vendorIds)
     : { data: [] };
@@ -97,7 +97,7 @@ export default async function AdminShipmentsPage({
                     <Link href={`/admin/pedidos/${row.order_id}`} className="underline underline-offset-4">
                       {row.orders?.order_number ?? row.order_id.slice(0, 8)}
                     </Link>{" "}
-                    <span className="font-normal text-muted-foreground">· {names.get(row.vendor_id) ?? t.seller}</span>
+                    <span className="font-normal text-muted-foreground">· {(row.vendor_id && names.get(row.vendor_id)) || "Omnara"}</span>
                   </p>
                   <p className="mt-1 flex flex-wrap items-center gap-2 text-muted-foreground">
                     <Badge variant={closed ? "secondary" : "default"}>{shipmentStepLabel(row.status, locale)}</Badge>

@@ -505,7 +505,7 @@ export type Database = {
           status: string
           tracking_number: string | null
           updated_at: string
-          vendor_id: string
+          vendor_id: string | null
         }
         Insert: {
           carrier?: string | null
@@ -524,7 +524,7 @@ export type Database = {
           status?: string
           tracking_number?: string | null
           updated_at?: string
-          vendor_id: string
+          vendor_id?: string | null
         }
         Update: {
           carrier?: string | null
@@ -1563,6 +1563,10 @@ export type Database = {
       retry_failed_emails: {
         Args: { p_id?: string }
         Returns: number
+      }
+      cancel_shipment: {
+        Args: { p_shipment: string; p_token?: string }
+        Returns: Json
       }
       vendor_mark_preparing: {
         Args: { p_shipment: string }

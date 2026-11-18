@@ -42,7 +42,7 @@ export default function CheckoutPage({
     city: "",
     state: "",
     postalCode: "",
-    country: "MX" as "MX" | "US",
+    country: "MX" as const,
   });
   const [promoInput, setPromoInput] = useState("");
   const [promoChecking, setPromoChecking] = useState(false);
@@ -298,11 +298,10 @@ export default function CheckoutPage({
             <select
               aria-label="País"
               value={demoAddr.country}
-              onChange={(e) => setDemoAddr({ ...demoAddr, country: e.target.value === "US" ? "US" : "MX" })}
+              onChange={() => setDemoAddr({ ...demoAddr, country: "MX" })}
               className="h-9 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
             >
               <option value="MX" className="text-foreground">México</option>
-              <option value="US" className="text-foreground">United States</option>
             </select>
           </div>
         </fieldset>

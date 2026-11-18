@@ -170,7 +170,7 @@ ${shipments ? `<p><strong>${en ? "Shipments" : "Envíos"}</strong></p><ul>${ship
     }
     case "shipment_update": {
       const status = String(payload.status ?? "");
-      const seller = esc(payload.seller ?? (en ? "The seller" : "El vendedor"));
+      const seller = esc(payload.seller ?? "Omnara");
       const eta = payload.estimated_delivery_at
         ? `<p>${en ? "Estimated delivery" : "Entrega estimada"}: <strong>${esc(formatTicketDate(String(payload.estimated_delivery_at), locale))}</strong></p>`
         : "";
@@ -255,6 +255,26 @@ ${shipments ? `<p><strong>${en ? "Shipments" : "Envíos"}</strong></p><ul>${ship
           label: entry.cta[i],
           path: viewPath(payload, locale),
         }),
+      };
+    }
+    case "shipment_cancelled": {
+      const forSeller = payload.for_seller === true;
+      const subject = forSeller
+        ? en ? `A shipment was cancelled (order ${payload.order_number})` : `Se canceló un envío (pedido ${payload.order_number})`
+        : en ? `Your shipment was cancelled (order ${payload.order_number})` : `Se canceló tu envío (pedido ${payload.order_number})`;
+      const refund = money(payload.refund_cents, payload.currency, locale);
+      const body = forSeller
+        ? en
+          ? "The customer cancelled this shipment before it left. The items went back to your stock and there is nothing to ship."
+          : "El cliente canceló este envío antes de que saliera. Los artículos regresaron a tu inventario y no hay nada que enviar."
+        : en
+          ? `Your shipment was cancelled and the items went back to stock. Refund: <strong>${esc(refund)}</strong> (simulated: nothing was charged).${payload.whole_order === true ? " It includes the shipping fee because the whole order was cancelled." : ""}`
+          : `Tu envío fue cancelado y los artículos regresaron al inventario. Reembolso: <strong>${esc(refund)}</strong> (simulado: no se cobró nada).${payload.whole_order === true ? " Incluye el envío porque se canceló todo el pedido." : ""}`;
+      return {
+        subject,
+        html: layout(subject, `<p>${body}</p>${itemList(payload, locale)}`, forSeller
+          ? { label: en ? "Open orders" : "Abrir pedidos", path: `/${locale}/admin/pedidos` }
+          : { label: en ? "Continue shopping" : "Seguir comprando", path: `/${locale}` }),
       };
     }
     case "confirm_delivery_reminder": {

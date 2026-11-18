@@ -4,7 +4,8 @@ import { z } from "zod";
 // database checks (supabase/migrations/…_saved_addresses.sql), which are the real
 // guard; these just give friendly errors before the round trip.
 
-export const ADDRESS_COUNTRIES = ["MX", "US"] as const;
+// Deliveries are 100% domestic: Mexico only (the database enforces it too).
+export const ADDRESS_COUNTRIES = ["MX"] as const;
 
 export const addressSchema = z
   .object({
@@ -29,18 +30,11 @@ export const addressSchema = z
     makeDefault: z.boolean().optional(),
   })
   .superRefine((value, ctx) => {
-    const valid =
-      value.country === "MX"
-        ? /^[0-9]{5}$/.test(value.postalCode)
-        : /^[0-9]{5}(-[0-9]{4})?$/.test(value.postalCode);
-    if (!valid) {
+    if (!/^[0-9]{5}$/.test(value.postalCode)) {
       ctx.addIssue({
         code: "custom",
         path: ["postalCode"],
-        message:
-          value.country === "MX"
-            ? "El código postal de México tiene 5 dígitos."
-            : "El ZIP de Estados Unidos tiene 5 dígitos (o 5+4).",
+        message: "El código postal de México tiene 5 dígitos.",
       });
     }
   });
