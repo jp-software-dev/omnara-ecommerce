@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { createClient } from "@/lib/supabase/client";
 import { postReturnMessage } from "@/app/[locale]/(account)/cuenta/devoluciones/actions";
 
 const ALLOWED: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
@@ -29,6 +28,7 @@ export function ReturnMessageForm({ returnId, locale }: { returnId: string; loca
           if (!ext) throw new Error(en ? "Only JPG, PNG or WebP photos." : "Solo fotos JPG, PNG o WebP.");
           if (file.size > MAX_BYTES) throw new Error(en ? "The photo is larger than 3 MB." : "La foto pesa más de 3 MB.");
           attachmentPath = `${returnId}/${crypto.randomUUID()}.${ext}`;
+          const { createClient } = await import("@/lib/supabase/client");
           const { error } = await createClient()
             .storage.from("return-attachments")
             .upload(attachmentPath, file, { contentType: file.type });
