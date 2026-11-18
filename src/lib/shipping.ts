@@ -79,3 +79,27 @@ export function formatShipmentTime(value: string | Date, locale: string): string
     minute: "2-digit",
   });
 }
+
+export type ShipmentNotice = { kind: "paused" | "delay" | "failed_attempt" | "damaged"; until: string | null };
+
+/** The message shown to the customer for a pause, a delay, a failed attempt or damage. */
+export function shipmentNoticeText(notice: ShipmentNotice, locale: string, untilLabel: string | null): string {
+  const en = locale === "en";
+  // a date like "02:00 p.m." already ends with a dot: do not add a second one
+  const stop = untilLabel?.endsWith(".") ? "" : ".";
+  const when = untilLabel ? (en ? ` New estimated delivery: ${untilLabel}${stop}` : ` Nueva entrega estimada: ${untilLabel}${stop}`) : "";
+  switch (notice.kind) {
+    case "paused":
+      return en
+        ? "This shipment is paused for a review. We'll let you know when it continues."
+        : "Este envío está en pausa por una revisión. Te avisaremos cuando continúe.";
+    case "delay":
+      return (en ? "Your shipment has a delay." : "Tu envío tiene un retraso.") + when;
+    case "failed_attempt":
+      return (en ? "We couldn't deliver your order on the first attempt." : "No pudimos entregar tu pedido en el primer intento.") + when;
+    case "damaged":
+      return en
+        ? "A problem with the package was reported. If it arrives damaged you can request a return from this order."
+        : "Se reportó un problema con el paquete. Si llega dañado, puedes pedir una devolución desde este pedido.";
+  }
+}

@@ -217,6 +217,46 @@ ${shipments ? `<p><strong>${en ? "Shipments" : "Envíos"}</strong></p><ul>${ship
         }),
       };
     }
+    case "shipment_incident": {
+      const kind = String(payload.kind ?? "");
+      const eta = payload.estimated_delivery_at
+        ? `<p>${en ? "New estimated delivery" : "Nueva entrega estimada"}: <strong>${esc(formatTicketDate(String(payload.estimated_delivery_at), locale))}</strong></p>`
+        : "";
+      const note = payload.note ? `<p>${en ? "Note" : "Nota"}: ${esc(payload.note)}</p>` : "";
+      const copy: Record<string, { subject: [string, string]; body: [string, string]; withEta: boolean; cta: [string, string] }> = {
+        delay: {
+          subject: [`Tu pedido ${payload.order_number} tiene un retraso`, `Your order ${payload.order_number} is delayed`],
+          body: ["Tu envío tuvo un retraso. Lamentamos las molestias.", "Your shipment was delayed. We are sorry for the inconvenience."],
+          withEta: true,
+          cta: ["Ver seguimiento", "Track my order"],
+        },
+        failed_attempt: {
+          subject: [`No pudimos entregar tu pedido ${payload.order_number}`, `We couldn't deliver your order ${payload.order_number}`],
+          body: ["No pudimos entregar tu pedido en el primer intento. Lo intentaremos de nuevo.", "We couldn't deliver your order on the first attempt. We'll try again."],
+          withEta: true,
+          cta: ["Ver seguimiento", "Track my order"],
+        },
+        damaged: {
+          subject: [`Problema con el paquete de tu pedido ${payload.order_number}`, `Problem with the package of your order ${payload.order_number}`],
+          body: [
+            "Se reportó un problema con el paquete de tu pedido. Cuando lo recibas, si llegó dañado, puedes pedir una devolución con fotos desde tu pedido (dentro de 30 días).",
+            "A problem with the package of your order was reported. When you receive it, if it arrived damaged, you can request a return with photos from your order (within 30 days).",
+          ],
+          withEta: false,
+          cta: ["Ver mi pedido", "View my order"],
+        },
+      };
+      const entry = copy[kind];
+      if (!entry) return null;
+      const i = en ? 1 : 0;
+      return {
+        subject: entry.subject[i],
+        html: layout(entry.subject[i], `<p>${entry.body[i]}</p>${itemList(payload, locale)}${entry.withEta ? eta : ""}${note}`, {
+          label: entry.cta[i],
+          path: viewPath(payload, locale),
+        }),
+      };
+    }
     case "confirm_delivery_reminder": {
       const second = payload.second === true;
       const subject = second

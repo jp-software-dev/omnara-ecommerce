@@ -1,6 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/format";
 import { requireRole } from "@/lib/supabase/auth-helpers";
+import { holdReason, holdReasonText } from "@/lib/payout-hold";
+import { pickLocale } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { PayoutButton } from "./payout-button";
 
@@ -52,6 +54,20 @@ export default async function PayoutsPage({ params }: { params: Promise<{ locale
 
   const bps = rows.find((r) => r.balance)?.balance?.commission_bps ?? 300;
 
+  // For a seller: the sold items that are not in the balance yet, and why.
+  const { data: waiting } =
+    role === "vendor"
+      ? await supabase
+          .from("order_items")
+          .select("id, quantity, unit_price_cents, product_name_snapshot, completed_at, shipments(status), orders(order_number, status, currency), return_requests(status)")
+          .eq("vendor_id", user.id)
+          .is("payout_id", null)
+          .is("completed_at", null)
+          .order("id", { ascending: false })
+          .limit(50)
+      : { data: [] };
+  const held = (waiting ?? []).filter((item) => item.orders && !["cancelled", "refunded"].includes(item.orders.status));
+
   return (
     <main className="flex-1 p-6 md:p-10">
       <h1 className="text-2xl font-semibold tracking-tight">{en ? "Seller payouts" : "Pagos a vendedores"}</h1>
@@ -89,6 +105,39 @@ export default async function PayoutsPage({ params }: { params: Promise<{ locale
           <li className="p-4 text-sm text-muted-foreground">{en ? "No sellers yet." : "Todavía no hay vendedores."}</li>
         ) : null}
       </ul>
+
+      {role === "vendor" && held.length > 0 ? (
+        <>
+          <h2 className="mt-8 text-lg font-medium">{en ? "Waiting to be paid" : "En espera de pago"}</h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            {en
+              ? "Sold items become payable when the customer confirms the delivery, as long as there is no open return."
+              : "Los artículos vendidos pasan a ser pagables cuando el cliente confirma la entrega, siempre que no haya una devolución abierta."}
+          </p>
+          <ul className="mt-3 max-w-3xl divide-y rounded-lg border text-sm">
+            {held.map((item) => (
+              <li key={item.id} className="p-4">
+                <p className="font-medium">
+                  {pickLocale(item.product_name_snapshot, locale) || (en ? "Product" : "Producto")}{" "}
+                  <span className="font-normal text-muted-foreground">
+                    · {item.orders?.order_number} · x{item.quantity}
+                  </span>
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  {holdReasonText(
+                    holdReason({
+                      completed_at: item.completed_at,
+                      shipmentStatus: item.shipments?.status ?? null,
+                      returnStatus: item.return_requests?.status ?? null,
+                    }),
+                    locale
+                  )}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
 
       <h2 className="mt-8 text-lg font-medium">{en ? "History" : "Historial"}</h2>
       {(payouts ?? []).length === 0 ? (

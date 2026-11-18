@@ -265,6 +265,22 @@ export async function updateOrderTracking(orderId: string, trackingNumber: strin
   revalidatePath("/[locale]/(admin)/admin/pedidos/[id]", "page");
 }
 
+// The seller says they started preparing their shipment. The database checks that the
+// shipment is theirs and still "confirmed".
+export async function markPreparing(shipmentId: string) {
+  const id = z.string().uuid().parse(shipmentId);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("vendor_mark_preparing", { p_shipment: id });
+  if (error) {
+    throw new Error(
+      error.message.includes("Only a confirmed")
+        ? "Este envío ya no está en espera de preparación."
+        : "No se pudo marcar el envío como en preparación."
+    );
+  }
+  revalidatePath("/[locale]/(admin)/admin/pedidos", "layout");
+}
+
 // A vendor ships THEIR items of an order. Goes through a SECURITY DEFINER
 // function because orders is admin-writable only (and one order can hold
 // items from several businesses, so a vendor must not touch the whole order).

@@ -1,5 +1,5 @@
 import { Check, Circle, CircleDot } from "lucide-react";
-import { carrierName, formatShipmentTime, shipmentStepLabel } from "@/lib/shipping";
+import { carrierName, formatShipmentTime, shipmentNoticeText, shipmentStepLabel } from "@/lib/shipping";
 import type { TrackedShipment } from "@/lib/supabase/queries";
 import { ConfirmDeliveryButton } from "./confirm-delivery-button";
 
@@ -49,6 +49,15 @@ export function ShipmentTracker({
                 {carrierName(shipment.tracking_number) ?? (en ? "Carrier" : "Paquetería")} ·{" "}
                 <span className="font-mono">{shipment.tracking_number}</span> ·{" "}
                 {en ? "simulated carrier (educational demo)" : "paquetería simulada (demostración educativa)"}
+              </p>
+            ) : null}
+
+            {shipment.notice ? (
+              <p
+                role="status"
+                className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200"
+              >
+                {shipmentNoticeText(shipment.notice, locale, shipment.notice.until ? formatShipmentTime(shipment.notice.until, locale) : null)}
               </p>
             ) : null}
 

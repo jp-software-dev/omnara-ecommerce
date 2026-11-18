@@ -4,6 +4,7 @@ import {
   generateSimulatedTracking,
   isSimulatedTracking,
   SHIPMENT_STEPS,
+  shipmentNoticeText,
   shipmentStepLabel,
 } from "@/lib/shipping";
 
@@ -46,5 +47,25 @@ describe("shipment steps", () => {
 
   it("falls back to the raw key for an unknown step", () => {
     expect(shipmentStepLabel("teleported", "es")).toBe("teleported");
+  });
+});
+
+describe("shipmentNoticeText", () => {
+  it("explains a delay with the new estimated date", () => {
+    expect(shipmentNoticeText({ kind: "delay", until: "x" }, "es", "mar 24 de nov, 02:00 p.m.")).toBe(
+      "Tu envío tiene un retraso. Nueva entrega estimada: mar 24 de nov, 02:00 p.m."
+    );
+    expect(shipmentNoticeText({ kind: "failed_attempt", until: "x" }, "en", "Tue, Nov 24")).toBe(
+      "We couldn't deliver your order on the first attempt. New estimated delivery: Tue, Nov 24."
+    );
+  });
+
+  it("does not invent a date when there is none", () => {
+    expect(shipmentNoticeText({ kind: "delay", until: null }, "es", null)).toBe("Tu envío tiene un retraso.");
+  });
+
+  it("says a paused shipment will continue and what to do about damage", () => {
+    expect(shipmentNoticeText({ kind: "paused", until: null }, "es", null)).toContain("en pausa");
+    expect(shipmentNoticeText({ kind: "damaged", until: null }, "en", null)).toContain("request a return");
   });
 });

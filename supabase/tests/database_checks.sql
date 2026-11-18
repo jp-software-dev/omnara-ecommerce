@@ -293,7 +293,83 @@ begin
     end if;
   end;
 
-  -- 7. A non-admin cannot read another seller's balance or create payouts ---
+  -- 7. Shipment operations: who may do what, pauses and delays -----------------
+  declare
+    v_ord uuid;
+    v_seller uuid := gen_random_uuid();
+    v_other uuid := gen_random_uuid();
+    v_ship uuid;
+    v_eta_before bigint;
+    v_eta_after bigint;
+  begin
+    select id into v_ord from public.orders limit 1;
+    if v_ord is not null then
+      insert into auth.users (id, instance_id, aud, role, email, raw_user_meta_data, created_at, updated_at) values
+        (v_seller, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'seller@example.invalid', '{}', now(), now()),
+        (v_other, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'other@example.invalid', '{}', now(), now());
+      update public.profiles set role = 'vendor' where id in (v_seller, v_other);
+      insert into public.shipments (order_id, vendor_id, ship_by) values (v_ord, v_seller, now() + interval '24 hours')
+      returning id into v_ship;
+
+      -- only the seller of the shipment can mark it as preparing
+      perform set_config('request.jwt.claims', json_build_object('sub', v_other, 'role', 'authenticated')::text, true);
+      begin
+        perform public.vendor_mark_preparing(v_ship);
+        raise exception 'FAIL: another seller marked a shipment as preparing';
+      exception when others then
+        if sqlerrm <> 'Shipment not found' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+      perform set_config('request.jwt.claims', json_build_object('sub', v_seller, 'role', 'authenticated')::text, true);
+      perform public.vendor_mark_preparing(v_ship);
+
+      -- sellers cannot use the admin operations
+      begin
+        perform public.admin_set_hold(v_ship, true);
+        raise exception 'FAIL: a seller paused a shipment';
+      exception when others then
+        if sqlerrm <> 'Only an administrator can pause a shipment' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+      begin
+        perform public.admin_add_incident(v_ship, 'delay');
+        raise exception 'FAIL: a seller recorded an incident';
+      exception when others then
+        if sqlerrm <> 'Only an administrator can record an incident' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+
+      -- admin: force two steps, then a delay must ADD time to the projected delivery
+      perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
+      perform public.admin_force_next_step(v_ship);   -- shipped
+      perform public.admin_force_next_step(v_ship);   -- in_transit
+      select extract(epoch from at)::bigint into v_eta_before from public.shipment_timeline(v_ship) where status = 'delivered';
+      perform public.admin_add_incident(v_ship, 'delay', 'test', 48);
+      select extract(epoch from at)::bigint into v_eta_after from public.shipment_timeline(v_ship) where status = 'delivered';
+      if v_eta_after - v_eta_before < 24 * 3600 then
+        raise exception 'FAIL: a 48-hour delay moved the estimated delivery by only % hours', (v_eta_after - v_eta_before) / 3600;
+      end if;
+      begin
+        perform public.admin_add_incident(v_ship, 'delay', null, 500);
+        raise exception 'FAIL: a delay longer than a week was accepted';
+      exception when others then
+        if sqlerrm <> 'A delay lasts between 1 and 168 hours' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+
+      -- the delay is consumed by the next step, and a pause freezes the scheduler
+      perform private.advance_shipment(v_ship, now() + interval '30 days');
+      if (select delay_minutes from public.shipments where id = v_ship) <> 0 then
+        raise exception 'FAIL: the pending delay was not consumed by the next step';
+      end if;
+
+      insert into public.shipments (order_id, vendor_id, ship_by) values (v_ord, v_other, now() + interval '24 hours') returning id into v_ship;
+      perform public.admin_set_hold(v_ship, true, 'test');
+      perform private.advance_shipment(v_ship, now() + interval '30 days');
+      if (select status from public.shipments where id = v_ship) <> 'confirmed' then
+        raise exception 'FAIL: a paused shipment advanced';
+      end if;
+      perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
+    end if;
+  end;
+
+  -- 8. A non-admin cannot read another seller's balance or create payouts ---
   perform set_config('request.jwt.claims',
     json_build_object('sub', '00000000-0000-0000-0000-0000000000aa', 'role', 'authenticated')::text, true);
   begin
