@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/sonner";
+import { useEffect } from "react";
+import dynamic from "next/dynamic";
 import { ThemeProvider } from "@/components/theme-provider";
 import { useCartStore } from "@/stores/cart-store";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { useCompareStore } from "@/stores/compare-store";
+
+// Toasts only appear after an action, so the library is fetched after the first paint
+// instead of being part of the first JavaScript every page downloads.
+const Toaster = dynamic(() => import("@/components/ui/sonner").then((module) => module.Toaster), {
+  ssr: false,
+});
 
 export function Providers({
   children,
@@ -15,15 +20,6 @@ export function Providers({
   children: React.ReactNode;
   usdExchangeRate: number;
 }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: { staleTime: 60 * 1000 },
-        },
-      })
-  );
-
   useEffect(() => {
     useCartStore.persist.rehydrate();
     useCurrencyStore.persist.rehydrate();
@@ -33,10 +29,8 @@ export function Providers({
 
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-      <QueryClientProvider client={queryClient}>
-        {children}
-        <Toaster />
-      </QueryClientProvider>
+      {children}
+      <Toaster />
     </ThemeProvider>
   );
 }

@@ -8,6 +8,7 @@ import {
   getNewArrivals,
 } from "@/lib/supabase/queries";
 import { pickLocale } from "@/lib/format";
+import { BLUR_DATA_URL } from "@/lib/image";
 import { ProductCard } from "@/components/shop/product-card";
 import { HeroCarousel } from "@/components/shop/hero-carousel";
 
@@ -55,6 +56,8 @@ export default async function HomePage({
                   alt=""
                   fill
                   sizes="(min-width: 1024px) 20vw, 33vw"
+                  placeholder="blur"
+                  blurDataURL={BLUR_DATA_URL}
                   className="object-cover transition-transform duration-(--duration-expressive) ease-(--ease-expressive) group-hover:scale-105"
                 />
               ) : null}
