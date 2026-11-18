@@ -469,6 +469,17 @@ export async function processEmailsNow() {
   return result;
 }
 
+// Puts failed emails back in the queue: one by id, or all of them. The database checks the
+// caller is an admin.
+export async function retryFailedEmails(emailId?: string) {
+  const id = emailId ? z.string().uuid().parse(emailId) : undefined;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("retry_failed_emails", id ? { p_id: id } : {});
+  if (error) throw new Error("No se pudieron reintentar los correos.");
+  revalidatePath("/[locale]/(admin)/admin/correos", "page");
+  return data ?? 0;
+}
+
 // An administrator closes a data request (e.g. after removing or anonymising the
 // account by hand). The database function re-checks that the caller is an admin.
 export async function resolveDataRequest(requestId: string, status: "done" | "rejected", note: string) {
