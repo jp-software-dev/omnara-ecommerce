@@ -389,14 +389,116 @@ export type Database = {
           },
         ]
       }
+      shipment_incidents: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          delay_hours: number | null
+          id: string
+          kind: string
+          note: string | null
+          shipment_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          delay_hours?: number | null
+          id?: string
+          kind: string
+          note?: string | null
+          shipment_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          delay_hours?: number | null
+          id?: string
+          kind?: string
+          note?: string | null
+          shipment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_incidents_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipping_calendar: {
+        Row: {
+          business_end: string
+          business_start: string
+          id: number
+          timezone: string
+          working_days: number[]
+        }
+        Insert: {
+          business_end?: string
+          business_start?: string
+          id?: number
+          timezone?: string
+          working_days?: number[]
+        }
+        Update: {
+          business_end?: string
+          business_start?: string
+          id?: number
+          timezone?: string
+          working_days?: number[]
+        }
+        Relationships: []
+      }
+      mx_holidays: {
+        Row: {
+          day: string
+          name: string
+        }
+        Insert: {
+          day: string
+          name: string
+        }
+        Update: {
+          day?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      shipment_step_rules: {
+        Row: {
+          business_hours_only: boolean
+          from_status: string
+          offset_minutes: number
+          status: string
+        }
+        Insert: {
+          business_hours_only?: boolean
+          from_status: string
+          offset_minutes: number
+          status: string
+        }
+        Update: {
+          business_hours_only?: boolean
+          from_status?: string
+          offset_minutes?: number
+          status?: string
+        }
+        Relationships: []
+      }
       shipments: {
         Row: {
           carrier: string | null
           completed_at: string | null
           created_at: string
           delivered_at: string | null
+          delay_minutes: number
           estimated_delivery_at: string | null
+          hold_reason: string | null
+          hold_until: string | null
           id: string
+          on_hold: boolean
           order_id: string
           ship_by: string | null
           shipped_at: string | null
@@ -410,8 +512,12 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           delivered_at?: string | null
+          delay_minutes?: number
           estimated_delivery_at?: string | null
+          hold_reason?: string | null
+          hold_until?: string | null
           id?: string
+          on_hold?: boolean
           order_id: string
           ship_by?: string | null
           shipped_at?: string | null
@@ -425,8 +531,12 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           delivered_at?: string | null
+          delay_minutes?: number
           estimated_delivery_at?: string | null
+          hold_reason?: string | null
+          hold_until?: string | null
           id?: string
+          on_hold?: boolean
           order_id?: string
           ship_by?: string | null
           shipped_at?: string | null
@@ -565,6 +675,13 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
             referencedColumns: ["id"]
           },
         ]
@@ -1446,6 +1563,22 @@ export type Database = {
       retry_failed_emails: {
         Args: { p_id?: string }
         Returns: number
+      }
+      vendor_mark_preparing: {
+        Args: { p_shipment: string }
+        Returns: undefined
+      }
+      admin_set_hold: {
+        Args: { p_on_hold: boolean; p_reason?: string; p_shipment: string }
+        Returns: undefined
+      }
+      admin_force_next_step: {
+        Args: { p_shipment: string }
+        Returns: string
+      }
+      admin_add_incident: {
+        Args: { p_delay_hours?: number; p_kind: string; p_note?: string; p_shipment: string }
+        Returns: string
       }
       order_tracking: {
         Args: { p_order: string; p_token?: string }

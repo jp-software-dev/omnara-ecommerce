@@ -207,3 +207,34 @@ describe("shipment milestone emails", () => {
     expect(html).toContain("&lt;script&gt;");
   });
 });
+
+describe("shipment incident emails", () => {
+  const payload = {
+    order_number: "DEMO-46DE52C0",
+    items: [{ es: "Portavelas de vidrio", en: "Glass candle holder" }],
+    estimated_delivery_at: "2026-11-24T20:00:00+00:00",
+    note: "Tormenta en la ruta",
+    view_path: "/cuenta/pedidos/38f6bcc7",
+  };
+
+  it("explains a delay with the new estimated delivery and the note", () => {
+    const email = renderEmail("shipment_incident", "es", { ...payload, kind: "delay", delay_hours: 48 });
+    expect(email?.subject).toBe("Tu pedido DEMO-46DE52C0 tiene un retraso");
+    expect(email?.html).toContain("Nueva entrega estimada");
+    expect(email?.html).toContain("Tormenta en la ruta");
+    expect(email?.html).toContain("Portavelas de vidrio");
+  });
+
+  it("tells the customer how to start a return when the package is damaged, with no new date", () => {
+    const email = renderEmail("shipment_incident", "es", { ...payload, kind: "damaged" });
+    expect(email?.html).toContain("devolución");
+    expect(email?.html).not.toContain("Nueva entrega estimada");
+  });
+
+  it("is available in English and rejects an unknown kind", () => {
+    expect(renderEmail("shipment_incident", "en", { ...payload, kind: "failed_attempt" })?.subject).toBe(
+      "We couldn't deliver your order DEMO-46DE52C0"
+    );
+    expect(renderEmail("shipment_incident", "es", { ...payload, kind: "bogus" })).toBeNull();
+  });
+});
