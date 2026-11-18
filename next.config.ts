@@ -49,6 +49,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
+    // Product photos are uploaded once under a new file name and never overwritten, so the
+    // optimized copies can be kept for a month instead of the 4-hour default.
+    minimumCacheTTL: 60 * 60 * 24 * 30,
     remotePatterns: [
       {
         protocol: "https",
@@ -56,6 +59,21 @@ const nextConfig: NextConfig = {
         pathname: "/storage/v1/object/public/**",
       },
     ],
+  },
+  // "/" has to land on a locale. Doing it here (before the proxy runs) serves the redirect
+  // from the edge with no code executed; the language proxy only runs for the pages that
+  // really need it. A visitor who already chose English keeps it through the NEXT_LOCALE
+  // cookie that next-intl sets.
+  async redirects() {
+    return [
+      {
+        source: "/",
+        has: [{ type: "cookie", key: "NEXT_LOCALE", value: "en" }],
+        destination: "/en",
+        permanent: false,
+      },
+      { source: "/", destination: "/es", permanent: false },
+    ];
   },
   async headers() {
     return [
