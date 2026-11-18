@@ -16,6 +16,8 @@ import {
   ScrollText,
   ShieldCheck,
   Wallet,
+  Truck,
+  CalendarClock,
 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { requireRole } from "@/lib/supabase/auth-helpers";
@@ -57,6 +59,8 @@ export default async function AdminLayout({
             label: locale === "en" ? "Reviews" : "Reseñas",
             icon: MessageSquareWarning,
           },
+          { href: "/admin/envios", label: locale === "en" ? "Shipments" : "Envíos", icon: Truck },
+          { href: "/admin/calendario", label: locale === "en" ? "Delivery calendar" : "Calendario de entregas", icon: CalendarClock },
           { href: "/admin/correos", label: locale === "en" ? "Emails" : "Correos", icon: Send },
           { href: "/admin/bitacora", label: locale === "en" ? "Audit log" : "Bitácora", icon: ScrollText },
           { href: "/admin/privacidad", label: locale === "en" ? "Data requests" : "Solicitudes de datos", icon: ShieldCheck },

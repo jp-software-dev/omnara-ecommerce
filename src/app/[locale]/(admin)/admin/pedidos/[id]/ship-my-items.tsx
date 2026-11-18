@@ -5,7 +5,7 @@ import { useRouter } from "@/i18n/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { shipMyItems } from "../../actions";
+import { markPreparing, shipMyItems } from "../../actions";
 import { generateSimulatedTracking, SIM_CARRIERS, type SimCarrierCode } from "@/lib/shipping";
 
 export function ShipMyItems({
@@ -14,12 +14,15 @@ export function ShipMyItems({
   orderStatus,
   shipped,
   initialTracking,
+  shipment,
 }: {
   locale: string;
   orderId: string;
   orderStatus: string;
   shipped: boolean;
   initialTracking: string;
+  /** This seller's shipment of the order, if it has one. */
+  shipment: { id: string; status: string } | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -37,6 +40,11 @@ export function ShipMyItems({
     ship: en ? "Mark my items as shipped" : "Marcar mis artículos como enviados",
     update: en ? "Update tracking" : "Actualizar rastreo",
     done: en ? "Saved." : "Guardado.",
+    prepare: en ? "I started preparing this order" : "Ya empecé a preparar este pedido",
+    prepareHelp: en
+      ? "The customer is told it is being prepared. Every order must ship within 24 hours of the payment."
+      : "Se le avisa al cliente que se está preparando. Todo pedido debe enviarse dentro de las 24 horas posteriores al pago.",
+    preparing: en ? "Marked as being prepared." : "Marcado como en preparación.",
     generate: en ? "Generate simulated label" : "Generar guía simulada",
     simHint: en
       ? "Demo carriers: no real carrier is contacted; the customer sees a simulated tracking history."
@@ -44,6 +52,19 @@ export function ShipMyItems({
   };
 
   const canShip = orderStatus === "paid" || orderStatus === "fulfilled";
+
+  function prepare() {
+    if (!shipment) return;
+    startTransition(async () => {
+      try {
+        await markPreparing(shipment.id);
+        toast.success(t.preparing);
+        router.refresh();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Error");
+      }
+    });
+  }
 
   function submit() {
     startTransition(async () => {
@@ -62,6 +83,14 @@ export function ShipMyItems({
       <h2 className="font-semibold">{t.title}</h2>
       {canShip ? (
         <>
+          {shipment?.status === "confirmed" ? (
+            <div className="mt-3">
+              <Button type="button" variant="outline" disabled={pending} onClick={prepare}>
+                {t.prepare}
+              </Button>
+              <p className="mt-1 text-xs text-muted-foreground">{t.prepareHelp}</p>
+            </div>
+          ) : null}
           <p className="mt-1 text-sm text-muted-foreground">{t.help}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Input
