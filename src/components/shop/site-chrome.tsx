@@ -1,6 +1,6 @@
 import { Header } from "@/components/shop/header";
 import { Footer } from "@/components/shop/footer";
-import { CompareBar } from "@/components/shop/compare-bar";
+import { LazyCompareBar } from "@/components/shop/lazy-compare-bar";
 
 export function SiteChrome({
   children,
@@ -22,7 +22,7 @@ export function SiteChrome({
         {children}
       </div>
       <Footer />
-      <CompareBar locale={locale} />
+      <LazyCompareBar locale={locale} />
     </div>
   );
 }

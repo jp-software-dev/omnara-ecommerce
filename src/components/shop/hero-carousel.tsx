@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { pickLocale } from "@/lib/format";
+import { BLUR_DATA_URL } from "@/lib/image";
 import type { Json } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
@@ -20,19 +21,30 @@ const AUTOPLAY_MS = 5000;
 export function HeroCarousel({ slides, locale }: { slides: HeroSlide[]; locale: string }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  // Only the slide on screen (and the one that comes next) loads its picture. The other
+  // slides are invisible but still inside the viewport, so the browser would otherwise
+  // download all of them at once on the first paint.
+  const [mounted, setMounted] = useState<number[]>([0]);
+
+  // Moving to a slide remembers it, so its picture stays loaded for the fade-out too.
+  const goTo = useCallback(
+    (target: number) => {
+      setIndex(target);
+      setMounted((current) => (current.includes(target) ? current : [...current, target]));
+    },
+    []
+  );
 
   useEffect(() => {
     if (paused || slides.length <= 1) return;
-    const timer = setInterval(() => {
-      setIndex((current) => (current + 1) % slides.length);
-    }, AUTOPLAY_MS);
+    const timer = setInterval(() => goTo((index + 1) % slides.length), AUTOPLAY_MS);
     return () => clearInterval(timer);
-  }, [paused, slides.length]);
+  }, [paused, slides.length, index, goTo]);
 
   if (slides.length === 0) return null;
 
-  const goPrev = () => setIndex((current) => (current - 1 + slides.length) % slides.length);
-  const goNext = () => setIndex((current) => (current + 1) % slides.length);
+  const goPrev = () => goTo((index - 1 + slides.length) % slides.length);
+  const goNext = () => goTo((index + 1) % slides.length);
 
   return (
     <div
@@ -51,13 +63,16 @@ export function HeroCarousel({ slides, locale }: { slides: HeroSlide[]; locale: 
             slideIndex === index ? "opacity-100" : "pointer-events-none opacity-0"
           )}
         >
-          {slide.imageUrl ? (
+          {slide.imageUrl && (mounted.includes(slideIndex) || slideIndex === (index + 1) % slides.length) ? (
             <Image
               src={slide.imageUrl}
               alt={pickLocale(slide.name, locale)}
               fill
               priority={slideIndex === 0}
+              fetchPriority={slideIndex === 0 ? "high" : "low"}
               sizes="100vw"
+              placeholder="blur"
+              blurDataURL={BLUR_DATA_URL}
               className="object-cover"
             />
           ) : null}
@@ -97,7 +112,7 @@ export function HeroCarousel({ slides, locale }: { slides: HeroSlide[]; locale: 
               <button
                 key={slide.id}
                 type="button"
-                onClick={() => setIndex(slideIndex)}
+                onClick={() => goTo(slideIndex)}
                 aria-label={`${locale === "en" ? "Go to slide" : "Ir a la diapositiva"} ${slideIndex + 1}`}
                 className={cn(
                   "h-1.5 rounded-full transition-[width,background-color] duration-(--duration-fast)",
