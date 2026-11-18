@@ -369,7 +369,67 @@ begin
     end if;
   end;
 
-  -- 8. A non-admin cannot read another seller's balance or create payouts ---
+  -- 8. Platform products, cancellation and domestic delivery -----------------------
+  declare
+    v_variant uuid;
+    v_res jsonb;
+    v_order uuid;
+    v_token uuid;
+    v_shipment uuid;
+    v_stock_before int;
+    v_stock_after int;
+  begin
+    -- a product sold by the platform itself (no seller) must still get a shipment
+    select pv.id into v_variant
+      from public.product_variants pv join public.products p on p.id = pv.product_id
+     where pv.stock_quantity > 5 and p.status = 'active' and p.vendor_id is null limit 1;
+    if v_variant is not null then
+      select stock_quantity into v_stock_before from public.product_variants where id = v_variant;
+      v_res := public.place_demo_order(
+        jsonb_build_array(jsonb_build_object('variant_id', v_variant, 'quantity', 2)), 'MXN', 'check@example.invalid', '',
+        jsonb_build_object('name', 'Check', 'address', jsonb_build_object('line1', 'Calle 1', 'city', 'CDMX', 'state', 'CDMX', 'postal_code', '06000', 'country', 'MX')));
+      v_order := (v_res ->> 'order_id')::uuid;
+      v_token := (v_res ->> 'token')::uuid;
+      select id into v_shipment from public.shipments where order_id = v_order;
+      if v_shipment is null then
+        raise exception 'FAIL: an order of platform products got no shipment';
+      end if;
+
+      -- cancelling needs the secret token and puts the stock back
+      begin
+        perform public.cancel_shipment(v_shipment);
+        raise exception 'FAIL: a shipment was cancelled without the token';
+      exception when others then
+        if sqlerrm <> 'Shipment not found' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+      perform public.cancel_shipment(v_shipment, v_token);
+      select stock_quantity into v_stock_after from public.product_variants where id = v_variant;
+      if v_stock_after <> v_stock_before then
+        raise exception 'FAIL: cancelling did not return the items to stock (% -> %)', v_stock_before, v_stock_after;
+      end if;
+      if (select status from public.orders where id = v_order) <> 'cancelled' then
+        raise exception 'FAIL: cancelling the only shipment must cancel the order';
+      end if;
+      begin
+        perform public.cancel_shipment(v_shipment, v_token);
+        raise exception 'FAIL: a shipment was cancelled twice';
+      exception when others then
+        if sqlerrm <> 'A shipment can only be cancelled before it ships' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+
+      -- deliveries are domestic only
+      begin
+        perform public.place_demo_order(
+          jsonb_build_array(jsonb_build_object('variant_id', v_variant, 'quantity', 1)), 'MXN', 'us@example.invalid', '',
+          jsonb_build_object('name', 'Check', 'address', jsonb_build_object('line1', '1 Main St', 'city', 'Austin', 'state', 'TX', 'postal_code', '73301', 'country', 'US')));
+        raise exception 'FAIL: an order to another country was accepted';
+      exception when others then
+        if sqlerrm <> 'We only deliver within Mexico' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+    end if;
+  end;
+
+  -- 9. A non-admin cannot read another seller's balance or create payouts ---
   perform set_config('request.jwt.claims',
     json_build_object('sub', '00000000-0000-0000-0000-0000000000aa', 'role', 'authenticated')::text, true);
   begin
