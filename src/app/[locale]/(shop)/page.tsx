@@ -1,12 +1,7 @@
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import {
-  getBestSellers,
-  getCategoryShowcases,
-  getFeaturedProducts,
-  getNewArrivals,
-} from "@/lib/supabase/queries";
+import { getHomeData } from "@/lib/supabase/queries";
 import { pickLocale } from "@/lib/format";
 import { BLUR_DATA_URL } from "@/lib/image";
 import { ProductCard } from "@/components/shop/product-card";
@@ -19,12 +14,7 @@ export default async function HomePage({
 }) {
   const { locale } = await params;
   const t = await getTranslations("home");
-  const [showcases, featuredProducts, newArrivals, bestSellers] = await Promise.all([
-    getCategoryShowcases(),
-    getFeaturedProducts(8),
-    getNewArrivals(8),
-    getBestSellers(8),
-  ]);
+  const { showcases, featuredProducts, newArrivals, bestSellers } = await getHomeData();
 
   return (
     <main className="flex flex-1 flex-col">
