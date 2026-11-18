@@ -6,6 +6,7 @@ const LABELS: Record<string, { es: string; en: string }> = {
   new_sale: { es: "Nueva venta (al vendedor)", en: "New sale (to the seller)" },
   item_shipped: { es: "Artículo enviado", en: "Item shipped" },
   shipment_update: { es: "Avance del envío", en: "Shipment update" },
+  shipment_incident: { es: "Incidente en el envío", en: "Shipment incident" },
   confirm_delivery_reminder: { es: "Recordatorio: confirmar la entrega", en: "Reminder: confirm the delivery" },
   review_reminder: { es: "Recordatorio: dejar una reseña", en: "Reminder: leave a review" },
   delivery_confirmed: { es: "Entrega confirmada (al vendedor)", en: "Delivery confirmed (to the seller)" },
