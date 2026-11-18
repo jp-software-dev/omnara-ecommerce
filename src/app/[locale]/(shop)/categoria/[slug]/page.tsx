@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getProductsByCategory } from "@/lib/supabase/queries";
+import { getCachedProductsByCategory } from "@/lib/supabase/queries";
 import { pickLocale } from "@/lib/format";
 import { CategoryFilters } from "@/components/shop/category-filters";
 
@@ -10,7 +10,7 @@ export default async function CategoryPage({
 }) {
   const { slug, locale } = await params;
 
-  const { category, products } = await getProductsByCategory(slug).catch(() => ({
+  const { category, products } = await getCachedProductsByCategory(slug).catch(() => ({
     category: null,
     products: null,
   }));

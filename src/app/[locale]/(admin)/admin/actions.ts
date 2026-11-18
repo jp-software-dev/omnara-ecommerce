@@ -41,6 +41,7 @@ export async function adjustStock(variantId: string, nextQuantity: number) {
     .eq("id", variantId);
   if (error) throw error;
   revalidatePath("/[locale]/(admin)/admin/inventario", "page");
+  invalidateCatalog();
 }
 
 export async function createProduct(rawInput: {
@@ -505,6 +506,7 @@ export async function restockReturnedItem(returnId: string, locale: string) {
   }
   revalidatePath("/[locale]/(admin)/admin/devoluciones", "layout");
   revalidatePath("/[locale]/(admin)/admin/inventario", "page");
+  invalidateCatalog();
 }
 
 export async function markMessageRead(messageId: string) {
