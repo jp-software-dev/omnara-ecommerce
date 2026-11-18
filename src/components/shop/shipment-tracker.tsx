@@ -1,6 +1,7 @@
 import { Check, Circle, CircleDot } from "lucide-react";
 import { carrierName, formatShipmentTime, shipmentNoticeText, shipmentStepLabel } from "@/lib/shipping";
 import type { TrackedShipment } from "@/lib/supabase/queries";
+import { CancelShipmentButton } from "./cancel-shipment-button";
 import { ConfirmDeliveryButton } from "./confirm-delivery-button";
 
 /**
@@ -39,7 +40,7 @@ export function ShipmentTracker({
                   : en
                     ? "Shipment tracking"
                     : "Seguimiento del envío"}
-                {shipment.sellerName ? <span className="font-normal text-muted-foreground"> · {shipment.sellerName}</span> : null}
+                <span className="font-normal text-muted-foreground"> · {shipment.sellerName ?? "Omnara"}</span>
               </h2>
               <span className="text-sm font-medium">{shipmentStepLabel(current, locale)}</span>
             </div>
@@ -96,6 +97,17 @@ export function ShipmentTracker({
                 );
               })}
             </ol>
+
+            {canConfirm && (shipment.status === "confirmed" || shipment.status === "preparing") ? (
+              <div className="mt-4 border-t pt-4">
+                <p className="mb-2 text-sm text-muted-foreground">
+                  {en
+                    ? "Changed your mind? You can cancel while it has not shipped."
+                    : "¿Cambiaste de opinión? Puedes cancelarlo mientras no haya salido."}
+                </p>
+                <CancelShipmentButton shipmentId={shipment.id} locale={locale} token={token} />
+              </div>
+            ) : null}
 
             {canConfirm && shipment.status === "delivered" ? (
               <div className="mt-4 border-t pt-4">

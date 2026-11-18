@@ -238,3 +238,49 @@ describe("shipment incident emails", () => {
     expect(renderEmail("shipment_incident", "es", { ...payload, kind: "bogus" })).toBeNull();
   });
 });
+
+describe("shipment cancelled emails", () => {
+  const payload = {
+    order_number: "DEMO-46DE52C0",
+    items: [{ es: "Portavelas de vidrio", en: "Glass candle holder" }],
+    refund_cents: 72720,
+    currency: "MXN",
+  };
+
+  it("tells the buyer the refund, flagged as simulated, and that the shipping came back when the whole order was cancelled", () => {
+    const buyer = renderEmail("shipment_cancelled", "es", { ...payload, whole_order: true, for_seller: false });
+    expect(buyer?.subject).toBe("Se canceló tu envío (pedido DEMO-46DE52C0)");
+    expect(buyer?.html).toContain("Reembolso");
+    expect(buyer?.html).toContain("simulado");
+    expect(buyer?.html).toContain("Incluye el envío");
+    const partial = renderEmail("shipment_cancelled", "es", { ...payload, whole_order: false, for_seller: false });
+    expect(partial?.html).not.toContain("Incluye el envío");
+  });
+
+  it("tells the seller there is nothing to ship, without any money", () => {
+    const seller = renderEmail("shipment_cancelled", "es", { ...payload, whole_order: true, for_seller: true });
+    expect(seller?.subject).toBe("Se canceló un envío (pedido DEMO-46DE52C0)");
+    expect(seller?.html).toContain("no hay nada que enviar");
+    expect(seller?.html).not.toContain("Reembolso");
+    expect(seller?.html).toContain("/es/admin/pedidos");
+  });
+
+  it("is available in English", () => {
+    const buyer = renderEmail("shipment_cancelled", "en", { ...payload, whole_order: true, for_seller: false });
+    expect(buyer?.subject).toBe("Your shipment was cancelled (order DEMO-46DE52C0)");
+    expect(buyer?.html).toContain("Glass candle holder");
+  });
+});
+
+describe("shipments without a seller", () => {
+  it("name the platform itself in the milestone emails", () => {
+    const email = renderEmail("shipment_update", "es", {
+      order_number: "DEMO-1",
+      status: "preparing",
+      seller: null,
+      items: [{ es: "Taza" }],
+      view_path: "/cuenta/pedidos/x",
+    });
+    expect(email?.html).toContain("Omnara está preparando tu pedido");
+  });
+});

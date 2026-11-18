@@ -18,7 +18,7 @@ type FormState = {
   city: string;
   state: string;
   postalCode: string;
-  country: "MX" | "US";
+  country: "MX";
   makeDefault: boolean;
 };
 
@@ -46,7 +46,7 @@ function toForm(address: SavedAddress): FormState {
     city: address.city,
     state: address.state,
     postalCode: address.postal_code,
-    country: address.country === "US" ? "US" : "MX",
+    country: "MX",
     makeDefault: address.is_default,
   };
 }
@@ -195,7 +195,6 @@ export function AddressManager({
               className="h-9 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
             >
               <option value="MX" className="text-foreground">México</option>
-              <option value="US" className="text-foreground">United States</option>
             </select>
             <Input aria-label={t.phone} placeholder={t.phone} maxLength={20} value={form.phone} onChange={set("phone")} />
           </div>
