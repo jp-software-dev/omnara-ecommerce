@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { DemoBanner } from "@/components/shop/demo-banner";
 import { ClearCartOnMount } from "@/components/shop/clear-cart-on-mount";
 import { OrderInvoice } from "@/components/shop/order-invoice";
+import { ShipmentTracker } from "@/components/shop/shipment-tracker";
+import { createClient } from "@/lib/supabase/server";
+import { getOrderTrackingByToken } from "@/lib/supabase/queries";
 import { getDemoOrder, getOrderBySessionId } from "./actions";
 
 function sleep(ms: number) {
@@ -34,6 +37,14 @@ export default async function CheckoutConfirmationPage({
   for (let attempt = 0; attempt < 5 && !order && !isDemo; attempt++) {
     await sleep(800);
     order = await getOrderBySessionId(sessionId as string);
+  }
+
+  // A simulated order is followed from here: the token opens the tracking and lets a guest
+  // close the order. Opening it also applies any step that is already due.
+  let tracking: Awaited<ReturnType<typeof getOrderTrackingByToken>> = [];
+  if (isDemo && order) {
+    await (await createClient()).rpc("advance_order_shipments", { p_order: demoOrderId as string, p_token: token as string });
+    tracking = await getOrderTrackingByToken(demoOrderId as string, token as string);
   }
 
   const t = {
@@ -73,6 +84,8 @@ export default async function CheckoutConfirmationPage({
           ticketHref={isDemo ? `/api/orders/${demoOrderId}/ticket?token=${token}&lang=${locale}` : undefined}
         />
       </div>
+
+      {isDemo ? <ShipmentTracker shipments={tracking} locale={locale} token={token} /> : null}
 
       <div className="mt-8 flex justify-center gap-3">
         <Button

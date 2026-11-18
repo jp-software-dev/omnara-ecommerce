@@ -358,6 +358,14 @@ export async function getOrderTracking(orderId: string): Promise<TrackedShipment
   }));
 }
 
+// Tracking for a guest: the order's secret token (from the confirmation link) is the proof.
+export async function getOrderTrackingByToken(orderId: string, token: string): Promise<TrackedShipment[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("order_tracking", { p_order: orderId, p_token: token });
+  if (error || !Array.isArray(data)) return [];
+  return data as unknown as TrackedShipment[];
+}
+
 export async function getWishlistProducts(userId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
