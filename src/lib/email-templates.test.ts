@@ -130,3 +130,80 @@ describe("purchase confirmation with the full ticket", () => {
     expect(html).toContain("Estimated delivery");
   });
 });
+
+describe("shipment milestone emails", () => {
+  const base = {
+    order_number: "DEMO-46DE52C0",
+    seller: "Café Estudiantil",
+    tracking_number: "SIM-EXP-2446094102",
+    estimated_delivery_at: "2026-11-18T20:00:00+00:00",
+    items: [{ es: "Portavelas de vidrio", en: "Glass candle holder" }],
+    view_path: "/cuenta/pedidos/38f6bcc7",
+  };
+
+  it("announces each milestone in Spanish with the seller, the items and the right button", () => {
+    const preparing = renderEmail("shipment_update", "es", { ...base, status: "preparing" });
+    expect(preparing?.subject).toBe("Se está preparando tu pedido DEMO-46DE52C0");
+    expect(preparing?.html).toContain("Café Estudiantil");
+    expect(preparing?.html).toContain("Portavelas de vidrio");
+    expect(preparing?.html).toContain("24 horas");
+
+    expect(renderEmail("shipment_update", "es", { ...base, status: "arrived_state" })?.subject).toContain("ya llegó a tu estado");
+    const out = renderEmail("shipment_update", "es", { ...base, status: "out_for_delivery" });
+    expect(out?.subject).toContain("reparto");
+    expect(out?.html).toContain("SIM-EXP-2446094102");
+    const delivered = renderEmail("shipment_update", "es", { ...base, status: "delivered" });
+    expect(delivered?.html).toContain("Ya lo recibí");
+  });
+
+  it("is available in English", () => {
+    const email = renderEmail("shipment_update", "en", { ...base, status: "out_for_delivery" });
+    expect(email?.subject).toBe("Your order is out for delivery (DEMO-46DE52C0)");
+    expect(email?.html).toContain("Glass candle holder");
+  });
+
+  it("has nothing to say for a status that is not a milestone", () => {
+    expect(renderEmail("shipment_update", "es", { ...base, status: "in_transit" })).toBeNull();
+    expect(renderEmail("shipment_update", "es", { ...base })).toBeNull();
+  });
+
+  it("puts the language in the link, for an account path and for a guest path with a token", () => {
+    expect(renderEmail("shipment_update", "es", { ...base, status: "delivered" })?.html).toContain("/es/cuenta/pedidos/38f6bcc7");
+    const guest = renderEmail("shipment_update", "en", {
+      ...base,
+      status: "delivered",
+      view_path: "/checkout/confirmacion?demo_order=abc&token=def",
+    });
+    expect(guest?.html).toContain("/en/checkout/confirmacion?demo_order=abc&amp;token=def");
+    const fallback = renderEmail("shipment_update", "es", { ...base, status: "delivered", view_path: "https://evil.example" });
+    expect(fallback?.html).not.toContain("evil.example");
+  });
+
+  it("reminds to confirm the delivery, with a stronger subject the second time", () => {
+    const first = renderEmail("confirm_delivery_reminder", "es", { ...base, second: false });
+    const second = renderEmail("confirm_delivery_reminder", "es", { ...base, second: true });
+    expect(first?.subject).toBe("¿Ya recibiste tu pedido DEMO-46DE52C0?");
+    expect(second?.subject).toContain("Último recordatorio");
+    expect(first?.html).toContain("30 días");
+  });
+
+  it("asks for a review listing what was bought", () => {
+    const email = renderEmail("review_reminder", "es", base);
+    expect(email?.subject).toContain("¿Qué te pareció tu compra?");
+    expect(email?.html).toContain("Portavelas de vidrio");
+    expect(renderEmail("review_reminder", "en", base)?.html).toContain("Leave a review");
+  });
+
+  it("tells the seller the customer confirmed, pointing at the payouts page", () => {
+    const email = renderEmail("delivery_confirmed", "es", base);
+    expect(email?.subject).toBe("El cliente confirmó la entrega (pedido DEMO-46DE52C0)");
+    expect(email?.html).toContain("/es/admin/pagos");
+    expect(renderEmail("delivery_confirmed", "en", base)?.html).toContain("/en/admin/pagos");
+  });
+
+  it("escapes the product names", () => {
+    const html = renderEmail("shipment_update", "es", { ...base, status: "preparing", items: [{ es: "<script>x</script>" }] })?.html ?? "";
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+});
