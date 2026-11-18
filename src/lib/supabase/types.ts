@@ -1564,6 +1564,10 @@ export type Database = {
         Args: { p_id?: string }
         Returns: number
       }
+      fulfillment_analytics: {
+        Args: { p_days?: number }
+        Returns: Json
+      }
       cancel_shipment: {
         Args: { p_shipment: string; p_token?: string }
         Returns: Json
