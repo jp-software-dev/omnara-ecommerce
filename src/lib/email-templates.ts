@@ -69,6 +69,20 @@ const RETURN_STATUS_TEXT: Record<string, Record<Locale, string>> = {
   },
 };
 
+// Names of the products of a shipment, as a bulleted list (payload.items is a list of {es, en}).
+function itemList(payload: Payload, locale: Locale): string {
+  const names = (Array.isArray(payload.items) ? payload.items : []).map((value) => nameOf(value, locale)).filter(Boolean);
+  return names.length ? `<ul>${names.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : "";
+}
+
+// Where the button of a milestone email leads. The database gives a path without the language
+// (the account order, or the guest's confirmation page with its token).
+function viewPath(payload: Payload, locale: Locale): string {
+  const path = typeof payload.view_path === "string" ? payload.view_path : "";
+  if (!path.startsWith("/")) return `/${locale}/cuenta/pedidos`;
+  return /^\/(es|en)\//.test(path) ? path : `/${locale}${path}`;
+}
+
 function renderBase(template: string, locale: Locale, payload: Payload): RenderedEmail | null {
   const en = locale === "en";
   const order = esc(payload.order_number);
@@ -99,7 +113,7 @@ function renderBase(template: string, locale: Locale, payload: Payload): Rendere
         const shipments = ticket.shipments
           .map((s) => `<li>${esc(s.seller ?? "")} — ${esc(ticketShipmentStatus(s.status, locale))}${s.tracking_number ? ` (${esc(s.tracking_number)})` : ""}</li>`)
           .join("");
-        const viewPath = typeof payload.view_path === "string" && payload.view_path.startsWith("/") ? payload.view_path : `/${locale}`;
+        const orderPath = typeof payload.view_path === "string" && payload.view_path.startsWith("/") ? payload.view_path : `/${locale}`;
         return {
           subject,
           html: layout(
@@ -111,7 +125,7 @@ function renderBase(template: string, locale: Locale, payload: Payload): Rendere
 ${address ? `<p><strong>${en ? "Ship to" : "Enviar a"}</strong><br>${address}</p>` : ""}
 ${shipments ? `<p><strong>${en ? "Shipments" : "Envíos"}</strong></p><ul>${shipments}</ul>` : ""}
 <p>${en ? "The PDF of this receipt is attached. We'll keep you posted as your order moves." : "Adjuntamos el PDF de este comprobante. Te avisaremos cuando tu pedido avance."}</p>`,
-            { label: en ? "View my order" : "Ver mi pedido", path: viewPath }
+            { label: en ? "View my order" : "Ver mi pedido", path: orderPath }
           ),
         };
       }
@@ -149,8 +163,95 @@ ${shipments ? `<p><strong>${en ? "Shipments" : "Envíos"}</strong></p><ul>${ship
         html: layout(
           subject,
           `<p><strong>${item}</strong> ${en ? "is on its way." : "va en camino."}</p>${tracking}
-<p>${en ? "You can request a return up to 30 days after it shipped." : "Puedes pedir una devolución hasta 30 días después del envío."}</p>`,
+<p>${en ? "You can request a return up to 30 days after it is delivered." : "Puedes pedir una devolución hasta 30 días después de que te llegue."}</p>`,
           { label: en ? "View order" : "Ver pedido", path: `/${locale}/cuenta/pedidos` }
+        ),
+      };
+    }
+    case "shipment_update": {
+      const status = String(payload.status ?? "");
+      const seller = esc(payload.seller ?? (en ? "The seller" : "El vendedor"));
+      const eta = payload.estimated_delivery_at
+        ? `<p>${en ? "Estimated delivery" : "Entrega estimada"}: <strong>${esc(formatTicketDate(String(payload.estimated_delivery_at), locale))}</strong></p>`
+        : "";
+      const tracking = payload.tracking_number
+        ? `<p>${en ? "Tracking number" : "Número de rastreo"}: <strong>${esc(payload.tracking_number)}</strong></p>`
+        : "";
+      const copy: Record<string, { subject: [string, string]; body: [string, string]; extra: string; cta: [string, string] }> = {
+        preparing: {
+          subject: [`Se está preparando tu pedido ${payload.order_number}`, `We are preparing your order ${payload.order_number}`],
+          body: [`${seller} está preparando tu pedido. Saldrá a más tardar 24 horas después de tu compra.`, `${seller} is preparing your order. It will ship within 24 hours of your purchase.`],
+          extra: eta,
+          cta: ["Ver mi pedido", "View my order"],
+        },
+        arrived_state: {
+          subject: [`Tu pedido ya llegó a tu estado (${payload.order_number})`, `Your order arrived in your state (${payload.order_number})`],
+          body: ["Tu pedido ya llegó a tu estado y pronto saldrá a reparto.", "Your order arrived in your state and will go out for delivery soon."],
+          extra: eta + tracking,
+          cta: ["Ver seguimiento", "Track my order"],
+        },
+        out_for_delivery: {
+          subject: [`Tu pedido va en reparto a tu domicilio (${payload.order_number})`, `Your order is out for delivery (${payload.order_number})`],
+          body: ["Tu pedido va en reparto a tu domicilio. Llegará hoy.", "Your order is on its way to your address. It will arrive today."],
+          extra: eta + tracking,
+          cta: ["Ver seguimiento", "Track my order"],
+        },
+        delivered: {
+          subject: [`Tu pedido fue entregado (${payload.order_number})`, `Your order was delivered (${payload.order_number})`],
+          body: [
+            "Tu pedido fue entregado. Confirma que lo recibiste para cerrar el pedido y poder reseñar tus productos.",
+            "Your order was delivered. Confirm you received it to close the order and review your products.",
+          ],
+          extra: "",
+          cta: ["Ya lo recibí", "I received it"],
+        },
+      };
+      const entry = copy[status];
+      if (!entry) return null;
+      const i = en ? 1 : 0;
+      return {
+        subject: entry.subject[i],
+        html: layout(entry.subject[i], `<p>${entry.body[i]}</p>${itemList(payload, locale)}${entry.extra}`, {
+          label: entry.cta[i],
+          path: viewPath(payload, locale),
+        }),
+      };
+    }
+    case "confirm_delivery_reminder": {
+      const second = payload.second === true;
+      const subject = second
+        ? en ? `Last reminder: did your order ${payload.order_number} arrive?` : `Último recordatorio: ¿te llegó tu pedido ${payload.order_number}?`
+        : en ? `Did your order ${payload.order_number} arrive?` : `¿Ya recibiste tu pedido ${payload.order_number}?`;
+      return {
+        subject,
+        html: layout(
+          subject,
+          `<p>${en ? "Your order was delivered a few days ago. If you already have it, confirm it so the order is closed and you can review your products." : "Tu pedido se entregó hace unos días. Si ya lo tienes, confírmalo para cerrar el pedido y poder reseñar tus productos."}</p>${itemList(payload, locale)}
+<p>${en ? "If something is wrong, you can request a return within 30 days of the delivery." : "Si algo salió mal, puedes pedir una devolución dentro de los 30 días posteriores a la entrega."}</p>`,
+          { label: en ? "I received it" : "Ya lo recibí", path: viewPath(payload, locale) }
+        ),
+      };
+    }
+    case "review_reminder": {
+      const subject = en ? `How was your purchase? (order ${payload.order_number})` : `¿Qué te pareció tu compra? (pedido ${payload.order_number})`;
+      return {
+        subject,
+        html: layout(
+          subject,
+          `<p>${en ? "Thanks for closing your order. Your opinion helps other buyers: tell us what you thought of" : "Gracias por cerrar tu pedido. Tu opinión ayuda a otros compradores: cuéntanos qué te pareció"}</p>${itemList(payload, locale)}`,
+          { label: en ? "Leave a review" : "Dejar una reseña", path: viewPath(payload, locale) }
+        ),
+      };
+    }
+    case "delivery_confirmed": {
+      const subject = en ? `The customer confirmed the delivery (order ${payload.order_number})` : `El cliente confirmó la entrega (pedido ${payload.order_number})`;
+      return {
+        subject,
+        html: layout(
+          subject,
+          `<p>${en ? "The customer confirmed they received" : "El cliente confirmó que recibió"}:</p>${itemList(payload, locale)}
+<p>${en ? "The sale is closed. Unless a return is open, it is ready for the payout (simulated)." : "La venta quedó cerrada. Si no hay una devolución abierta, ya está lista para el pago (simulado)."}</p>`,
+          { label: en ? "Open payouts" : "Abrir pagos", path: `/${locale}/admin/pagos` }
         ),
       };
     }

@@ -1439,6 +1439,10 @@ export type Database = {
         Args: { p_items: Json; p_currency: string; p_email: string; p_promo: string; p_ship: Json }
         Returns: Json
       }
+      order_tracking: {
+        Args: { p_order: string; p_token?: string }
+        Returns: Json
+      }
       order_ticket: {
         Args: { p_order: string; p_token?: string }
         Returns: Json
@@ -1452,11 +1456,11 @@ export type Database = {
         Returns: { step_order: number; status: string; at: string | null; done: boolean }[]
       }
       confirm_delivery: {
-        Args: { p_shipment: string }
+        Args: { p_shipment: string; p_token?: string }
         Returns: undefined
       }
       advance_order_shipments: {
-        Args: { p_order: string }
+        Args: { p_order: string; p_token?: string }
         Returns: number
       }
       seller_balance: {

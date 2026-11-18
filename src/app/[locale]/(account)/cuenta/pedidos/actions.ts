@@ -5,11 +5,15 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
 /** The customer closes a delivered shipment. The database checks they own the order. */
-export async function confirmDelivery(shipmentId: string, locale: string) {
+export async function confirmDelivery(shipmentId: string, locale: string, token?: string) {
   const id = z.string().uuid().parse(shipmentId);
   const en = locale === "en";
+  const guestToken = token ? z.string().uuid().parse(token) : undefined;
   const supabase = await createClient();
-  const { error } = await supabase.rpc("confirm_delivery", { p_shipment: id });
+  const { error } = await supabase.rpc("confirm_delivery", {
+    p_shipment: id,
+    ...(guestToken ? { p_token: guestToken } : {}),
+  });
   if (error) {
     if (error.message.includes("not been delivered")) {
       throw new Error(en ? "This shipment has not been delivered yet." : "Este envío todavía no se ha entregado.");
