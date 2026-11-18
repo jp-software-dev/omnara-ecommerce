@@ -12,10 +12,13 @@ export function ShipmentTracker({
   shipments,
   locale,
   canConfirm = true,
+  token,
 }: {
   shipments: TrackedShipment[];
   locale: string;
   canConfirm?: boolean;
+  /** Guest orders confirm the delivery with the order's secret token. */
+  token?: string;
 }) {
   if (shipments.length === 0) return null;
   const en = locale === "en";
@@ -92,7 +95,7 @@ export function ShipmentTracker({
                     ? "Did your order arrive? Confirming closes the order and lets you review the product."
                     : "¿Ya te llegó tu pedido? Al confirmarlo se cierra el pedido y puedes reseñar el producto."}
                 </p>
-                <ConfirmDeliveryButton shipmentId={shipment.id} locale={locale} />
+                <ConfirmDeliveryButton shipmentId={shipment.id} locale={locale} token={token} />
               </div>
             ) : null}
           </section>
