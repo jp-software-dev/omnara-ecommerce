@@ -191,11 +191,26 @@ Acceso restringido por rol; un vendedor ve el mismo panel pero **solo sus propio
 - **Privacidad** (`/cuenta/privacidad`): descarga de los datos propios en JSON y solicitud de eliminación de la cuenta, que atiende un administrador (al ser un proyecto educativo sin ventas reales, los pedidos de prueba pueden conservarse mientras dure el proyecto). Los términos y el aviso de privacidad están en `/terminos` y `/privacidad`, en español e inglés.
 - **Correos**: confirmación de pedido, nueva venta (al vendedor), artículo enviado con rastreo, novedades de devoluciones, disputas (a administradores) y decisión de una solicitud de vendedor. Se envían solo cuando hay un proveedor de correo configurado.
 
-## 19. Fuera de alcance / pendiente (transparencia)
+## 19. Seguimiento del pedido, de la compra al cierre
 
-- **Reparto de pagos por vendedor (Stripe Connect):** un carrito es un pedido y el dinero no se divide entre vendedores.
-- **Paqueterías** y envío por vendedor o por peso.
-- **Reposición automática de inventario** al aprobar una devolución: hoy es una acción manual del vendedor o del administrador (un artículo devuelto puede llegar dañado).
-- **Comparar el mismo artículo exacto** entre vendedores (haría falta un código o modelo común).
-- **Pruebas de extremo a extremo** en navegador; las reglas de la base se verificaron con scripts SQL fuera de la integración continua.
+Cada pedido se divide en **envíos, uno por vendedor** (los productos de la propia Omnara también tienen su envío). Para el cliente el recorrido es:
+
+1. **Pedido confirmado y pagado** (el pago es simulado). Recibe por correo su comprobante, con un PDF de ejemplo.
+2. **Se está preparando** (2 horas después del pago, en horario de paquetería).
+3. **Enviado** a más tardar **24 horas después del pago**, con una guía de ejemplo.
+4. **En tránsito**, **ya llegó a tu estado** y **en reparto a tu domicilio**, siempre dentro del horario de la paquetería (lunes a sábado de 8:00 a 20:00, hora de Ciudad de México, sin días festivos).
+5. **Entregado.** El cliente confirma **"Ya lo recibí"** y solo entonces el pedido se **cierra**. Nunca se cierra solo; se le recuerda por correo a los 2 y a los 7 días.
+6. Con el pedido cerrado: puede **reseñar**, la **devolución** (30 días desde la entrega) sigue disponible y al vendedor se le registra su **pago simulado**.
+
+Mientras no haya salido, el cliente puede **cancelar** el envío (los artículos vuelven al inventario y el reembolso se simula). Si hay una pausa o un incidente (retraso, intento de entrega fallido, paquete dañado), ve un aviso con la nueva fecha estimada y se le avisa por correo. Todo el envío es **dentro de México**.
+
+**Vendedor:** marca "ya empecé a preparar", ve la línea de tiempo de su envío y, en *Pagos*, por qué una venta aún no se le paga. **Administrador:** *Envíos* (filtrar, pausar, forzar un paso, registrar incidentes), *Calendario de entregas* (horario, festivos y tiempos), *Cumplimiento* (embudo, tiempos, puntualidad, devoluciones, reporte por vendedor y descargas CSV) y *Correos* (estado del envío programado y reintentos).
+
+## 20. Fuera de alcance / pendiente (transparencia)
+
+- **Reparto de pagos por vendedor (Stripe Connect):** el dinero no se mueve; el pago al vendedor y la comisión del 3 % son un registro simulado.
+- **Paqueterías reales:** las guías y el seguimiento son de ejemplo (tres paqueterías de demostración).
+- **No construido:** notificaciones dentro del sitio, calificar el envío, tarifa de envío por vendedor y alerta de precio en el carrito.
+- **Reposición automática de inventario** al aprobar una devolución: es una acción manual (un artículo devuelto puede llegar dañado). Al cancelar un envío antes de que salga, sí se repone solo.
+- **Pruebas de extremo a extremo** en navegador; las reglas de la base se verifican con un script SQL re-ejecutable fuera de la integración continua.
 - **Texto legal:** los términos y el aviso están redactados para un proyecto educativo de demostración. Si Omnara se usara para vender de verdad, habría que reescribirlos con asesoría legal.

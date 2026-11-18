@@ -6,14 +6,14 @@ const ES: LegalSection[] = [
     heading: "Quién es responsable y de qué se trata",
     paragraphs: [
       "Omnara es un marketplace de demostración desarrollado como proyecto académico del IUEM, con fines educativos. El equipo del proyecto es responsable de los datos personales descritos en este aviso. Puedes contactarnos desde la página de Contacto.",
-      "Omnara no es una tienda real: ningún producto es real ni se vende realmente, y los pagos se hacen con Stripe en modo de prueba, sin ningún cobro real. Por eso te recomendamos usar datos de ejemplo y no información personal que no quieras compartir.",
+      "Omnara no es una tienda real: ningún producto es real ni se vende realmente, y los pagos son simulados, sin ningún cobro real ni tarjeta. Por eso te recomendamos usar datos de ejemplo y no información personal que no quieras compartir.",
     ],
   },
   {
     heading: "Qué datos guardamos",
     items: [
       "Cuenta: nombre, correo electrónico y contraseña (la contraseña se guarda cifrada por el servicio de autenticación; nosotros no la vemos). También tu rol (cliente, vendedor o administrador) y tus preferencias de idioma y moneda.",
-      "Pedidos de prueba: artículos, montos, correo de contacto, dirección de envío, número de rastreo de ejemplo y estado.",
+      "Pedidos de prueba: artículos, montos, correo de contacto, dirección de envío, número de rastreo de ejemplo, el historial de cada envío (cuándo pasó cada paso), tus cancelaciones y, si compraste sin cuenta, un enlace secreto que te permite ver tu pedido y confirmar la entrega.",
       "Direcciones guardadas: las que tú registras en tu libreta.",
       "Reseñas, preguntas a vendedores, lista de favoritos, devoluciones de prueba y los mensajes que intercambias en ellas.",
       "Si solicitas vender: los datos de tu negocio, tu teléfono y el documento de identificación que subes.",
@@ -26,7 +26,7 @@ const ES: LegalSection[] = [
     paragraphs: ["Solo para que el proyecto funcione y con fines educativos. No los usamos para publicidad ni con fines comerciales."],
     items: [
       "Crear y mantener tu cuenta y simular compras, envíos, devoluciones y reembolsos.",
-      "Enviarte correos de demostración sobre tus pedidos y devoluciones de prueba, cuando el envío de correos está configurado.",
+      "Enviarte correos de demostración con tu comprobante (con un PDF de ejemplo), los avances de tu envío, recordatorios y avisos de devolución, cuando el envío de correos está configurado.",
       "Revisar las solicitudes de quienes participan como vendedores en el ejercicio.",
       "Atender tus mensajes, prevenir abusos y mantener un registro de los cambios que hacen los administradores.",
     ],
@@ -35,7 +35,7 @@ const ES: LegalSection[] = [
     heading: "Con quién se comparten",
     items: [
       "Los negocios participantes: en una compra de prueba, el negocio de cada artículo ve los datos del pedido, que incluyen tu nombre, dirección de envío y correo de contacto. No ven tus otros pedidos ni tus datos de cuenta. Por eso conviene usar datos de ejemplo.",
-      "Stripe procesa el pago en modo de prueba: no se realiza ningún cobro real y no debes ingresar una tarjeta real.",
+      "Los pagos son simulados: no se realiza ningún cobro real y no debes ingresar una tarjeta real. Si algún día se configura Stripe, funcionará solo en modo de prueba.",
       "Supabase aloja la base de datos, la autenticación y los archivos; Vercel aloja el sitio; Resend envía los correos cuando está configurado.",
       "El documento de identificación de quien solicita vender se guarda en un espacio privado y solo lo pueden ver los administradores.",
       "No vendemos tus datos.",
@@ -73,14 +73,14 @@ const EN: LegalSection[] = [
     heading: "Who is responsible and what this is about",
     paragraphs: [
       "Omnara is a demonstration marketplace built as an academic project at IUEM, for educational purposes. The project team is responsible for the personal data described in this notice. You can reach us from the Contact page.",
-      "Omnara is not a real store: no product is real or actually sold, and payments use Stripe in test mode, with no real charge. For that reason we recommend using sample data and not personal information you don't want to share.",
+      "Omnara is not a real store: no product is real or actually sold, and payments are simulated, with no real charge and no card. For that reason we recommend using sample data and not personal information you don't want to share.",
     ],
   },
   {
     heading: "What data we keep",
     items: [
       "Account: name, email and password (the password is stored encrypted by the authentication service; we never see it). Also your role (customer, seller or administrator) and your language and currency preferences.",
-      "Test orders: items, amounts, contact email, shipping address, sample tracking number and status.",
+      "Test orders: items, amounts, contact email, shipping address, sample tracking number, the history of each shipment (when each step happened), your cancellations and, if you bought without an account, a secret link that lets you see your order and confirm the delivery.",
       "Saved addresses: the ones you add to your address book.",
       "Reviews, questions to sellers, your wishlist, test returns and the messages you exchange in them.",
       "If you apply to sell: your business details, phone number and the identity document you upload.",
@@ -93,7 +93,7 @@ const EN: LegalSection[] = [
     paragraphs: ["Only to make the project work and for educational purposes. We do not use it for advertising or commercial purposes."],
     items: [
       "Creating and maintaining your account and simulating purchases, shipping, returns and refunds.",
-      "Emailing you demonstration messages about your test orders and returns, when email sending is configured.",
+      "Emailing you demonstration messages with your receipt (with a sample PDF), your shipment progress, reminders and return notices, when email sending is configured.",
       "Reviewing the applications of people taking part as sellers in the exercise.",
       "Answering your messages, preventing abuse and keeping a record of the changes administrators make.",
     ],
@@ -102,7 +102,7 @@ const EN: LegalSection[] = [
     heading: "Who it is shared with",
     items: [
       "Participating businesses: in a test purchase, the business behind each item sees the order details, which include your name, shipping address and contact email. They do not see your other orders or your account data. That is why sample data is a good idea.",
-      "Stripe processes the payment in test mode: no real charge is made and you must not enter a real card.",
+      "Payments are simulated: no real charge is made and you must not enter a real card. If Stripe is ever configured it works in test mode only.",
       "Supabase hosts the database, authentication and files; Vercel hosts the site; Resend sends the emails when configured.",
       "The identity document of someone applying to sell is kept in a private space that only administrators can see.",
       "We do not sell your data.",
