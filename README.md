@@ -233,6 +233,21 @@ Order, shipping, return and seller-application emails are sent through [Resend](
 
 Resend's free plan has sending limits and the shared test sender is not meant for production, so verify your own domain before real use.
 
+### Programmed email sending
+
+Emails are queued by database triggers and sent right after the action that caused them. The ones that cannot go out at that moment (a provider outage, a retry, the **reminders** created by the scheduler) are picked up by a `pg_cron` job, `omnara-send-emails`, that runs every 5 minutes and, only if something is pending, calls the app's `/api/cron/send-emails` route.
+
+The job authenticates with a shared secret and does **nothing until it exists**, so it is safe to leave installed. To activate it:
+
+1. Generate a long random value (`openssl rand -hex 32`) and set it as `CRON_SECRET` in the app's environment (Vercel → Settings → Environment Variables), then redeploy.
+2. Store the **same value** in Supabase Vault, under the name `omnara_cron_secret`:
+   ```sql
+   select vault.create_secret('<the same value>', 'omnara_cron_secret');
+   ```
+3. Open **Correos** as admin: *Programmed sending* should say it is active. Failed emails (5 attempts) stay as *failed* and can be put back in the queue with **Retry**.
+
+Sending itself still needs `RESEND_API_KEY`, `EMAIL_FROM` and `SUPABASE_SERVICE_ROLE_KEY` (see above).
+
 ### Scripts
 
 | Command | What it does |

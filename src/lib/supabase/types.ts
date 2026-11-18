@@ -1439,6 +1439,14 @@ export type Database = {
         Args: { p_items: Json; p_currency: string; p_email: string; p_promo: string; p_ship: Json }
         Returns: Json
       }
+      email_scheduler_status: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      retry_failed_emails: {
+        Args: { p_id?: string }
+        Returns: number
+      }
       order_tracking: {
         Args: { p_order: string; p_token?: string }
         Returns: Json

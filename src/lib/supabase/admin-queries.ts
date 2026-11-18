@@ -274,6 +274,29 @@ export async function getEmailOutbox(limit = 50) {
   return { rows: data, counts };
 }
 
+export type EmailSchedulerStatus = {
+  secret_configured: boolean;
+  job_active: boolean;
+  pending: number;
+  oldest_pending_at: string | null;
+  /** Age of the oldest pending email, computed here so the page stays pure. */
+  oldest_pending_minutes: number | null;
+};
+
+// State of the programmed sending (pg_cron + the shared secret). Never includes the secret.
+export async function getEmailSchedulerStatus(): Promise<EmailSchedulerStatus | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("email_scheduler_status");
+  if (error || !data || typeof data !== "object" || Array.isArray(data)) return null;
+  const status = data as unknown as Omit<EmailSchedulerStatus, "oldest_pending_minutes">;
+  return {
+    ...status,
+    oldest_pending_minutes: status.oldest_pending_at
+      ? Math.round((Date.now() - new Date(status.oldest_pending_at).getTime()) / 60_000)
+      : null,
+  };
+}
+
 // Admin audit trail, newest first. `table` narrows it to one kind of record.
 export async function getAuditLog(table?: string, limit = 100) {
   const supabase = await createClient();
