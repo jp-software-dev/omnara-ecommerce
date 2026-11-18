@@ -342,6 +342,26 @@ Todas las rutas anteriores existen bajo `/es/...` y `/en/...` (prefijo de locale
 - **Mismo artículo:** atributo `modelo` en todas las categorías y `getSameModelFromOtherBusinesses`.
 - **Adjuntos en devoluciones:** bucket privado `return-attachments`, políticas por participante de la devolución (`private.is_return_participant`) y `add_return_message(p_id, p_body, p_attachment)`.
 
+## 16c. Ciclo del pedido: envíos, seguimiento programado y cierre
+
+**Modelo de datos (migraciones `20261114000001` a `17`)**
+- `shipments`: un envío por (pedido, vendedor); `vendor_id` puede ser nulo (productos de la propia plataforma, 46 de los 50 del catálogo). Campos: `status`, `carrier`, `tracking_number`, `ship_by` (24 h tras el pago), fechas, `on_hold`, `hold_until`, `delay_minutes`. Un disparador en `order_items` asigna cada artículo a su envío.
+- `shipment_events`: historial **solo de agregar** (un disparador impide UPDATE y DELETE). Cada cambio pasa por `private.record_shipment_event`, la única función que mueve un envío (solo hacia adelante; `completed` solo desde `delivered`; `cancelled` solo antes de salir).
+- `shipping_calendar` (zona horaria, horario, días laborales), `mx_holidays` (festivos 2026-2028) y `shipment_step_rules` (tiempo de cada paso y si solo ocurre en horario de paquetería). `private.next_business_time` y `private.shipment_step_due` calculan cuándo toca cada paso.
+- `shipment_incidents`, `shipment_reminders`, `seller_payouts`, `order_items.delivered_at/completed_at`, estado de pedido `completado`.
+
+**Motor** (`private.advance_shipment`, idempotente): aplica cada paso vencido con la hora en que debía ocurrir; respeta pausa (`on_hold`) y retraso (`delay_minutes`, que se **suma** al siguiente paso y se consume al ocurrir). Se invoca con `pg_cron` cada 5 minutos (`omnara-advance-shipments`), de forma perezosa al abrir un pedido (`advance_order_shipments`) y a mano desde el panel. Otros trabajos: `omnara-shipment-reminders` (cada 30 min) y `omnara-send-emails` (cada 5 min, inactivo hasta que exista el secreto `omnara_cron_secret` en Vault).
+
+**Funciones públicas** (todas `SECURITY DEFINER`, con permisos dentro): `confirm_delivery`, `cancel_shipment`, `order_tracking`, `advance_order_shipments` (comprador o invitado con el token del pedido), `vendor_mark_preparing`, `admin_set_hold`, `admin_force_next_step`, `admin_add_incident`, `shipment_timeline` (proyección con fechas reales y estimadas), `order_ticket` / `order_ticket_for_email` (comprobante), `fulfillment_analytics`, `email_scheduler_status`, `retry_failed_emails`.
+
+**Reglas que dependen de la entrega:** `private.user_purchased` (reseña verificada = envío cerrado), `request_return` (30 días desde `delivered_at`), `seller_balance` / `create_simulated_payout` (envío cerrado y sin devolución abierta). `private.orders_domestic_only` y una restricción de `addresses` limitan el envío a México.
+
+**Correos:** disparadores sobre `shipment_events` (preparando, llegó a tu estado, en reparto, entregado, cierre al vendedor), `shipment_reminders` (recordatorios) e incidentes/cancelaciones. El ticket se arma al **enviar** el correo (`src/lib/email-ticket.ts`), con PDF adjunto (`src/lib/ticket-pdf.ts`, escritor sin dependencias) y ruta de descarga `/api/orders/[id]/ticket`.
+
+**Rendimiento:** lecturas públicas con caché de datos (`unstable_cache`, 30-300 s, etiqueta `catalog`) sobre un cliente de Supabase sin cookies; el cliente del navegador se importa solo al usarse; la portada pasó de 352 a 289 KB de JavaScript.
+
+**Pruebas:** `supabase/tests/database_checks.sql` (transacción revertida) cubre adjuntos, comisión, envíos, eventos, calendario, motor con reloj simulado, operaciones, cancelación, envío solo a México y analítica; pruebas unitarias en `src/lib/*.test.ts`.
+
 ## 17. Seguridad y privacidad añadidas
 
 - **Validación en servidor** con zod (`src/lib/validation.ts`, `src/lib/addresses.ts`) en productos, negocios, códigos promocionales, variantes, direcciones, devoluciones, preguntas y contacto.

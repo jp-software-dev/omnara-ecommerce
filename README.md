@@ -138,7 +138,8 @@ Omnara is a complete teaching marketplace. Known limits and next steps if it wer
 
 * **Real money movement.** Seller payouts and the 3% commission exist as a *simulated* ledger (no money moves). Splitting a real payment between sellers would need Stripe Connect, which requires an account and onboarding for every seller.
 * **Real carriers.** Labels and tracking are simulated (three demo carriers, `SIM-` numbers). Real rates and labels would need a carrier contract and API.
-* **Restocking on returns** is an explicit action by the seller or an admin (not automatic, because a returned item can arrive damaged).
+* **Restocking on returns** is an explicit action by the seller or an admin (not automatic, because a returned item can arrive damaged). Cancelling a shipment before it ships does restock automatically.
+* **Not built:** in-site notifications (a bell), rating the shipment, shipping fees per seller, and a price alert in the cart. Moderation response times are a policy decision, not code.
 * **Browser (end-to-end) tests.** Unit tests run in CI and the database rules have a re-runnable SQL script (`supabase/tests/database_checks.sql`, always rolled back) that is not part of CI.
 
 ## 🛠 Technologies Used
@@ -207,6 +208,20 @@ You need Node.js 20+ and a Supabase project.
    ```
 
 6. **Onboard a seller.** Have the student sign up, then in `/admin/negocios` pick them as owner and fill in the business details. Their account becomes a vendor automatically and they can manage products from `/admin/productos`.
+
+### The order cycle: shipping, tracking and closing
+
+Every order is split into **shipments, one per seller** (products without a seller are Omnara's own and get a shipment too). A shipment moves through `confirmed → preparing → shipped → in transit → arrived in your state → out for delivery → delivered → completed`, on a schedule that follows real time:
+
+* **Timings** (editable in `/admin/calendario`): preparing 2 h after the payment; shipped **exactly 24 h after the payment** (the promise); then 6 h, 36 h, 12 h and 6 h. The carrier steps only happen **Monday to Saturday, 08:00-20:00 (America/Mexico_City), not on Mexican public holidays** (2026-2028 are loaded).
+* **Who moves it:** a `pg_cron` job (`omnara-advance-shipments`, every 5 minutes) applies every due step, and opening an order applies them lazily too. Each step is recorded as an append-only event stamped with the time it was due.
+* **The customer closes it.** The order is `completed` only when the customer confirms *"Ya lo recibí"* (from the order, or, for a guest, from the link with the order's secret token). It never closes by itself; reminders are emailed after 2 and 7 days.
+* **What the delivery unlocks:** reviews (verified purchase), the 30-day return window (counted from the delivery) and the seller's simulated payout.
+* **Cancel until it ships.** The customer can cancel while it is confirmed or preparing: items return to stock, the refund is simulated (shipping only if the whole order is cancelled) and the promo use is given back.
+* **Operations (admin `/admin/envios`):** pause/resume, force the next step and record incidents (delay, failed attempt, damaged package). A delay *adds* hours to the next step and everything after it moves back; the customer is emailed and the tracking shows a notice. Sellers mark *preparing* from the order.
+* **Emails** at each milestone (preparing, arrived in your state, out for delivery, delivered), the reminders, the incident, cancellation, and a purchase ticket with its PDF; the seller is told when the customer confirms.
+* **Delivery is inside Mexico only** (an address constraint and an order trigger enforce it).
+* **Reports:** `/admin/cumplimiento` (funnel shipment-to-review, preparation and transit times, on-time shipping, returns by reason, per-seller table, commission) with CSV downloads; sellers see their own.
 
 ### Demo mode: simulated payments, payouts and carriers
 
