@@ -67,7 +67,11 @@ export default async function CheckoutConfirmationPage({
       </div>
 
       <div className="mt-6">
-        <OrderInvoice order={order} locale={locale} />
+        <OrderInvoice
+          order={order}
+          locale={locale}
+          ticketHref={isDemo ? `/api/orders/${demoOrderId}/ticket?token=${token}&lang=${locale}` : undefined}
+        />
       </div>
 
       <div className="mt-8 flex justify-center gap-3">

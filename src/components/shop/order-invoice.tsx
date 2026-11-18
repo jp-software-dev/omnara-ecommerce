@@ -44,10 +44,13 @@ export function OrderInvoice({
   order,
   locale,
   trackingSlot,
+  ticketHref,
 }: {
   order: InvoiceOrder;
   locale: string;
   trackingSlot?: ReactNode;
+  /** Where the PDF of this receipt can be downloaded (the sample receipt route). */
+  ticketHref?: string;
 }) {
   const currency = order.currency === "USD" ? "USD" : "MXN";
   const price = (cents: number) => formatPrice(cents, currency, locale);
@@ -56,6 +59,8 @@ export function OrderInvoice({
   const t = {
     orderNumber: locale === "en" ? "Order number" : "Número de pedido",
     items: locale === "en" ? "Items" : "Artículos",
+    ticket: locale === "en" ? "Download receipt (PDF)" : "Descargar comprobante (PDF)",
+    sample: locale === "en" ? "Sample receipt: not a tax invoice." : "Comprobante de ejemplo: no es una factura fiscal.",
     itemShipped: locale === "en" ? "Shipped" : "Enviado",
     subtotal: locale === "en" ? "Subtotal" : "Subtotal",
     discount: locale === "en" ? "Discount" : "Descuento",
@@ -153,7 +158,19 @@ export function OrderInvoice({
         </div>
       ) : null}
 
-      <div className="mt-6 flex justify-end print:hidden">
+      <p className="mt-4 text-xs text-muted-foreground">{t.sample}</p>
+
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-3 print:hidden">
+        {ticketHref ? (
+          <a
+            href={ticketHref}
+            className="text-sm font-medium underline underline-offset-4"
+            // the route answers with a PDF attachment, so the browser downloads it
+            download
+          >
+            {t.ticket}
+          </a>
+        ) : null}
         <PrintButton label={t.print} />
       </div>
     </div>
