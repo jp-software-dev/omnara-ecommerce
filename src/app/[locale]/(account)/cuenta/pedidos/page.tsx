@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/server";
 import { getUserOrders } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/format";
+import { groupOrders, stageHint, stageLabel } from "@/lib/order-groups";
 
 const STATUS_LABELS: Record<string, { es: string; en: string }> = {
   pending: { es: "Pendiente", en: "Pending" },
@@ -52,37 +53,49 @@ export default async function OrdersPage({
           </Link>
         </div>
       ) : (
-        <ul className="mt-6 divide-y">
-          {orders.map((order) => {
-            const label = STATUS_LABELS[order.status];
-            const itemCount = order.order_items.reduce((sum, item) => sum + item.quantity, 0);
-            return (
-              <li key={order.id}>
-                <Link
-                  href={`/cuenta/pedidos/${order.id}`}
-                  className="flex items-center justify-between gap-4 py-4 hover:opacity-80"
-                >
-                  <div>
-                    <p className="font-medium">{order.order_number}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(order.created_at).toLocaleDateString(locale === "en" ? "en-US" : "es-MX")}
-                      {" · "}
-                      {t.items(itemCount)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="secondary">
-                      {label ? label[locale === "en" ? "en" : "es"] : order.status}
-                    </Badge>
-                    <span className="font-medium">
-                      {formatPrice(order.total_cents, order.currency === "USD" ? "USD" : "MXN", locale)}
-                    </span>
-                  </div>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="mt-6 grid gap-8">
+          {groupOrders(orders).map((group) => (
+            <section key={group.stage} aria-labelledby={`stage-${group.stage}`}>
+              <h2 id={`stage-${group.stage}`} className="text-lg font-medium">
+                {stageLabel(group.stage, locale)} <span className="text-sm font-normal text-muted-foreground">({group.orders.length})</span>
+              </h2>
+              {stageHint(group.stage, locale) ? (
+                <p className="text-sm text-muted-foreground">{stageHint(group.stage, locale)}</p>
+              ) : null}
+              <ul className="mt-2 divide-y">
+                {group.orders.map((order) => {
+                  const label = STATUS_LABELS[order.status];
+                  const itemCount = order.order_items.reduce((sum, item) => sum + item.quantity, 0);
+                  return (
+                    <li key={order.id}>
+                      <Link
+                        href={`/cuenta/pedidos/${order.id}`}
+                        className="flex items-center justify-between gap-4 py-4 hover:opacity-80"
+                      >
+                        <div>
+                          <p className="font-medium">{order.order_number}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(order.created_at).toLocaleDateString(locale === "en" ? "en-US" : "es-MX")}
+                            {" · "}
+                            {t.items(itemCount)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge variant="secondary">
+                            {label ? label[locale === "en" ? "en" : "es"] : order.status}
+                          </Badge>
+                          <span className="font-medium">
+                            {formatPrice(order.total_cents, order.currency === "USD" ? "USD" : "MXN", locale)}
+                          </span>
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
       )}
     </main>
   );
