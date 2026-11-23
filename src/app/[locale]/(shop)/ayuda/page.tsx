@@ -51,8 +51,8 @@ export default async function HelpPage({
     {
       q: en ? "How much does shipping cost?" : "¿Cuánto cuesta el envío?",
       a: en
-        ? "A flat rate applies below the free-shipping threshold shown at checkout; above it, shipping is free. It is an example: nothing is really shipped. We only deliver inside Mexico."
-        : "Aplica una tarifa fija por debajo del umbral de envío gratis que se muestra en el checkout; por encima de ese monto, el envío es gratis. Es un ejemplo: en realidad no se envía nada. Solo entregamos dentro de México.",
+        ? "Each seller ships its own package and each package pays a flat rate, unless that seller's part of the cart reaches the free-shipping threshold shown at checkout. It is an example: nothing is really shipped. We only deliver inside Mexico."
+        : "Cada vendedor envía su propio paquete y cada paquete paga una tarifa fija, salvo que la parte del carrito de ese vendedor alcance el umbral de envío gratis que se muestra en el checkout. Es un ejemplo: en realidad no se envía nada. Solo entregamos dentro de México.",
     },
     {
       q: en ? "What's the delivery estimate?" : "¿Cuál es el tiempo estimado de entrega?",
