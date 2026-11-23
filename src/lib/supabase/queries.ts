@@ -518,8 +518,8 @@ export async function getOrderDetail(orderId: string) {
 export type OrderDetail = NonNullable<Awaited<ReturnType<typeof getOrderDetail>>>;
 export type ContactMessage = Database["public"]["Tables"]["contact_messages"]["Row"];
 
-export async function getActiveBusinesses() {
-  const supabase = await createClient();
+async function getActiveBusinessesCore(client: SupabaseClient<Database>) {
+  const supabase = client;
   const { data, error } = await supabase
     .from("businesses")
     .select("id, slug, name, description, logo_url, banner_url")
@@ -530,8 +530,8 @@ export async function getActiveBusinesses() {
   return data;
 }
 
-export async function getBusinessBySlug(slug: string) {
-  const supabase = await createClient();
+async function getBusinessBySlugCore(client: SupabaseClient<Database>, slug: string) {
+  const supabase = client;
   const { data, error } = await supabase
     .from("businesses")
     .select("id, owner_id, slug, name, description, logo_url, banner_url")
@@ -559,8 +559,8 @@ async function getBusinessByOwnerIdCore(client: SupabaseClient<Database>, ownerI
   return data;
 }
 
-export async function getProductsByBusiness(vendorId: string) {
-  const supabase = await createClient();
+async function getProductsByBusinessCore(client: SupabaseClient<Database>, vendorId: string) {
+  const supabase = client;
   const { data, error } = await supabase
     .from("products")
     .select(
@@ -885,3 +885,16 @@ const cachedRatingEntries = cachedPublic("business-ratings", async (client, busi
 export async function getCachedBusinessRatings(businessIds: string[]) {
   return new Map(await cachedRatingEntries([...businessIds].sort()));
 }
+
+// Business pages: same two flavours as the rest of the public catalog.
+export const getActiveBusinesses: WithoutClient<typeof getActiveBusinessesCore> = async (...args) =>
+  getActiveBusinessesCore(await createClient(), ...args);
+export const getCachedActiveBusinesses = cachedPublic("active-businesses", getActiveBusinessesCore);
+
+export const getBusinessBySlug: WithoutClient<typeof getBusinessBySlugCore> = async (...args) =>
+  getBusinessBySlugCore(await createClient(), ...args);
+export const getCachedBusinessBySlug = cachedPublic("business-by-slug", getBusinessBySlugCore);
+
+export const getProductsByBusiness: WithoutClient<typeof getProductsByBusinessCore> = async (...args) =>
+  getProductsByBusinessCore(await createClient(), ...args);
+export const getCachedProductsByBusiness = cachedPublic("products-by-business", getProductsByBusinessCore);

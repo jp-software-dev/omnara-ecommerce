@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Store } from "lucide-react";
-import { getBusinessBySlug, getBusinessRatings, getProductsByBusiness } from "@/lib/supabase/queries";
+import { getCachedBusinessBySlug, getCachedBusinessRatings, getCachedProductsByBusiness } from "@/lib/supabase/queries";
 import { BusinessRatingBadge } from "@/components/shop/business-rating";
 import { ProductCard } from "@/components/shop/product-card";
 
@@ -12,14 +12,14 @@ export default async function BusinessStorefrontPage({
 }) {
   const { slug, locale } = await params;
 
-  const business = await getBusinessBySlug(slug);
+  const business = await getCachedBusinessBySlug(slug);
   if (!business) {
     notFound();
   }
 
   const [products, ratings] = await Promise.all([
-    getProductsByBusiness(business.owner_id),
-    getBusinessRatings([business.id]),
+    getCachedProductsByBusiness(business.owner_id),
+    getCachedBusinessRatings([business.id]),
   ]);
 
   const t = {
