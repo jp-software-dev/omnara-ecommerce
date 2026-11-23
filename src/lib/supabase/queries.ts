@@ -455,7 +455,7 @@ export async function getUserOrders(userId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("orders")
-    .select("id, order_number, status, currency, total_cents, created_at, order_items(quantity)")
+    .select("id, order_number, status, currency, total_cents, created_at, order_items(quantity), shipments(status)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
