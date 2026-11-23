@@ -2,6 +2,7 @@ import { Check, Circle, CircleDot } from "lucide-react";
 import { carrierName, formatShipmentTime, shipmentNoticeText, shipmentStepLabel } from "@/lib/shipping";
 import type { TrackedShipment } from "@/lib/supabase/queries";
 import { CancelShipmentButton } from "./cancel-shipment-button";
+import { RateShipment } from "./rate-shipment";
 import { ConfirmDeliveryButton } from "./confirm-delivery-button";
 
 /**
@@ -106,6 +107,20 @@ export function ShipmentTracker({
                     : "¿Cambiaste de opinión? Puedes cancelarlo mientras no haya salido."}
                 </p>
                 <CancelShipmentButton shipmentId={shipment.id} locale={locale} token={token} />
+              </div>
+            ) : null}
+
+            {canConfirm && shipment.status === "completed" ? (
+              <div className="mt-4 border-t pt-4">
+                {shipment.rating ? (
+                  <p className="text-sm">
+                    {en ? "Your delivery rating: " : "Tu calificación de la entrega: "}
+                    <strong aria-label={`${shipment.rating.rating}/5`}>{"★".repeat(shipment.rating.rating)}{"☆".repeat(5 - shipment.rating.rating)}</strong>
+                    {shipment.rating.comment ? <span className="text-muted-foreground"> · {shipment.rating.comment}</span> : null}
+                  </p>
+                ) : (
+                  <RateShipment shipmentId={shipment.id} locale={locale} token={token} />
+                )}
               </div>
             ) : null}
 

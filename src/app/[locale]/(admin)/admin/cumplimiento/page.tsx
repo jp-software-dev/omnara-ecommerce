@@ -63,6 +63,9 @@ export default async function FulfillmentPage({
     onTime: en ? "Shipped on time" : "Enviados a tiempo",
     onTimeHint: en ? "Within 24 hours of the payment" : "Dentro de las 24 horas del pago",
     overdue: en ? "Overdue right now" : "Atrasados ahora",
+    shipRating: en ? "Delivery rating" : "Calificación de entregas",
+    shipRatingHint: en ? "out of 5, rated by the customer" : "de 5, calificada por el cliente",
+    shipRatingCol: en ? "Delivery" : "Entrega",
     returns: en ? "Returns by reason" : "Devoluciones por motivo",
     noReturns: en ? "No returns in this period." : "Sin devoluciones en este periodo.",
     sellers: en ? "By seller" : "Por vendedor",
@@ -137,12 +140,17 @@ export default async function FulfillmentPage({
 
           <section className="mt-8">
             <h2 className="text-lg font-medium">{t.times}</h2>
-            <div className="mt-3 grid max-w-4xl grid-cols-2 gap-3 lg:grid-cols-5">
+            <div className="mt-3 grid max-w-4xl grid-cols-2 gap-3 lg:grid-cols-6">
               <Stat label={t.prepare} value={hours(report.timing.avg_prepare_hours)} />
               <Stat label={t.transit} value={hours(report.timing.avg_transit_hours)} />
               <Stat label={t.close} value={hours(report.timing.avg_close_hours)} />
               <Stat label={t.onTime} value={pct(onTimePercent(report.timing))} hint={t.onTimeHint} />
               <Stat label={t.overdue} value={String(report.timing.overdue_now)} />
+              <Stat
+                label={t.shipRating}
+                value={report.shipping_rating?.avg != null ? Number(report.shipping_rating.avg).toFixed(1) : "—"}
+                hint={report.shipping_rating?.count ? `${report.shipping_rating.count} · ${t.shipRatingHint}` : t.shipRatingHint}
+              />
             </div>
           </section>
 
@@ -176,6 +184,7 @@ export default async function FulfillmentPage({
                       <th className="px-3 py-2">{t.cancelled}</th>
                       <th className="px-3 py-2">{t.returnsCol}</th>
                       <th className="px-3 py-2">{t.rating}</th>
+                      <th className="px-3 py-2">{t.shipRatingCol}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -188,6 +197,7 @@ export default async function FulfillmentPage({
                         <td className="px-3 py-2">{vendor.cancelled}</td>
                         <td className="px-3 py-2">{vendor.returns}</td>
                         <td className="px-3 py-2">{vendor.avg_rating != null ? Number(vendor.avg_rating).toFixed(1) : "—"}</td>
+                        <td className="px-3 py-2">{vendor.shipping_rating != null ? Number(vendor.shipping_rating).toFixed(1) : "—"}</td>
                       </tr>
                     ))}
                   </tbody>

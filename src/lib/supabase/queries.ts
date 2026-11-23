@@ -325,6 +325,8 @@ export type TrackedShipment = {
   carrier: string | null;
   tracking_number: string | null;
   sellerName: string | null;
+  /** What the customer rated this shipment, once closed. */
+  rating?: { rating: number; comment: string | null } | null;
   /** Something the customer should know: a pause, a delay, a failed attempt or a damaged package. */
   notice?: { kind: "paused" | "delay" | "failed_attempt" | "damaged"; until: string | null } | null;
   steps: { step_order: number; status: string; at: string | null; done: boolean }[];
