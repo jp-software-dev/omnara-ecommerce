@@ -16,10 +16,11 @@ const report: FulfillmentReport = {
   scope: "admin",
   funnel: { shipments: 10, shipped: 9, delivered: 8, completed: 6, cancelled: 1, reviewed: 3 },
   timing: { avg_prepare_hours: 24, avg_transit_hours: 60.5, avg_close_hours: 20, shipped_on_time: 8, shipped_late: 1, overdue_now: 0 },
+  shipping_rating: { avg: 4.5, count: 4 },
   returns: [{ reason: "damaged", count: 2, refunded: 1 }],
   vendors: [
-    { vendor_id: null, name: "Omnara", shipments: 9, shipped: 8, on_time_pct: 100, avg_transit_hours: 60.5, cancelled: 1, returns: 2, avg_rating: null },
-    { vendor_id: "v1", name: 'Café "Estudiantil", S.A.', shipments: 1, shipped: 1, on_time_pct: 0, avg_transit_hours: null, cancelled: 0, returns: 0, avg_rating: 4.5 },
+    { vendor_id: null, name: "Omnara", shipments: 9, shipped: 8, on_time_pct: 100, avg_transit_hours: 60.5, cancelled: 1, returns: 2, avg_rating: null, shipping_rating: 4 },
+    { vendor_id: "v1", name: 'Café "Estudiantil", S.A.', shipments: 1, shipped: 1, on_time_pct: 0, avg_transit_hours: null, cancelled: 0, returns: 0, avg_rating: 4.5, shipping_rating: null },
   ],
   payouts: { payouts: 1, gross_mxn_cents: 24900, commission_mxn_cents: 747, net_mxn_cents: 24153 },
 };
@@ -75,13 +76,16 @@ describe("the exports", () => {
 
   it("writes the seller report with the seller name safely quoted", () => {
     const csv = vendorsCsv(report);
-    expect(csv.split("\r\n")[0]).toBe("vendedor,envios,enviados,a_tiempo_pct,horas_en_transito,cancelados,devoluciones,calificacion");
-    expect(csv).toContain('"Café ""Estudiantil"", S.A.",1,1,0,,0,0,4.5');
+    expect(csv.split("\r\n")[0]).toBe("vendedor,envios,enviados,a_tiempo_pct,horas_en_transito,cancelados,devoluciones,calificacion,calificacion_envio");
+    expect(csv).toContain('"Café ""Estudiantil"", S.A.",1,1,0,,0,0,4.5,');
+    expect(csv).toContain("Omnara,9,8,100,60.5,1,2,,4");
   });
 
   it("writes the summary and the returns", () => {
     expect(summaryCsv(report)).toContain("comision_mxn_centavos,747");
     expect(summaryCsv(report)).toContain("enviados_tarde,1");
+    expect(summaryCsv(report)).toContain("calificacion_promedio_de_envios,4.5");
+    expect(summaryCsv(report)).toContain("envios_calificados,4");
     expect(returnsCsv(report)).toBe("motivo,devoluciones,reembolsadas\r\ndamaged,2,1\r\n");
   });
 });

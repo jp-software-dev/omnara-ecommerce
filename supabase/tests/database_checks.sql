@@ -469,7 +469,62 @@ begin
     perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
   end;
 
-  -- 10. A non-admin cannot read another seller's balance or create payouts ---
+  -- 10. Shipment ratings: only after closing, 1 to 5, once, with the token for a guest ----
+  declare
+    v_variant uuid;
+    v_res jsonb;
+    v_order uuid;
+    v_token uuid;
+    v_shipment uuid;
+  begin
+    select pv.id into v_variant
+      from public.product_variants pv join public.products p on p.id = pv.product_id
+     where pv.stock_quantity > 5 and p.status = 'active' limit 1;
+    if v_variant is not null then
+      v_res := public.place_demo_order(
+        jsonb_build_array(jsonb_build_object('variant_id', v_variant, 'quantity', 1)), 'MXN', 'rate@example.invalid', '',
+        jsonb_build_object('name', 'Check', 'address', jsonb_build_object('line1', 'Calle 1', 'city', 'CDMX', 'state', 'CDMX', 'postal_code', '06000', 'country', 'MX')));
+      v_order := (v_res ->> 'order_id')::uuid;
+      v_token := (v_res ->> 'token')::uuid;
+      select id into v_shipment from public.shipments where order_id = v_order;
+
+      begin
+        perform public.rate_shipment(v_shipment, 5, null, v_token);
+        raise exception 'FAIL: a shipment was rated before the delivery was confirmed';
+      exception when others then
+        if sqlerrm not like 'You can rate a shipment once%' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+
+      perform private.advance_shipment(v_shipment, now() + interval '30 days');
+      perform public.confirm_delivery(v_shipment, v_token);
+
+      begin
+        perform public.rate_shipment(v_shipment, 9, null, v_token);
+        raise exception 'FAIL: a rating of 9 was accepted';
+      exception when others then
+        if sqlerrm <> 'The rating must be between 1 and 5' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+      begin
+        perform public.rate_shipment(v_shipment, 5, null, gen_random_uuid());
+        raise exception 'FAIL: a shipment was rated with a false token';
+      exception when others then
+        if sqlerrm <> 'Shipment not found' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+
+      perform public.rate_shipment(v_shipment, 4, 'ok', v_token);
+      begin
+        perform public.rate_shipment(v_shipment, 1, null, v_token);
+        raise exception 'FAIL: a shipment was rated twice';
+      exception when others then
+        if sqlerrm <> 'This shipment was already rated' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+      if (public.order_tracking(v_order, v_token) -> 0 -> 'rating' ->> 'rating')::int <> 4 then
+        raise exception 'FAIL: the rating is not part of the tracking';
+      end if;
+    end if;
+  end;
+
+  -- 11. A non-admin cannot read another seller's balance or create payouts ---
   perform set_config('request.jwt.claims',
     json_build_object('sub', '00000000-0000-0000-0000-0000000000aa', 'role', 'authenticated')::text, true);
   begin

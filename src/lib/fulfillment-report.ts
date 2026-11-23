@@ -24,6 +24,7 @@ const schema = z.object({
     shipped_late: z.number(),
     overdue_now: z.number(),
   }),
+  shipping_rating: z.object({ avg: num, count: z.number() }).optional(),
   returns: z.array(z.object({ reason: z.string(), count: z.number(), refunded: z.number() })),
   vendors: z.array(
     z.object({
@@ -36,6 +37,7 @@ const schema = z.object({
       cancelled: z.number(),
       returns: z.number(),
       avg_rating: num,
+      shipping_rating: num,
     })
   ),
   payouts: z.object({
@@ -85,8 +87,8 @@ export function toCsv(header: string[], rows: unknown[][]): string {
 
 export function vendorsCsv(report: FulfillmentReport): string {
   return toCsv(
-    ["vendedor", "envios", "enviados", "a_tiempo_pct", "horas_en_transito", "cancelados", "devoluciones", "calificacion"],
-    report.vendors.map((v) => [v.name, v.shipments, v.shipped, v.on_time_pct, v.avg_transit_hours, v.cancelled, v.returns, v.avg_rating])
+    ["vendedor", "envios", "enviados", "a_tiempo_pct", "horas_en_transito", "cancelados", "devoluciones", "calificacion", "calificacion_envio"],
+    report.vendors.map((v) => [v.name, v.shipments, v.shipped, v.on_time_pct, v.avg_transit_hours, v.cancelled, v.returns, v.avg_rating, v.shipping_rating])
   );
 }
 
@@ -109,6 +111,8 @@ export function summaryCsv(report: FulfillmentReport): string {
       ["enviados_a_tiempo", t.shipped_on_time],
       ["enviados_tarde", t.shipped_late],
       ["atrasados_ahora", t.overdue_now],
+      ["calificacion_promedio_de_envios", report.shipping_rating?.avg ?? null],
+      ["envios_calificados", report.shipping_rating?.count ?? 0],
       ["pagos_simulados", report.payouts.payouts],
       ["ventas_pagadas_mxn_centavos", report.payouts.gross_mxn_cents],
       ["comision_mxn_centavos", report.payouts.commission_mxn_cents],
