@@ -389,6 +389,38 @@ export type Database = {
           },
         ]
       }
+      shipment_ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          rating: number
+          shipment_id: string
+          user_id: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          rating: number
+          shipment_id: string
+          user_id?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          rating?: number
+          shipment_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_ratings_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: true
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shipment_incidents: {
         Row: {
           created_at: string
@@ -1563,6 +1595,10 @@ export type Database = {
       retry_failed_emails: {
         Args: { p_id?: string }
         Returns: number
+      }
+      rate_shipment: {
+        Args: { p_comment?: string; p_rating: number; p_shipment: string; p_token?: string }
+        Returns: undefined
       }
       fulfillment_analytics: {
         Args: { p_days?: number }
