@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { Store } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { getActiveBusinesses, getBusinessRatings } from "@/lib/supabase/queries";
+import { getCachedActiveBusinesses, getCachedBusinessRatings } from "@/lib/supabase/queries";
 import { BusinessRatingBadge } from "@/components/shop/business-rating";
 
 export default async function BusinessesPage({
@@ -10,8 +10,8 @@ export default async function BusinessesPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const businesses = await getActiveBusinesses();
-  const ratings = await getBusinessRatings(businesses.map((business) => business.id));
+  const businesses = await getCachedActiveBusinesses();
+  const ratings = await getCachedBusinessRatings(businesses.map((business) => business.id));
 
   const t = {
     title: locale === "en" ? "Businesses" : "Negocios",
