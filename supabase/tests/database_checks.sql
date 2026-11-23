@@ -385,6 +385,8 @@ begin
      where pv.stock_quantity > 5 and p.status = 'active' and p.vendor_id is null limit 1;
     if v_variant is not null then
       select stock_quantity into v_stock_before from public.product_variants where id = v_variant;
+      -- a guest buys: the admin running the script would otherwise own the order and could cancel without the token
+      perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
       v_res := public.place_demo_order(
         jsonb_build_array(jsonb_build_object('variant_id', v_variant, 'quantity', 2)), 'MXN', 'check@example.invalid', '',
         jsonb_build_object('name', 'Check', 'address', jsonb_build_object('line1', 'Calle 1', 'city', 'CDMX', 'state', 'CDMX', 'postal_code', '06000', 'country', 'MX')));
@@ -426,6 +428,7 @@ begin
       exception when others then
         if sqlerrm <> 'We only deliver within Mexico' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
       end;
+      perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
     end if;
   end;
 
@@ -481,6 +484,7 @@ begin
       from public.product_variants pv join public.products p on p.id = pv.product_id
      where pv.stock_quantity > 5 and p.status = 'active' limit 1;
     if v_variant is not null then
+      perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
       v_res := public.place_demo_order(
         jsonb_build_array(jsonb_build_object('variant_id', v_variant, 'quantity', 1)), 'MXN', 'rate@example.invalid', '',
         jsonb_build_object('name', 'Check', 'address', jsonb_build_object('line1', 'Calle 1', 'city', 'CDMX', 'state', 'CDMX', 'postal_code', '06000', 'country', 'MX')));
@@ -521,6 +525,7 @@ begin
       if (public.order_tracking(v_order, v_token) -> 0 -> 'rating' ->> 'rating')::int <> 4 then
         raise exception 'FAIL: the rating is not part of the tracking';
       end if;
+      perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
     end if;
   end;
 
