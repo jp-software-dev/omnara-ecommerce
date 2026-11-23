@@ -524,7 +524,61 @@ begin
     end if;
   end;
 
-  -- 11. A non-admin cannot read another seller's balance or create payouts ---
+  -- 11. A promo code comes back only when the order is refunded in full ------------
+  declare
+    v_buyer uuid := gen_random_uuid();
+    v_vars uuid[];
+    v_res jsonb;
+    v_ord uuid;
+    v_sh uuid;
+    v_ret uuid;
+    v_before int;
+    v_after int;
+  begin
+    if exists (select 1 from public.promo_codes where code = 'BIENVENIDO10') then
+      insert into auth.users (id, instance_id, aud, role, email, raw_user_meta_data, created_at, updated_at)
+      values (v_buyer, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'promo@example.invalid', '{}', now(), now());
+      select array_agg(id) into v_vars from (
+        select pv.id from public.product_variants pv join public.products p on p.id = pv.product_id
+         where pv.stock_quantity > 5 and p.status = 'active' limit 2) x;
+
+      if array_length(v_vars, 1) = 2 then
+        -- two items, one refunded: the use stays
+        perform set_config('request.jwt.claims', json_build_object('sub', v_buyer, 'role', 'authenticated')::text, true);
+        v_res := public.place_demo_order(
+          jsonb_build_array(jsonb_build_object('variant_id', v_vars[1], 'quantity', 1), jsonb_build_object('variant_id', v_vars[2], 'quantity', 1)),
+          'MXN', '', 'BIENVENIDO10',
+          jsonb_build_object('name', 'T', 'address', jsonb_build_object('line1', 'Calle 1', 'city', 'CDMX', 'state', 'CDMX', 'postal_code', '06000', 'country', 'MX')));
+        v_ord := (v_res ->> 'order_id')::uuid;
+        select times_used into v_before from public.promo_codes where code = 'BIENVENIDO10';
+        for v_sh in select id from public.shipments where order_id = v_ord loop
+          perform private.advance_shipment(v_sh, now() + interval '30 days');
+          perform private.record_shipment_event(v_sh, 'completed', 'customer', v_buyer);
+        end loop;
+        v_ret := public.request_return((select id from public.order_items where order_id = v_ord order by id limit 1), 'damaged', 'x');
+        update public.return_requests set status = 'approved' where id = v_ret;
+        perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
+        perform public.mark_return_refunded(v_ret, 'check-partial');
+        select times_used into v_after from public.promo_codes where code = 'BIENVENIDO10';
+        if v_after <> v_before then
+          raise exception 'FAIL: a partial refund gave the promo use back (% -> %)', v_before, v_after;
+        end if;
+
+        -- the other item refunded too: the order is refunded in full and the use comes back
+        perform set_config('request.jwt.claims', json_build_object('sub', v_buyer, 'role', 'authenticated')::text, true);
+        v_ret := public.request_return((select id from public.order_items where order_id = v_ord order by id desc limit 1), 'damaged', 'x');
+        update public.return_requests set status = 'approved' where id = v_ret;
+        perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
+        perform public.mark_return_refunded(v_ret, 'check-full');
+        select times_used into v_after from public.promo_codes where code = 'BIENVENIDO10';
+        if v_after <> greatest(v_before - 1, 0) or (select status from public.orders where id = v_ord) <> 'refunded' then
+          raise exception 'FAIL: refunding the whole order must refund it and give the promo use back (% -> %)', v_before, v_after;
+        end if;
+      end if;
+    end if;
+  end;
+
+  -- 12. A non-admin cannot read another seller's balance or create payouts ---
   perform set_config('request.jwt.claims',
     json_build_object('sub', '00000000-0000-0000-0000-0000000000aa', 'role', 'authenticated')::text, true);
   begin
