@@ -583,6 +583,43 @@ begin
     end if;
   end;
 
+  -- 13. Shipping is charged per package: one flat rate for each seller that is not free ----
+  declare
+    v_a uuid;
+    v_b uuid;
+    v_threshold int;
+    v_price_a int;
+    v_price_b int;
+    v_res jsonb;
+    v_ship int;
+    v_expected int;
+  begin
+    select free_shipping_threshold_mxn_cents into v_threshold from public.app_settings where id = 1;
+    -- one product with a seller and one sold by Omnara
+    select pv.id, coalesce(pv.price_override_mxn_cents, p.base_price_mxn_cents) into v_a, v_price_a
+      from public.product_variants pv join public.products p on p.id = pv.product_id
+     where pv.stock_quantity > 5 and p.status = 'active' and p.vendor_id is not null limit 1;
+    select pv.id, coalesce(pv.price_override_mxn_cents, p.base_price_mxn_cents) into v_b, v_price_b
+      from public.product_variants pv join public.products p on p.id = pv.product_id
+     where pv.stock_quantity > 5 and p.status = 'active' and p.vendor_id is null limit 1;
+    if v_a is not null and v_b is not null then
+      perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+      v_res := public.place_demo_order(
+        jsonb_build_array(jsonb_build_object('variant_id', v_a, 'quantity', 1), jsonb_build_object('variant_id', v_b, 'quantity', 1)),
+        'MXN', 'ship@example.invalid', '',
+        jsonb_build_object('name', 'T', 'address', jsonb_build_object('line1', 'Calle 1', 'city', 'CDMX', 'state', 'CDMX', 'postal_code', '06000', 'country', 'MX')));
+      select shipping_cents into v_ship from public.orders where id = (v_res ->> 'order_id')::uuid;
+      v_expected := (case when v_price_a >= v_threshold then 0 else 9900 end) + (case when v_price_b >= v_threshold then 0 else 9900 end);
+      if v_ship <> v_expected then
+        raise exception 'FAIL: two sellers must pay shipping per package (expected %, charged %)', v_expected, v_ship;
+      end if;
+      if (select count(*) from public.shipments where order_id = (v_res ->> 'order_id')::uuid) <> 2 then
+        raise exception 'FAIL: two sellers must ship two packages';
+      end if;
+      perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
+    end if;
+  end;
+
   -- 12. A non-admin cannot read another seller's balance or create payouts ---
   perform set_config('request.jwt.claims',
     json_build_object('sub', '00000000-0000-0000-0000-0000000000aa', 'role', 'authenticated')::text, true);
