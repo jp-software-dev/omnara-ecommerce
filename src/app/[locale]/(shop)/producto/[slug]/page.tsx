@@ -167,6 +167,7 @@ export default async function ProductPage({
               null
             }
             unitPriceMxnCents={product.base_price_mxn_cents}
+            vendorId={product.vendor_id}
             categorySlug={category?.slug}
           />
 

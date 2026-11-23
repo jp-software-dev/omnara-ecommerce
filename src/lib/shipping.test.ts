@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   carrierName,
+  computeShippingBySeller,
   generateSimulatedTracking,
   isSimulatedTracking,
   SHIPMENT_STEPS,
@@ -67,5 +68,44 @@ describe("shipmentNoticeText", () => {
   it("says a paused shipment will continue and what to do about damage", () => {
     expect(shipmentNoticeText({ kind: "paused", until: null }, "es", null)).toContain("en pausa");
     expect(shipmentNoticeText({ kind: "damaged", until: null }, "en", null)).toContain("request a return");
+  });
+});
+
+describe("computeShippingBySeller", () => {
+  const FREE = 150000;
+  const FLAT = 9900;
+
+  it("charges one flat rate per seller and treats products without a seller as Omnara's", () => {
+    const quote = computeShippingBySeller(
+      [
+        { sellerId: "a", amountCents: 20000 },
+        { sellerId: "b", amountCents: 30000 },
+        { sellerId: null, amountCents: 10000 },
+        { sellerId: undefined, amountCents: 5000 },
+      ],
+      FREE,
+      FLAT
+    );
+    expect(quote.shipments).toBe(3);
+    expect(quote.totalCents).toBe(3 * FLAT);
+  });
+
+  it("makes a package free only when that seller's own part reaches the threshold", () => {
+    const quote = computeShippingBySeller(
+      [
+        { sellerId: "a", amountCents: 100000 },
+        { sellerId: "a", amountCents: 50000 },
+        { sellerId: "b", amountCents: 140000 },
+      ],
+      FREE,
+      FLAT
+    );
+    expect(quote.perSeller.find((group) => group.sellerId === "a")?.shippingCents).toBe(0);
+    expect(quote.perSeller.find((group) => group.sellerId === "b")?.shippingCents).toBe(FLAT);
+    expect(quote.totalCents).toBe(FLAT);
+  });
+
+  it("charges nothing for an empty cart", () => {
+    expect(computeShippingBySeller([], FREE, FLAT)).toEqual({ totalCents: 0, shipments: 0, perSeller: [] });
   });
 });

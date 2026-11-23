@@ -10,6 +10,8 @@ export type CartItem = {
   size: string | null;
   color: string | null;
   unitPriceMxnCents: number;
+  /** The seller (null: sold by Omnara). Old saved carts do not have it and count as Omnara. */
+  vendorId?: string | null;
   quantity: number;
   stockQuantity: number;
 };
