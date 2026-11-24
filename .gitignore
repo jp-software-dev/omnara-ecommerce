@@ -58,3 +58,7 @@ next-env.d.ts
 # claude code (local-only permission cache)
 .claude/settings.local.json
 .claude
+
+# Playwright
+/test-results/
+/playwright-report/
