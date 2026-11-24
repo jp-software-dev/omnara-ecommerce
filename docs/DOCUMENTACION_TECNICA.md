@@ -328,9 +328,9 @@ Todas las rutas anteriores existen bajo `/es/...` y `/en/...` (prefijo de locale
 
 ## 16. Calidad: pruebas, integración continua y migraciones
 
-- **Pruebas unitarias** (Vitest, `npm test`): 32 casos sobre envío, conversión y formato de moneda, validación de productos, negocios, códigos promocionales y direcciones, la ventana de 30 días de devoluciones y el renderizado de correos (incluido el escape de HTML).
+- **Pruebas unitarias** (Vitest, `npm test`): 129 casos en 16 archivos sobre envío (incluido el envío por paquete), conversión y formato de moneda, validación, códigos promocionales, direcciones, devoluciones, correos (con escape de HTML), comprobante en PDF, ticket del correo (`withTicketCore` con una base de datos falsa), calendario, retención de pagos, informe de cumplimiento, agrupación de pedidos, contraseñas filtradas, códigos de modelo, lista de deseos y cambios del carrito.
 - **CI** (`.github/workflows/ci.yml`): `npm run lint`, `npm run typecheck` y `npm test` en cada pull request y en cada push a `main` y `development`. El build de producción lo hace Vercel.
-- **Reglas de base de datos:** `supabase/tests/database_checks.sql` verifica adjuntos, comisión, pagos simulados y permisos dentro de una transacción que siempre se revierte; no forma parte de la CI. Además hay pruebas unitarias de `pwned`, `shipping` y `model-code`.
+- **Reglas de base de datos:** `supabase/tests/database_checks.sql` (adjuntos, pagos, envíos, eventos, calendario, motor con reloj simulado, operaciones, cancelación y envío solo a México, analítica, calificaciones, cupón en reembolso total, envío por paquete, notificaciones y permisos) se ejecuta completo en una sola pasada dentro de una transacción que siempre se revierte; no forma parte de la CI. Los pedidos de las secciones de compra se hacen como invitado: el administrador que corre el script sería dueño del pedido y tendría permisos que un invitado no tiene. Además hay pruebas unitarias de `pwned`, `shipping` y `model-code`.
 - **Lockfile:** se fijaron `@emnapi/core` y `@emnapi/runtime` para que `npm ci` funcione en Linux con un lockfile generado en Windows.
 
 ## 16b. Modo de demostración (sin cuentas externas)
@@ -344,7 +344,7 @@ Todas las rutas anteriores existen bajo `/es/...` y `/en/...` (prefijo de locale
 
 ## 16c. Ciclo del pedido: envíos, seguimiento programado y cierre
 
-**Modelo de datos (migraciones `20261114000001` a `17`)**
+**Modelo de datos (migraciones `20261114000001` a `21`)**
 - `shipments`: un envío por (pedido, vendedor); `vendor_id` puede ser nulo (productos de la propia plataforma, 46 de los 50 del catálogo). Campos: `status`, `carrier`, `tracking_number`, `ship_by` (24 h tras el pago), fechas, `on_hold`, `hold_until`, `delay_minutes`. Un disparador en `order_items` asigna cada artículo a su envío.
 - `shipment_events`: historial **solo de agregar** (un disparador impide UPDATE y DELETE). Cada cambio pasa por `private.record_shipment_event`, la única función que mueve un envío (solo hacia adelante; `completed` solo desde `delivered`; `cancelled` solo antes de salir).
 - `shipping_calendar` (zona horaria, horario, días laborales), `mx_holidays` (festivos 2026-2028) y `shipment_step_rules` (tiempo de cada paso y si solo ocurre en horario de paquetería). `private.next_business_time` y `private.shipment_step_due` calculan cuándo toca cada paso.
@@ -360,7 +360,21 @@ Todas las rutas anteriores existen bajo `/es/...` y `/en/...` (prefijo de locale
 
 **Rendimiento:** lecturas públicas con caché de datos (`unstable_cache`, 30-300 s, etiqueta `catalog`) sobre un cliente de Supabase sin cookies; el cliente del navegador se importa solo al usarse; la portada pasó de 352 a 289 KB de JavaScript.
 
-**Pruebas:** `supabase/tests/database_checks.sql` (transacción revertida) cubre adjuntos, comisión, envíos, eventos, calendario, motor con reloj simulado, operaciones, cancelación, envío solo a México y analítica; pruebas unitarias en `src/lib/*.test.ts`.
+**Envío por paquete (migración `…20`):** `place_demo_order` cobra la tarifa fija una vez por paquete, es decir por vendedor (y una por la propia plataforma): cada paquete paga salvo que *su* parte del carrito alcance el monto de envío gratis. `computeShippingBySeller` (`src/lib/shipping.ts`) replica el cálculo para mostrarlo en el checkout; quien cobra es siempre la base de datos.
+
+**Calificación del envío (migración `…18`):** tabla `shipment_ratings` y `rate_shipment(p_shipment, p_rating, p_comment, p_token)`: solo con el envío cerrado, de 1 a 5, una vez; un invitado usa el token del pedido. La calificación forma parte de `order_tracking`.
+
+**Cupón en reembolso total (migración `…19`):** `mark_return_refunded` devuelve el uso del código promocional solo cuando todos los artículos del pedido quedaron reembolsados (el pedido pasa a `refunded`); un reembolso parcial lo conserva.
+
+**Notificaciones dentro del sitio (migración `…21`):** tablas `notifications` y `notification_preferences` (RLS: solo su dueño; sin políticas de escritura en `notifications`). Las crea el disparador `private.trg_notify_shipment_event` sobre `shipment_events` (hitos para el comprador con cuenta, «nueva venta» para el vendedor) a través de `private.notify`, que respeta las preferencias y nunca bloquea el movimiento del envío. Lectura con `my_notifications`, `my_unread_notification_count` y `mark_notifications_read`. El componente `notifications-bell.tsx` consulta cada 60 s mientras la pestaña está visible. Los invitados solo reciben correo.
+
+**Alerta de cambios en el carrito:** `src/lib/cart-prices.ts` compara lo guardado al agregar el artículo con lo vigente (precio, existencias, disponibilidad); la acción `getCurrentVariants` (datos públicos) lo consulta y `CartPriceAlert` avisa en el carrito y el checkout; `syncWith` del store alinea el carrito. El pedido siempre se cobra al precio actual.
+
+**Páginas de error:** `[locale]/error.tsx` (es/en, reintento, muestra el `digest` que coincide con la línea del log del servidor) y `global-error.tsx` para fallos del layout raíz. En producción no hubo errores de ejecución en 7 días; el plan Hobby de Vercel conserva los logs 1 hora y no admite drains.
+
+**Pedidos por estado y páginas de negocio:** `/cuenta/pedidos` agrupa por estado (`src/lib/order-groups.ts`); `/negocios` y `/negocio/[slug]` usan el patrón «núcleo + versión en caché» (`unstable_cache`, etiqueta `catalog`, `revalidateTag("catalog","max")` desde `invalidateCatalog`).
+
+**Ticket del correo:** la lógica vive en `email-ticket-core.ts` (sin `server-only`, probada con una base falsa) y `email-ticket.ts` es solo el envoltorio. `order_ticket_for_email` solo la puede ejecutar `service_role`; el ticket no incluye `demo_token`, identificadores de usuario ni datos de pago.
 
 ## 17. Seguridad y privacidad añadidas
 
