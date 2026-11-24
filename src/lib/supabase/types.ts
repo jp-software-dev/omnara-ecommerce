@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -67,6 +67,44 @@ export type Database = {
           {
             foreignKeyName: "addresses_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          changes: Json
+          created_at: string
+          id: number
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          changes?: Json
+          created_at?: string
+          id?: never
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          changes?: Json
+          created_at?: string
+          id?: never
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_actor_id_fkey"
+            columns: ["actor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -138,13 +176,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "products_vendor_business_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["vendor_id"]
-          },
           {
             foreignKeyName: "businesses_owner_id_fkey"
             columns: ["owner_id"]
@@ -296,6 +327,93 @@ export type Database = {
         }
         Relationships: []
       }
+      data_requests: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          id: string
+          kind: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_requests_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_outbox: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          locale: string
+          payload: Json
+          sent_at: string | null
+          status: string
+          template: string
+          to_email: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          locale?: string
+          payload?: Json
+          sent_at?: string | null
+          status?: string
+          template: string
+          to_email: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          locale?: string
+          payload?: Json
+          sent_at?: string | null
+          status?: string
+          template?: string
+          to_email?: string
+        }
+        Relationships: []
+      }
       inventory_movements: {
         Row: {
           created_at: string
@@ -348,141 +466,6 @@ export type Database = {
           },
         ]
       }
-      shipment_events: {
-        Row: {
-          actor_id: string | null
-          created_at: string
-          id: string
-          note: string | null
-          occurred_at: string
-          shipment_id: string
-          source: string
-          status: string
-        }
-        Insert: {
-          actor_id?: string | null
-          created_at?: string
-          id?: string
-          note?: string | null
-          occurred_at?: string
-          shipment_id: string
-          source: string
-          status: string
-        }
-        Update: {
-          actor_id?: string | null
-          created_at?: string
-          id?: string
-          note?: string | null
-          occurred_at?: string
-          shipment_id?: string
-          source?: string
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "shipment_events_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
-            referencedRelation: "shipments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      shipment_ratings: {
-        Row: {
-          comment: string | null
-          created_at: string
-          rating: number
-          shipment_id: string
-          user_id: string | null
-        }
-        Insert: {
-          comment?: string | null
-          created_at?: string
-          rating: number
-          shipment_id: string
-          user_id?: string | null
-        }
-        Update: {
-          comment?: string | null
-          created_at?: string
-          rating?: number
-          shipment_id?: string
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "shipment_ratings_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: true
-            referencedRelation: "shipments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      shipment_incidents: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          delay_hours: number | null
-          id: string
-          kind: string
-          note: string | null
-          shipment_id: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          delay_hours?: number | null
-          id?: string
-          kind: string
-          note?: string | null
-          shipment_id: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          delay_hours?: number | null
-          id?: string
-          kind?: string
-          note?: string | null
-          shipment_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "shipment_incidents_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
-            referencedRelation: "shipments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      shipping_calendar: {
-        Row: {
-          business_end: string
-          business_start: string
-          id: number
-          timezone: string
-          working_days: number[]
-        }
-        Insert: {
-          business_end?: string
-          business_start?: string
-          id?: number
-          timezone?: string
-          working_days?: number[]
-        }
-        Update: {
-          business_end?: string
-          business_start?: string
-          id?: number
-          timezone?: string
-          working_days?: number[]
-        }
-        Relationships: []
-      }
       mx_holidays: {
         Row: {
           day: string
@@ -498,148 +481,59 @@ export type Database = {
         }
         Relationships: []
       }
-      shipment_step_rules: {
+      notification_preferences: {
         Row: {
-          business_hours_only: boolean
-          from_status: string
-          offset_minutes: number
-          status: string
+          sales: boolean
+          shipment_updates: boolean
+          updated_at: string
+          user_id: string
         }
         Insert: {
-          business_hours_only?: boolean
-          from_status: string
-          offset_minutes: number
-          status: string
+          sales?: boolean
+          shipment_updates?: boolean
+          updated_at?: string
+          user_id: string
         }
         Update: {
-          business_hours_only?: boolean
-          from_status?: string
-          offset_minutes?: number
-          status?: string
+          sales?: boolean
+          shipment_updates?: boolean
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
-      shipments: {
+      notifications: {
         Row: {
-          carrier: string | null
-          completed_at: string | null
+          body: Json
           created_at: string
-          delivered_at: string | null
-          delay_minutes: number
-          estimated_delivery_at: string | null
-          hold_reason: string | null
-          hold_until: string | null
           id: string
-          on_hold: boolean
-          order_id: string
-          ship_by: string | null
-          shipped_at: string | null
-          status: string
-          tracking_number: string | null
-          updated_at: string
-          vendor_id: string | null
+          kind: string
+          link: string | null
+          read_at: string | null
+          title: Json
+          user_id: string
         }
         Insert: {
-          carrier?: string | null
-          completed_at?: string | null
+          body: Json
           created_at?: string
-          delivered_at?: string | null
-          delay_minutes?: number
-          estimated_delivery_at?: string | null
-          hold_reason?: string | null
-          hold_until?: string | null
           id?: string
-          on_hold?: boolean
-          order_id: string
-          ship_by?: string | null
-          shipped_at?: string | null
-          status?: string
-          tracking_number?: string | null
-          updated_at?: string
-          vendor_id?: string | null
+          kind: string
+          link?: string | null
+          read_at?: string | null
+          title: Json
+          user_id: string
         }
         Update: {
-          carrier?: string | null
-          completed_at?: string | null
+          body?: Json
           created_at?: string
-          delivered_at?: string | null
-          delay_minutes?: number
-          estimated_delivery_at?: string | null
-          hold_reason?: string | null
-          hold_until?: string | null
           id?: string
-          on_hold?: boolean
-          order_id?: string
-          ship_by?: string | null
-          shipped_at?: string | null
-          status?: string
-          tracking_number?: string | null
-          updated_at?: string
-          vendor_id?: string
+          kind?: string
+          link?: string | null
+          read_at?: string | null
+          title?: Json
+          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "shipments_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shipments_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      seller_payouts: {
-        Row: {
-          commission_bps: number
-          commission_mxn_cents: number
-          created_at: string
-          created_by: string | null
-          gross_mxn_cents: number
-          id: string
-          items_count: number
-          net_mxn_cents: number
-          reference: string
-          vendor_id: string
-        }
-        Insert: {
-          commission_bps: number
-          commission_mxn_cents: number
-          created_at?: string
-          created_by?: string | null
-          gross_mxn_cents: number
-          id?: string
-          items_count: number
-          net_mxn_cents: number
-          reference: string
-          vendor_id: string
-        }
-        Update: {
-          commission_bps?: number
-          commission_mxn_cents?: number
-          created_at?: string
-          created_by?: string | null
-          gross_mxn_cents?: number
-          id?: string
-          items_count?: number
-          net_mxn_cents?: number
-          reference?: string
-          vendor_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "seller_payouts_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       order_items: {
         Row: {
@@ -647,6 +541,7 @@ export type Database = {
           delivered_at: string | null
           id: string
           order_id: string
+          payout_id: string | null
           product_name_snapshot: Json
           quantity: number
           shipment_id: string | null
@@ -662,6 +557,7 @@ export type Database = {
           delivered_at?: string | null
           id?: string
           order_id: string
+          payout_id?: string | null
           product_name_snapshot: Json
           quantity: number
           shipment_id?: string | null
@@ -677,6 +573,7 @@ export type Database = {
           delivered_at?: string | null
           id?: string
           order_id?: string
+          payout_id?: string | null
           product_name_snapshot?: Json
           quantity?: number
           shipment_id?: string | null
@@ -696,6 +593,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "order_items_payout_id_fkey"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "seller_payouts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "order_items_variant_id_fkey"
             columns: ["variant_id"]
             isOneToOne: false
@@ -707,13 +618,6 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_items_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
-            referencedRelation: "shipments"
             referencedColumns: ["id"]
           },
         ]
@@ -851,6 +755,64 @@ export type Database = {
           },
         ]
       }
+      product_questions: {
+        Row: {
+          answer: string | null
+          answered_at: string | null
+          answered_by: string | null
+          created_at: string
+          id: string
+          is_hidden: boolean
+          product_id: string
+          question: string
+          user_id: string
+        }
+        Insert: {
+          answer?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          product_id: string
+          question: string
+          user_id: string
+        }
+        Update: {
+          answer?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          product_id?: string
+          question?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_questions_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_questions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_questions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_variants: {
         Row: {
           color: string | null
@@ -946,18 +908,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "products_vendor_business_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "businesses"
-            referencedColumns: ["owner_id"]
-          },
-          {
             foreignKeyName: "products_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_vendor_business_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["owner_id"]
           },
           {
             foreignKeyName: "products_vendor_id_fkey"
@@ -1040,6 +1002,137 @@ export type Database = {
         }
         Relationships: []
       }
+      return_messages: {
+        Row: {
+          attachment_path: string | null
+          author_id: string
+          author_role: string
+          body: string
+          created_at: string
+          id: string
+          return_id: string
+        }
+        Insert: {
+          attachment_path?: string | null
+          author_id: string
+          author_role: string
+          body: string
+          created_at?: string
+          id?: string
+          return_id: string
+        }
+        Update: {
+          attachment_path?: string | null
+          author_id?: string
+          author_role?: string
+          body?: string
+          created_at?: string
+          id?: string
+          return_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "return_messages_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_messages_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "return_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      return_requests: {
+        Row: {
+          created_at: string
+          currency: string
+          decision_note: string | null
+          details: string | null
+          id: string
+          order_id: string
+          order_item_id: string
+          reason: string
+          refund_amount_cents: number
+          resolved_at: string | null
+          restocked_at: string | null
+          status: string
+          stripe_refund_id: string | null
+          updated_at: string
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency: string
+          decision_note?: string | null
+          details?: string | null
+          id?: string
+          order_id: string
+          order_item_id: string
+          reason: string
+          refund_amount_cents: number
+          resolved_at?: string | null
+          restocked_at?: string | null
+          status?: string
+          stripe_refund_id?: string | null
+          updated_at?: string
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          decision_note?: string | null
+          details?: string | null
+          id?: string
+          order_id?: string
+          order_item_id?: string
+          reason?: string
+          refund_amount_cents?: number
+          resolved_at?: string | null
+          restocked_at?: string | null
+          status?: string
+          stripe_refund_id?: string | null
+          updated_at?: string
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "return_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_requests_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: true
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           comment: string | null
@@ -1091,336 +1184,6 @@ export type Database = {
           },
         ]
       }
-      warehouses: {
-        Row: {
-          address: string | null
-          created_at: string
-          id: string
-          is_default: boolean
-          name: string
-        }
-        Insert: {
-          address?: string | null
-          created_at?: string
-          id?: string
-          is_default?: boolean
-          name: string
-        }
-        Update: {
-          address?: string | null
-          created_at?: string
-          id?: string
-          is_default?: boolean
-          name?: string
-        }
-        Relationships: []
-      }
-      admin_audit_log: {
-        Row: {
-          action: string
-          actor_id: string | null
-          changes: Json
-          created_at: string
-          id: number
-          record_id: string
-          table_name: string
-        }
-        Insert: {
-          action: string
-          actor_id?: string | null
-          changes?: Json
-          created_at?: string
-          id?: number
-          record_id: string
-          table_name: string
-        }
-        Update: {
-          action?: string
-          actor_id?: string | null
-          changes?: Json
-          created_at?: string
-          id?: number
-          record_id?: string
-          table_name?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "admin_audit_log_actor_id_fkey"
-            columns: ["actor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      data_requests: {
-        Row: {
-          admin_note: string | null
-          created_at: string
-          id: string
-          kind: string
-          resolved_at: string | null
-          resolved_by: string | null
-          status: string
-          user_id: string
-        }
-        Insert: {
-          admin_note?: string | null
-          created_at?: string
-          id?: string
-          kind?: string
-          resolved_at?: string | null
-          resolved_by?: string | null
-          status?: string
-          user_id: string
-        }
-        Update: {
-          admin_note?: string | null
-          created_at?: string
-          id?: string
-          kind?: string
-          resolved_at?: string | null
-          resolved_by?: string | null
-          status?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "data_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "data_requests_resolved_by_fkey"
-            columns: ["resolved_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      email_outbox: {
-        Row: {
-          attempts: number
-          created_at: string
-          id: string
-          last_error: string | null
-          locale: string
-          payload: Json
-          sent_at: string | null
-          status: string
-          template: string
-          to_email: string
-        }
-        Insert: {
-          attempts?: number
-          created_at?: string
-          id?: string
-          last_error?: string | null
-          locale?: string
-          payload?: Json
-          sent_at?: string | null
-          status?: string
-          template: string
-          to_email: string
-        }
-        Update: {
-          attempts?: number
-          created_at?: string
-          id?: string
-          last_error?: string | null
-          locale?: string
-          payload?: Json
-          sent_at?: string | null
-          status?: string
-          template?: string
-          to_email?: string
-        }
-        Relationships: []
-      }
-      product_questions: {
-        Row: {
-          answer: string | null
-          answered_at: string | null
-          answered_by: string | null
-          created_at: string
-          id: string
-          is_hidden: boolean
-          product_id: string
-          question: string
-          user_id: string
-        }
-        Insert: {
-          answer?: string | null
-          answered_at?: string | null
-          answered_by?: string | null
-          created_at?: string
-          id?: string
-          is_hidden?: boolean
-          product_id: string
-          question: string
-          user_id: string
-        }
-        Update: {
-          answer?: string | null
-          answered_at?: string | null
-          answered_by?: string | null
-          created_at?: string
-          id?: string
-          is_hidden?: boolean
-          product_id?: string
-          question?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_questions_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_questions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_questions_answered_by_fkey"
-            columns: ["answered_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      return_messages: {
-        Row: {
-          author_id: string
-          attachment_path: string | null
-          author_role: string
-          body: string
-          created_at: string
-          id: string
-          return_id: string
-        }
-        Insert: {
-          author_id: string
-          author_role: string
-          body: string
-          created_at?: string
-          id?: string
-          return_id: string
-        }
-        Update: {
-          author_id?: string
-          attachment_path?: string | null
-          author_role?: string
-          body?: string
-          created_at?: string
-          id?: string
-          return_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "return_messages_return_id_fkey"
-            columns: ["return_id"]
-            isOneToOne: false
-            referencedRelation: "return_requests"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      return_requests: {
-        Row: {
-          created_at: string
-          currency: string
-          decision_note: string | null
-          details: string | null
-          id: string
-          order_id: string
-          order_item_id: string
-          reason: string
-          restocked_at: string | null
-          refund_amount_cents: number
-          resolved_at: string | null
-          status: string
-          stripe_refund_id: string | null
-          updated_at: string
-          user_id: string
-          vendor_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          currency: string
-          decision_note?: string | null
-          details?: string | null
-          id?: string
-          order_id: string
-          order_item_id: string
-          reason: string
-          refund_amount_cents: number
-          restocked_at?: string | null
-          resolved_at?: string | null
-          status?: string
-          stripe_refund_id?: string | null
-          updated_at?: string
-          user_id: string
-          vendor_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          currency?: string
-          decision_note?: string | null
-          details?: string | null
-          id?: string
-          order_id?: string
-          order_item_id?: string
-          reason?: string
-          refund_amount_cents?: number
-          restocked_at?: string | null
-          resolved_at?: string | null
-          status?: string
-          stripe_refund_id?: string | null
-          updated_at?: string
-          user_id?: string
-          vendor_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "return_requests_order_item_id_fkey"
-            columns: ["order_item_id"]
-            isOneToOne: true
-            referencedRelation: "order_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "return_requests_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "return_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "return_requests_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       seller_applications: {
         Row: {
           business_name: string
@@ -1463,20 +1226,376 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "seller_applications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "seller_applications_reviewed_by_fkey"
             columns: ["reviewed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "seller_applications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      seller_payouts: {
+        Row: {
+          commission_bps: number
+          commission_mxn_cents: number
+          created_at: string
+          created_by: string | null
+          gross_mxn_cents: number
+          id: string
+          items_count: number
+          net_mxn_cents: number
+          reference: string
+          vendor_id: string
+        }
+        Insert: {
+          commission_bps: number
+          commission_mxn_cents: number
+          created_at?: string
+          created_by?: string | null
+          gross_mxn_cents: number
+          id?: string
+          items_count: number
+          net_mxn_cents: number
+          reference: string
+          vendor_id: string
+        }
+        Update: {
+          commission_bps?: number
+          commission_mxn_cents?: number
+          created_at?: string
+          created_by?: string | null
+          gross_mxn_cents?: number
+          id?: string
+          items_count?: number
+          net_mxn_cents?: number
+          reference?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_payouts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seller_payouts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipment_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          id: string
+          note: string | null
+          occurred_at: string
+          shipment_id: string
+          source: string
+          status: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          occurred_at?: string
+          shipment_id: string
+          source: string
+          status: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          occurred_at?: string
+          shipment_id?: string
+          source?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipment_incidents: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          delay_hours: number | null
+          id: string
+          kind: string
+          note: string | null
+          shipment_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          delay_hours?: number | null
+          id?: string
+          kind: string
+          note?: string | null
+          shipment_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          delay_hours?: number | null
+          id?: string
+          kind?: string
+          note?: string | null
+          shipment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_incidents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_incidents_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipment_ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          rating: number
+          shipment_id: string
+          user_id: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          rating: number
+          shipment_id: string
+          user_id?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          rating?: number
+          shipment_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_ratings_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: true
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_ratings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipment_reminders: {
+        Row: {
+          created_at: string
+          kind: string
+          shipment_id: string
+        }
+        Insert: {
+          created_at?: string
+          kind: string
+          shipment_id: string
+        }
+        Update: {
+          created_at?: string
+          kind?: string
+          shipment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_reminders_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipment_step_rules: {
+        Row: {
+          business_hours_only: boolean
+          from_status: string
+          offset_minutes: number
+          status: string
+        }
+        Insert: {
+          business_hours_only?: boolean
+          from_status: string
+          offset_minutes: number
+          status: string
+        }
+        Update: {
+          business_hours_only?: boolean
+          from_status?: string
+          offset_minutes?: number
+          status?: string
+        }
+        Relationships: []
+      }
+      shipments: {
+        Row: {
+          carrier: string | null
+          completed_at: string | null
+          created_at: string
+          delay_minutes: number
+          delivered_at: string | null
+          estimated_delivery_at: string | null
+          hold_reason: string | null
+          hold_until: string | null
+          id: string
+          on_hold: boolean
+          order_id: string
+          ship_by: string | null
+          shipped_at: string | null
+          status: string
+          tracking_number: string | null
+          updated_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          carrier?: string | null
+          completed_at?: string | null
+          created_at?: string
+          delay_minutes?: number
+          delivered_at?: string | null
+          estimated_delivery_at?: string | null
+          hold_reason?: string | null
+          hold_until?: string | null
+          id?: string
+          on_hold?: boolean
+          order_id: string
+          ship_by?: string | null
+          shipped_at?: string | null
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          carrier?: string | null
+          completed_at?: string | null
+          created_at?: string
+          delay_minutes?: number
+          delivered_at?: string | null
+          estimated_delivery_at?: string | null
+          hold_reason?: string | null
+          hold_until?: string | null
+          id?: string
+          on_hold?: boolean
+          order_id?: string
+          ship_by?: string | null
+          shipped_at?: string | null
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipping_calendar: {
+        Row: {
+          business_end: string
+          business_start: string
+          id: number
+          timezone: string
+          working_days: number[]
+        }
+        Insert: {
+          business_end?: string
+          business_start?: string
+          id?: number
+          timezone?: string
+          working_days?: number[]
+        }
+        Update: {
+          business_end?: string
+          business_start?: string
+          id?: number
+          timezone?: string
+          working_days?: number[]
+        }
+        Relationships: []
+      }
+      warehouses: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+        }
+        Relationships: []
       }
       wishlists: {
         Row: {
@@ -1526,6 +1645,20 @@ export type Database = {
       }
     }
     Functions: {
+      add_return_message: {
+        Args: { p_attachment?: string; p_body: string; p_id: string }
+        Returns: undefined
+      }
+      admin_add_incident: {
+        Args: {
+          p_delay_hours?: number
+          p_kind: string
+          p_note?: string
+          p_shipment: string
+        }
+        Returns: string
+      }
+      admin_force_next_step: { Args: { p_shipment: string }; Returns: string }
       admin_list_users: {
         Args: never
         Returns: {
@@ -1536,152 +1669,157 @@ export type Database = {
           role: string
         }[]
       }
-      request_return: {
-        Args: { p_order_item_id: string; p_reason: string; p_details: string }
-        Returns: string
-      }
-      decide_return: {
-        Args: { p_id: string; p_approve: boolean; p_note: string }
-        Returns: undefined
-      }
-      escalate_return: {
-        Args: { p_id: string; p_note: string }
-        Returns: undefined
-      }
       admin_resolve_return: {
-        Args: { p_id: string; p_approve: boolean; p_note: string }
-        Returns: undefined
-      }
-      mark_return_refunded: {
-        Args: { p_id: string; p_refund_id: string }
-        Returns: undefined
-      }
-      ask_question: {
-        Args: { p_product_id: string; p_question: string }
-        Returns: string
-      }
-      answer_question: {
-        Args: { p_id: string; p_answer: string }
-        Returns: undefined
-      }
-      moderate_question: {
-        Args: { p_id: string; p_hidden: boolean }
-        Returns: undefined
-      }
-      request_account_deletion: {
-        Args: never
-        Returns: string
-      }
-      resolve_data_request: {
-        Args: { p_id: string; p_status: string; p_note: string }
-        Returns: undefined
-      }
-      validate_promo_code: {
-        Args: { p_code: string; p_subtotal_mxn_cents: number }
-        Returns: Json
-      }
-      best_selling_product_ids: {
-        Args: { p_limit?: number }
-        Returns: { product_id: string; units: number }[]
-      }
-      place_demo_order: {
-        Args: { p_items: Json; p_currency: string; p_email: string; p_promo: string; p_ship: Json }
-        Returns: Json
-      }
-      email_scheduler_status: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      retry_failed_emails: {
-        Args: { p_id?: string }
-        Returns: number
-      }
-      rate_shipment: {
-        Args: { p_comment?: string; p_rating: number; p_shipment: string; p_token?: string }
-        Returns: undefined
-      }
-      fulfillment_analytics: {
-        Args: { p_days?: number }
-        Returns: Json
-      }
-      cancel_shipment: {
-        Args: { p_shipment: string; p_token?: string }
-        Returns: Json
-      }
-      vendor_mark_preparing: {
-        Args: { p_shipment: string }
+        Args: { p_approve: boolean; p_id: string; p_note: string }
         Returns: undefined
       }
       admin_set_hold: {
         Args: { p_on_hold: boolean; p_reason?: string; p_shipment: string }
         Returns: undefined
       }
-      admin_force_next_step: {
-        Args: { p_shipment: string }
-        Returns: string
-      }
-      admin_add_incident: {
-        Args: { p_delay_hours?: number; p_kind: string; p_note?: string; p_shipment: string }
-        Returns: string
-      }
-      order_tracking: {
-        Args: { p_order: string; p_token?: string }
-        Returns: Json
-      }
-      order_ticket: {
-        Args: { p_order: string; p_token?: string }
-        Returns: Json
-      }
-      order_ticket_for_email: {
-        Args: { p_order: string }
-        Returns: Json
-      }
-      shipment_timeline: {
-        Args: { p_shipment: string }
-        Returns: { step_order: number; status: string; at: string | null; done: boolean }[]
-      }
-      confirm_delivery: {
-        Args: { p_shipment: string; p_token?: string }
-        Returns: undefined
-      }
       advance_order_shipments: {
         Args: { p_order: string; p_token?: string }
         Returns: number
       }
-      seller_balance: {
-        Args: { p_vendor?: string }
-        Returns: Json
-      }
-      create_simulated_payout: {
-        Args: { p_vendor: string }
-        Returns: string
-      }
-      get_demo_order: {
-        Args: { p_order: string; p_token: string }
-        Returns: Json
-      }
-      restock_returned_item: {
-        Args: { p_return_id: string }
-        Returns: undefined
-      }
-      submit_contact_message: {
-        Args: { p_name: string; p_email: string; p_subject: string; p_message: string }
-        Returns: undefined
-      }
-      moderate_review: {
-        Args: { p_id: string; p_hidden: boolean }
-        Returns: undefined
-      }
-      add_return_message: {
-        Args: { p_id: string; p_body: string; p_attachment?: string }
+      answer_question: {
+        Args: { p_answer: string; p_id: string }
         Returns: undefined
       }
       approve_seller_application: {
         Args: { p_id: string; p_slug: string }
         Returns: string
       }
+      ask_question: {
+        Args: { p_product_id: string; p_question: string }
+        Returns: string
+      }
+      best_selling_product_ids: {
+        Args: { p_limit?: number }
+        Returns: {
+          product_id: string
+          units: number
+        }[]
+      }
+      cancel_shipment: {
+        Args: { p_shipment: string; p_token?: string }
+        Returns: Json
+      }
+      confirm_delivery: {
+        Args: { p_shipment: string; p_token?: string }
+        Returns: undefined
+      }
+      create_simulated_payout: { Args: { p_vendor: string }; Returns: string }
+      decide_return: {
+        Args: { p_approve: boolean; p_id: string; p_note: string }
+        Returns: undefined
+      }
+      email_scheduler_status: { Args: never; Returns: Json }
+      escalate_return: {
+        Args: { p_id: string; p_note: string }
+        Returns: undefined
+      }
+      fulfillment_analytics: { Args: { p_days?: number }; Returns: Json }
+      get_demo_order: {
+        Args: { p_order: string; p_token: string }
+        Returns: Json
+      }
+      mark_notifications_read: { Args: { p_ids?: string[] }; Returns: number }
+      mark_return_refunded: {
+        Args: { p_id: string; p_refund_id: string }
+        Returns: undefined
+      }
+      moderate_question: {
+        Args: { p_hidden: boolean; p_id: string }
+        Returns: undefined
+      }
+      moderate_review: {
+        Args: { p_hidden: boolean; p_id: string }
+        Returns: undefined
+      }
+      my_notifications: {
+        Args: { p_limit?: number }
+        Returns: {
+          body: Json
+          created_at: string
+          id: string
+          kind: string
+          link: string
+          read_at: string
+          title: Json
+        }[]
+      }
+      my_unread_notification_count: { Args: never; Returns: number }
+      order_ticket: {
+        Args: { p_order: string; p_token?: string }
+        Returns: Json
+      }
+      order_ticket_for_email: { Args: { p_order: string }; Returns: Json }
+      order_tracking: {
+        Args: { p_order: string; p_token?: string }
+        Returns: Json
+      }
+      place_demo_order: {
+        Args: {
+          p_currency: string
+          p_email: string
+          p_items: Json
+          p_promo: string
+          p_ship: Json
+        }
+        Returns: Json
+      }
+      rate_shipment: {
+        Args: {
+          p_comment?: string
+          p_rating: number
+          p_shipment: string
+          p_token?: string
+        }
+        Returns: undefined
+      }
       reject_seller_application: {
         Args: { p_id: string; p_reason: string }
+        Returns: undefined
+      }
+      request_account_deletion: { Args: never; Returns: string }
+      request_return: {
+        Args: { p_details: string; p_order_item_id: string; p_reason: string }
+        Returns: string
+      }
+      resolve_data_request: {
+        Args: { p_id: string; p_note: string; p_status: string }
+        Returns: undefined
+      }
+      restock_returned_item: {
+        Args: { p_return_id: string }
+        Returns: undefined
+      }
+      retry_failed_emails: { Args: { p_id?: string }; Returns: number }
+      seller_balance: { Args: { p_vendor?: string }; Returns: Json }
+      shipment_timeline: {
+        Args: { p_shipment: string }
+        Returns: {
+          at: string
+          done: boolean
+          status: string
+          step_order: number
+        }[]
+      }
+      submit_contact_message: {
+        Args: {
+          p_email: string
+          p_message: string
+          p_name: string
+          p_subject: string
+        }
+        Returns: undefined
+      }
+      validate_promo_code: {
+        Args: { p_code: string; p_subtotal_mxn_cents: number }
+        Returns: Json
+      }
+      vendor_mark_preparing: {
+        Args: { p_shipment: string }
         Returns: undefined
       }
       vendor_ship_items: {
