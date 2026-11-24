@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
+import { CartPriceAlert } from "@/components/shop/cart-price-alert";
 import { formatPrice, convertToUsd } from "@/lib/format";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { cartSubtotalMxnCents, useCartHydrated, useCartStore } from "@/stores/cart-store";
@@ -75,6 +76,7 @@ export default function CartPage({
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
       <h1 className="mb-6 text-2xl font-semibold tracking-tight">{t.title}</h1>
+      <CartPriceAlert locale={locale} />
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_320px]">
         <ul className="divide-y">
           {items.map((item) => (

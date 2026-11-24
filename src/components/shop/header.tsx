@@ -16,6 +16,7 @@ import {
 import { LocaleSwitcher } from "@/components/shop/locale-switcher";
 import { CartButton } from "@/components/shop/cart-button";
 import { AccountMenu } from "@/components/shop/account-menu";
+import { NotificationsBell } from "@/components/shop/notifications-bell";
 import { SearchBar } from "@/components/shop/search-bar";
 import { CurrencySwitcher } from "@/components/shop/currency-switcher";
 
@@ -114,6 +115,7 @@ export async function Header({ locale }: { locale: string }) {
               </Link>
             }
           />
+          {user ? <NotificationsBell locale={locale} /> : null}
           <AccountMenu email={user?.email ?? null} locale={locale} />
           <CartButton label={t("cart")} />
         </div>

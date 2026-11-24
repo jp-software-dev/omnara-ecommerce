@@ -220,6 +220,8 @@ Every order is split into **shipments, one per seller** (products without a sell
 * **Cancel until it ships.** The customer can cancel while it is confirmed or preparing: items return to stock, the refund is simulated (shipping only if the whole order is cancelled) and the promo use is given back.
 * **Operations (admin `/admin/envios`):** pause/resume, force the next step and record incidents (delay, failed attempt, damaged package). A delay *adds* hours to the next step and everything after it moves back; the customer is emailed and the tracking shows a notice. Sellers mark *preparing* from the order.
 * **Emails** at each milestone (preparing, arrived in your state, out for delivery, delivered), the reminders, the incident, cancellation, and a purchase ticket with its PDF; the seller is told when the customer confirms.
+* **Shipping is charged per package:** each seller (and Omnara for its own products) ships its own package and pays the flat rate unless *its* part of the cart reaches the free-shipping amount; checkout says how many packages there are.
+* **In-site notifications:** a bell in the header (signed-in users) lists the order milestones for buyers and new sales for sellers, with an unread count and two switches to turn each kind off. They are created by a database trigger, readable only by their owner; guests only get the emails.
 * **Delivery is inside Mexico only** (an address constraint and an order trigger enforce it).
 * **Reports:** `/admin/cumplimiento` (funnel shipment-to-review, preparation and transit times, on-time shipping, returns by reason, per-seller table, commission) with CSV downloads; sellers see their own.
 

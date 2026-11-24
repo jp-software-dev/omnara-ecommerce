@@ -385,6 +385,8 @@ begin
      where pv.stock_quantity > 5 and p.status = 'active' and p.vendor_id is null limit 1;
     if v_variant is not null then
       select stock_quantity into v_stock_before from public.product_variants where id = v_variant;
+      -- a guest buys: the admin running the script would otherwise own the order and could cancel without the token
+      perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
       v_res := public.place_demo_order(
         jsonb_build_array(jsonb_build_object('variant_id', v_variant, 'quantity', 2)), 'MXN', 'check@example.invalid', '',
         jsonb_build_object('name', 'Check', 'address', jsonb_build_object('line1', 'Calle 1', 'city', 'CDMX', 'state', 'CDMX', 'postal_code', '06000', 'country', 'MX')));
@@ -426,6 +428,7 @@ begin
       exception when others then
         if sqlerrm <> 'We only deliver within Mexico' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
       end;
+      perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
     end if;
   end;
 
@@ -481,6 +484,7 @@ begin
       from public.product_variants pv join public.products p on p.id = pv.product_id
      where pv.stock_quantity > 5 and p.status = 'active' limit 1;
     if v_variant is not null then
+      perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
       v_res := public.place_demo_order(
         jsonb_build_array(jsonb_build_object('variant_id', v_variant, 'quantity', 1)), 'MXN', 'rate@example.invalid', '',
         jsonb_build_object('name', 'Check', 'address', jsonb_build_object('line1', 'Calle 1', 'city', 'CDMX', 'state', 'CDMX', 'postal_code', '06000', 'country', 'MX')));
@@ -521,6 +525,7 @@ begin
       if (public.order_tracking(v_order, v_token) -> 0 -> 'rating' ->> 'rating')::int <> 4 then
         raise exception 'FAIL: the rating is not part of the tracking';
       end if;
+      perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
     end if;
   end;
 
@@ -575,6 +580,131 @@ begin
           raise exception 'FAIL: refunding the whole order must refund it and give the promo use back (% -> %)', v_before, v_after;
         end if;
       end if;
+    end if;
+  end;
+
+  -- 13. Shipping is charged per package: one flat rate for each seller that is not free ----
+  declare
+    v_a uuid;
+    v_b uuid;
+    v_threshold int;
+    v_price_a int;
+    v_price_b int;
+    v_res jsonb;
+    v_ship int;
+    v_expected int;
+  begin
+    select free_shipping_threshold_mxn_cents into v_threshold from public.app_settings where id = 1;
+    -- one product with a seller and one sold by Omnara
+    select pv.id, coalesce(pv.price_override_mxn_cents, p.base_price_mxn_cents) into v_a, v_price_a
+      from public.product_variants pv join public.products p on p.id = pv.product_id
+     where pv.stock_quantity > 5 and p.status = 'active' and p.vendor_id is not null limit 1;
+    select pv.id, coalesce(pv.price_override_mxn_cents, p.base_price_mxn_cents) into v_b, v_price_b
+      from public.product_variants pv join public.products p on p.id = pv.product_id
+     where pv.stock_quantity > 5 and p.status = 'active' and p.vendor_id is null limit 1;
+    if v_a is not null and v_b is not null then
+      perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+      v_res := public.place_demo_order(
+        jsonb_build_array(jsonb_build_object('variant_id', v_a, 'quantity', 1), jsonb_build_object('variant_id', v_b, 'quantity', 1)),
+        'MXN', 'ship@example.invalid', '',
+        jsonb_build_object('name', 'T', 'address', jsonb_build_object('line1', 'Calle 1', 'city', 'CDMX', 'state', 'CDMX', 'postal_code', '06000', 'country', 'MX')));
+      select shipping_cents into v_ship from public.orders where id = (v_res ->> 'order_id')::uuid;
+      v_expected := (case when v_price_a >= v_threshold then 0 else 9900 end) + (case when v_price_b >= v_threshold then 0 else 9900 end);
+      if v_ship <> v_expected then
+        raise exception 'FAIL: two sellers must pay shipping per package (expected %, charged %)', v_expected, v_ship;
+      end if;
+      if (select count(*) from public.shipments where order_id = (v_res ->> 'order_id')::uuid) <> 2 then
+        raise exception 'FAIL: two sellers must ship two packages';
+      end if;
+      perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
+    end if;
+  end;
+
+  -- 14. In-site notifications: milestones for the buyer, a new sale for the seller, preferences ----
+  declare
+    v_buyer uuid := gen_random_uuid();
+    v_muted uuid := gen_random_uuid();
+    v_stranger uuid := gen_random_uuid();
+    v_var uuid;
+    v_vendor uuid;
+    v_res jsonb;
+    v_ord uuid;
+    v_sh uuid;
+    v_before int;
+    v_after int;
+    v_cnt int;
+    v_m int;
+    v_addr jsonb := jsonb_build_object('name', 'T', 'address', jsonb_build_object('line1', 'Calle 1', 'city', 'CDMX', 'state', 'CDMX', 'postal_code', '06000', 'country', 'MX'));
+  begin
+    select pv.id, p.vendor_id into v_var, v_vendor
+      from public.product_variants pv join public.products p on p.id = pv.product_id
+     where pv.stock_quantity > 5 and p.status = 'active' and p.vendor_id is not null limit 1;
+    if v_var is not null then
+      insert into auth.users (id, instance_id, aud, role, email, raw_user_meta_data, created_at, updated_at) values
+        (v_buyer, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'nb@example.invalid', '{}', now(), now()),
+        (v_muted, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'nm@example.invalid', '{}', now(), now()),
+        (v_stranger, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'ns@example.invalid', '{}', now(), now());
+      select count(*) into v_before from public.notifications where user_id = v_vendor and kind = 'new_sale';
+
+      perform set_config('request.jwt.claims', json_build_object('sub', v_buyer, 'role', 'authenticated')::text, true);
+      v_res := public.place_demo_order(jsonb_build_array(jsonb_build_object('variant_id', v_var, 'quantity', 1)), 'MXN', '', '', v_addr);
+      v_ord := (v_res ->> 'order_id')::uuid;
+      select count(*) into v_after from public.notifications where user_id = v_vendor and kind = 'new_sale';
+      if v_after <> v_before + 1 then
+        raise exception 'FAIL: the seller got no new-sale notification (% -> %)', v_before, v_after;
+      end if;
+      if public.my_unread_notification_count() <> 0 then
+        raise exception 'FAIL: the buyer must have none before the first milestone';
+      end if;
+
+      select id into v_sh from public.shipments where order_id = v_ord;
+      perform private.advance_shipment(v_sh, now() + interval '30 days');
+      v_cnt := public.my_unread_notification_count();
+      if v_cnt < 5 then
+        raise exception 'FAIL: expected 5 milestone notifications, got %', v_cnt;
+      end if;
+      if not exists (select 1 from public.my_notifications(10)
+                      where link = '/cuenta/pedidos/' || v_ord and title ->> 'es' = 'Tu pedido fue entregado') then
+        raise exception 'FAIL: the delivered notification is missing or has a wrong link';
+      end if;
+
+      -- someone else sees and touches nothing
+      perform set_config('request.jwt.claims', json_build_object('sub', v_stranger, 'role', 'authenticated')::text, true);
+      v_m := public.mark_notifications_read();
+      if public.my_unread_notification_count() <> 0 or v_m <> 0 then
+        raise exception 'FAIL: another user must not see or touch these notifications';
+      end if;
+
+      -- (a stable count and the update must be separate statements to see each other)
+      perform set_config('request.jwt.claims', json_build_object('sub', v_buyer, 'role', 'authenticated')::text, true);
+      v_m := public.mark_notifications_read();
+      v_after := public.my_unread_notification_count();
+      if v_m <> v_cnt or v_after <> 0 then
+        raise exception 'FAIL: marking all as read did not clear the count (% of %, % left)', v_m, v_cnt, v_after;
+      end if;
+
+      -- a buyer who switched milestones off gets none
+      insert into public.notification_preferences (user_id, shipment_updates) values (v_muted, false);
+      perform set_config('request.jwt.claims', json_build_object('sub', v_muted, 'role', 'authenticated')::text, true);
+      v_res := public.place_demo_order(jsonb_build_array(jsonb_build_object('variant_id', v_var, 'quantity', 1)), 'MXN', '', '', v_addr);
+      select id into v_sh from public.shipments where order_id = (v_res ->> 'order_id')::uuid;
+      perform private.advance_shipment(v_sh, now() + interval '30 days');
+      if public.my_unread_notification_count() <> 0 then
+        raise exception 'FAIL: a buyer with milestones switched off got notifications';
+      end if;
+
+      -- a guest order moves normally and a guest cannot use the notifications
+      perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+      v_res := public.place_demo_order(jsonb_build_array(jsonb_build_object('variant_id', v_var, 'quantity', 1)), 'MXN', 'g@example.invalid', '', v_addr);
+      select id into v_sh from public.shipments where order_id = (v_res ->> 'order_id')::uuid;
+      perform private.advance_shipment(v_sh, now() + interval '30 days');
+      begin
+        perform public.mark_notifications_read();
+        raise exception 'FAIL: a guest marked notifications as read';
+      exception when others then
+        if sqlerrm <> 'Not signed in' then raise exception 'FAIL: unexpected error %', sqlerrm; end if;
+      end;
+      perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
     end if;
   end;
 
