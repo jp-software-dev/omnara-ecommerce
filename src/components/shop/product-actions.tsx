@@ -25,6 +25,7 @@ export function ProductActions({
   productName,
   productImage,
   unitPriceMxnCents,
+  vendorId,
   categorySlug,
 }: {
   variants: Variant[];
@@ -33,6 +34,7 @@ export function ProductActions({
   productName: string;
   productImage: string | null;
   unitPriceMxnCents: number;
+  vendorId?: string | null;
   categorySlug?: string | null;
 }) {
   const isFootwear = categorySlug === "calzado";
@@ -100,6 +102,7 @@ export function ProductActions({
       size: selectedVariant.size,
       color: selectedVariant.color,
       unitPriceMxnCents,
+      vendorId: vendorId ?? null,
       stockQuantity: selectedVariant.stock_quantity,
     });
 

@@ -9,7 +9,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { DemoBanner } from "@/components/shop/demo-banner";
 import { formatAddressLine, type SavedAddress } from "@/lib/addresses";
 import { formatPrice, convertToUsd } from "@/lib/format";
-import { FLAT_SHIPPING_MXN_CENTS } from "@/lib/shipping";
+import { computeShippingBySeller, FLAT_SHIPPING_MXN_CENTS } from "@/lib/shipping";
 import { cartSubtotalMxnCents, useCartHydrated, useCartStore } from "@/stores/cart-store";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { createCheckoutSession, getCheckoutContext, previewPromoCode } from "./actions";
@@ -62,10 +62,15 @@ export default function CheckoutPage({
   }, []);
 
   const subtotal = cartSubtotalMxnCents(items);
-  const shippingMxnCents =
-    freeShippingThresholdMxnCents !== null && subtotal >= freeShippingThresholdMxnCents
-      ? 0
-      : FLAT_SHIPPING_MXN_CENTS;
+  const shippingQuote =
+    freeShippingThresholdMxnCents === null
+      ? null
+      : computeShippingBySeller(
+          items.map((item) => ({ sellerId: item.vendorId, amountCents: item.unitPriceMxnCents * item.quantity })),
+          freeShippingThresholdMxnCents,
+          FLAT_SHIPPING_MXN_CENTS
+        );
+  const shippingMxnCents = shippingQuote?.totalCents ?? FLAT_SHIPPING_MXN_CENTS;
   const discountMxnCents = appliedPromo?.discountMxnCents ?? 0;
   const totalMxnCents = Math.max(0, subtotal - discountMxnCents) + shippingMxnCents;
 
@@ -208,6 +213,13 @@ export default function CheckoutPage({
           <span className="text-muted-foreground">{t.shipping}</span>
           <span>{shippingMxnCents === 0 ? t.free : display(shippingMxnCents)}</span>
         </div>
+        {shippingQuote && shippingQuote.shipments > 1 ? (
+          <p className="text-xs text-muted-foreground">
+            {locale === "en"
+              ? `Your order ships in ${shippingQuote.shipments} packages, one per seller; each pays its own shipping unless it reaches the free-shipping amount.`
+              : `Tu pedido sale en ${shippingQuote.shipments} paquetes, uno por vendedor; cada uno paga su envío salvo que alcance el monto de envío gratis.`}
+          </p>
+        ) : null}
         <div className="flex justify-between border-t pt-2 text-base font-semibold">
           <span>{t.total}</span>
           <span>{display(totalMxnCents)}</span>

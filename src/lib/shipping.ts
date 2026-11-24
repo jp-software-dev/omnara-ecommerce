@@ -9,6 +9,35 @@ export function computeShippingCents(
   return subtotalCents >= freeThresholdCents ? 0 : flatRateCents;
 }
 
+/**
+ * Shipping is charged per shipment: every seller (and the platform itself, `null`) ships its own
+ * package, so each one pays the flat rate unless ITS part of the cart reaches the free-shipping
+ * threshold. Mirrors place_demo_order, which is what really charges.
+ */
+export function computeShippingBySeller(
+  lines: { sellerId: string | null | undefined; amountCents: number }[],
+  freeThresholdCents: number,
+  flatRateCents: number
+): { totalCents: number; shipments: number; perSeller: { sellerId: string | null; subtotalCents: number; shippingCents: number }[] } {
+  const groups = new Map<string, { sellerId: string | null; subtotalCents: number }>();
+  for (const line of lines) {
+    const sellerId = line.sellerId ?? null;
+    const key = sellerId ?? "platform";
+    const group = groups.get(key) ?? { sellerId, subtotalCents: 0 };
+    group.subtotalCents += line.amountCents;
+    groups.set(key, group);
+  }
+  const perSeller = [...groups.values()].map((group) => ({
+    ...group,
+    shippingCents: computeShippingCents(group.subtotalCents, freeThresholdCents, flatRateCents),
+  }));
+  return {
+    totalCents: perSeller.reduce((sum, group) => sum + group.shippingCents, 0),
+    shipments: perSeller.length,
+    perSeller,
+  };
+}
+
 // SIMULATED carriers for the educational demo: no real carrier is contacted. A
 // simulated tracking number starts with "SIM-" and its history is derived from how
 // long ago the item shipped, so the customer sees a believable tracking timeline.
