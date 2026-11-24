@@ -250,6 +250,8 @@ Order, shipping, return and seller-application emails are sent through [Resend](
 
 Resend's free plan has sending limits and the shared test sender is not meant for production, so verify your own domain before real use.
 
+**Sample data:** `supabase/seed/sample_orders.sql` places 7 guest orders, one in each state (confirmed, preparing, shipped, out for delivery, delivered, closed and rated, cancelled), through the real functions. Every active product has a `modelo` code (migration `…22`; internal `OMN-…` codes, not manufacturers').
+
 ### Programmed email sending
 
 Emails are queued by database triggers and sent right after the action that caused them. The ones that cannot go out at that moment (a provider outage, a retry, the **reminders** created by the scheduler) are picked up by a `pg_cron` job, `omnara-send-emails`, that runs every 5 minutes and, only if something is pending, calls the app's `/api/cron/send-emails` route.
