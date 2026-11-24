@@ -65,7 +65,8 @@ Los roles se asignan desde `/admin/usuarios` (solo admin) — antes de esta func
 1. El carrito se arma en el navegador (persiste entre sesiones) y muestra subtotal.
 2. En `/checkout`:
    - Se puede aplicar un **código promocional** — se valida antes de pagar y muestra el descuento reflejado en el total.
-   - El **envío** se calcula automáticamente: **gratis a partir de $1,500 MXN** de subtotal; por debajo de ese monto, tarifa fija de **$99 MXN** (equivalente convertido si se paga en USD).
+   - El **envío** se calcula **por paquete**: cada vendedor (y Omnara, para sus propios productos) envía el suyo y paga **$99 MXN** fijos, salvo que su parte del carrito llegue a **$1,500 MXN** (entonces ese paquete va gratis). El checkout indica cuántos paquetes son (equivalente convertido si se paga en USD).
+   - Si algo del carrito cambió desde que se agregó (precio, existencias o disponibilidad), el carrito y el checkout lo avisan con un botón para actualizarlo; siempre se cobra el precio actual.
    - Se puede pagar como invitado (solo pidiendo correo) o como cliente autenticado.
    - Si no hay una clave de Stripe configurada, el pago es **simulado**: un banner lo avisa, se pide la dirección en la misma página y se crea un pedido de ejemplo sin tarjeta ni dinero. Con Stripe configurado, el pago se procesa con Stripe, siempre en **modo de prueba** — un banner visible en el checkout lo aclara y da la tarjeta de prueba a usar (`4242 4242 4242 4242`), nunca se cobra dinero real.
 3. Tras pagar, la página de confirmación muestra el recibo completo (ver §7) y limpia el carrito.
@@ -135,7 +136,8 @@ Acceso restringido por rol; un vendedor ve el mismo panel pero **solo sus propio
 
 ## 12. Reglas de negocio (resumen)
 
-- Envío gratis desde $1,500 MXN de subtotal; si no, $99 MXN fijos.
+- Envío por paquete: $99 MXN fijos por vendedor, gratis para el paquete cuya parte llegue a $1,500 MXN.
+- Un código promocional vuelve a estar disponible solo si el pedido se reembolsa por completo; un reembolso parcial lo conserva.
 - Un código promocional se revalida siempre contra el pedido real al momento de pagar (nunca se confía en lo calculado en el navegador).
 - El stock se descuenta automáticamente al completarse un pago, con registro de auditoría por movimiento.
 - Alerta de "stock bajo" quedará marcada cuando la existencia de una variante caiga al umbral configurado para ese producto (5 unidades por defecto).
@@ -187,9 +189,10 @@ Acceso restringido por rol; un vendedor ve el mismo panel pero **solo sus propio
 
 ## 18. Direcciones guardadas, privacidad y notificaciones
 
-- **Direcciones** (`/cuenta/direcciones`): hasta 10, una predeterminada, solo México o Estados Unidos. Al pagar, el comprador elige una guardada o captura otra en Stripe.
+- **Direcciones** (`/cuenta/direcciones`): hasta 10, una predeterminada, solo México. Al pagar, el comprador elige una guardada o captura otra.
 - **Privacidad** (`/cuenta/privacidad`): descarga de los datos propios en JSON y solicitud de eliminación de la cuenta, que atiende un administrador (al ser un proyecto educativo sin ventas reales, los pedidos de prueba pueden conservarse mientras dure el proyecto). Los términos y el aviso de privacidad están en `/terminos` y `/privacidad`, en español e inglés.
 - **Correos**: confirmación de pedido, nueva venta (al vendedor), artículo enviado con rastreo, novedades de devoluciones, disputas (a administradores) y decisión de una solicitud de vendedor. Se envían solo cuando hay un proveedor de correo configurado.
+- **Notificaciones dentro del sitio:** quien tiene cuenta ve una campana en el encabezado con el número de avisos sin leer. El comprador recibe un aviso en cada hito de su pedido (preparando, enviado, llegó a tu estado, en reparto, entregado) y el vendedor uno por cada venta nueva. Se pueden marcar como leídos y apagar por tipo («el avance de mis pedidos» y «nuevas ventas»). Quien compra como invitado solo recibe correo.
 
 ## 19. Seguimiento del pedido, de la compra al cierre
 
@@ -200,7 +203,9 @@ Cada pedido se divide en **envíos, uno por vendedor** (los productos de la prop
 3. **Enviado** a más tardar **24 horas después del pago**, con una guía de ejemplo.
 4. **En tránsito**, **ya llegó a tu estado** y **en reparto a tu domicilio**, siempre dentro del horario de la paquetería (lunes a sábado de 8:00 a 20:00, hora de Ciudad de México, sin días festivos).
 5. **Entregado.** El cliente confirma **"Ya lo recibí"** y solo entonces el pedido se **cierra**. Nunca se cierra solo; se le recuerda por correo a los 2 y a los 7 días.
-6. Con el pedido cerrado: puede **reseñar**, la **devolución** (30 días desde la entrega) sigue disponible y al vendedor se le registra su **pago simulado**.
+6. Con el pedido cerrado: puede **reseñar**, **calificar el envío** (de 1 a 5 estrellas, una sola vez, con comentario opcional), la **devolución** (30 días desde la entrega) sigue disponible y al vendedor se le registra su **pago simulado**.
+
+En *Mis pedidos* los pedidos aparecen agrupados por estado. Si un pedido tiene envíos de varios vendedores, cada paquete se sigue por separado.
 
 Mientras no haya salido, el cliente puede **cancelar** el envío (los artículos vuelven al inventario y el reembolso se simula). Si hay una pausa o un incidente (retraso, intento de entrega fallido, paquete dañado), ve un aviso con la nueva fecha estimada y se le avisa por correo. Todo el envío es **dentro de México**.
 
@@ -210,7 +215,7 @@ Mientras no haya salido, el cliente puede **cancelar** el envío (los artículos
 
 - **Reparto de pagos por vendedor (Stripe Connect):** el dinero no se mueve; el pago al vendedor y la comisión del 3 % son un registro simulado.
 - **Paqueterías reales:** las guías y el seguimiento son de ejemplo (tres paqueterías de demostración).
-- **No construido:** notificaciones dentro del sitio, calificar el envío, tarifa de envío por vendedor y alerta de precio en el carrito.
+- **Páginas de error:** si una página falla se muestra un aviso amable con un código para localizar el error. En el plan gratuito de Vercel los registros de errores se conservan solo 1 hora.
 - **Reposición automática de inventario** al aprobar una devolución: es una acción manual (un artículo devuelto puede llegar dañado). Al cancelar un envío antes de que salga, sí se repone solo.
 - **Pruebas de extremo a extremo** en navegador; las reglas de la base se verifican con un script SQL re-ejecutable fuera de la integración continua.
 - **Texto legal:** los términos y el aviso están redactados para un proyecto educativo de demostración. Si Omnara se usara para vender de verdad, habría que reescribirlos con asesoría legal.
