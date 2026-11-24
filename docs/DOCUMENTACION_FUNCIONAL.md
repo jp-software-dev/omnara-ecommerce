@@ -215,7 +215,8 @@ Mientras no haya salido, el cliente puede **cancelar** el envío (los artículos
 
 - **Reparto de pagos por vendedor (Stripe Connect):** el dinero no se mueve; el pago al vendedor y la comisión del 3 % son un registro simulado.
 - **Paqueterías reales:** las guías y el seguimiento son de ejemplo (tres paqueterías de demostración).
+- **Datos de ejemplo:** el catálogo tiene códigos de modelo internos (no de fabricante) y hay pedidos de ejemplo en todos los estados del ciclo para ver los paneles con datos; se mueven solos en tiempo real.
 - **Páginas de error:** si una página falla se muestra un aviso amable con un código para localizar el error. En el plan gratuito de Vercel los registros de errores se conservan solo 1 hora.
 - **Reposición automática de inventario** al aprobar una devolución: es una acción manual (un artículo devuelto puede llegar dañado). Al cancelar un envío antes de que salga, sí se repone solo.
-- **Pruebas de extremo a extremo** en navegador; las reglas de la base se verifican con un script SQL re-ejecutable fuera de la integración continua.
+- **Pruebas de extremo a extremo:** hay 6 pruebas de humo de solo lectura que se corren a mano; no hay pruebas de flujos con sesión ni de compra completa. Las reglas de la base se verifican con un script SQL re-ejecutable fuera de la integración continua.
 - **Texto legal:** los términos y el aviso están redactados para un proyecto educativo de demostración. Si Omnara se usara para vender de verdad, habría que reescribirlos con asesoría legal.

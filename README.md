@@ -277,6 +277,7 @@ Sending itself still needs `RESEND_API_KEY`, `EMAIL_FROM` and `SUPABASE_SERVICE_
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript type check |
 | `npm test` | Unit tests (Vitest) |
+| `npm run e2e` | End-to-end smoke tests (Playwright, with the installed Chrome; read-only, they never place an order). Not part of the CI: the app needs the Supabase variables to start |
 
 > **Database:** the full schema is versioned as SQL in `supabase/migrations` (original tables, RLS and policies, plus every later change); apply the files in filename order to an empty Supabase project. The demo catalogue data and the migrations of the other apps that share this Supabase project are not included — see `supabase/migrations/README.md`.
 
