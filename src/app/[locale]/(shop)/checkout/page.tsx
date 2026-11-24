@@ -9,6 +9,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { DemoBanner } from "@/components/shop/demo-banner";
 import { formatAddressLine, type SavedAddress } from "@/lib/addresses";
 import { formatPrice, convertToUsd } from "@/lib/format";
+import { CartPriceAlert } from "@/components/shop/cart-price-alert";
 import { computeShippingBySeller, FLAT_SHIPPING_MXN_CENTS } from "@/lib/shipping";
 import { cartSubtotalMxnCents, useCartHydrated, useCartStore } from "@/stores/cart-store";
 import { useCurrencyStore } from "@/stores/currency-store";
@@ -178,6 +179,9 @@ export default function CheckoutPage({
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
       <h1 className="mb-6 text-2xl font-semibold tracking-tight">{t.title}</h1>
       <DemoBanner locale={locale} simulated={demoPayments} />
+      <div className="mt-6">
+        <CartPriceAlert locale={locale} />
+      </div>
 
       <ul className="mt-6 divide-y">
         {items.map((item) => (
