@@ -22,6 +22,8 @@ type CartState = {
   removeItem: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
   clear: () => void;
+  /** Brings saved lines in line with the shop: new price, less stock, or the line removed. */
+  syncWith: (current: { variantId: string; priceMxnCents: number; stockQuantity: number; available: boolean }[]) => void;
 };
 
 export const useCartStore = create<CartState>()(
@@ -65,6 +67,24 @@ export const useCartStore = create<CartState>()(
                 ),
         })),
       clear: () => set({ items: [] }),
+      syncWith: (current) =>
+        set((state) => {
+          const byId = new Map(current.map((variant) => [variant.variantId, variant]));
+          return {
+            items: state.items.flatMap((item) => {
+              const now = byId.get(item.variantId);
+              if (!now || !now.available || now.stockQuantity < 1) return [];
+              return [
+                {
+                  ...item,
+                  unitPriceMxnCents: now.priceMxnCents,
+                  stockQuantity: now.stockQuantity,
+                  quantity: Math.min(item.quantity, now.stockQuantity),
+                },
+              ];
+            }),
+          };
+        }),
     }),
     {
       name: "omnara-cart",
