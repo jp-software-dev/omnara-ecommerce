@@ -7,6 +7,8 @@
 ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2306B6D4.svg?style=for-the-badge&logo=tailwindcss&logoColor=white)
 ![Vercel](https://img.shields.io/badge/vercel-%23000000.svg?style=for-the-badge&logo=vercel&logoColor=white)
 
+**Live demo:** [omnara-ecommerce.vercel.app](https://omnara-ecommerce.vercel.app)
+
 **Omnara** is a marketplace in the spirit of Mercado Libre: instead of one store selling its own stock, several independent student businesses sell side by side under one catalog, one cart and one checkout. Customers browse products from every seller, pay once, follow their order and review what they bought; each business manages its own products, inventory and sales from a role-scoped panel; an administrator oversees the whole platform.
 
 It was built as a university project (IUEM — *Comercio Electrónico* and *Ingeniería de Software I*) and is organized around the concepts from that course: the participants of an e-commerce operation, the platform's core functions, the payment process, the front-end / back-end split, and the advantages and challenges of selling online. Those mappings are laid out below.
@@ -21,7 +23,7 @@ It was built as a university project (IUEM — *Comercio Electrónico* and *Inge
 * **Three roles** — customer, vendor, admin — enforced by Row Level Security in the database, not just in the UI.
 * **Bilingual (ES/EN) and multi-currency (MXN/USD)**, with the amount Stripe charges derived from the same exchange rate shown on screen.
 * **Security and privacy**: server-side validation, an append-only admin audit log, a rate-limited contact form, terms and privacy notice written for an educational demo, data export and deletion requests.
-* **Quality**: unit tests, CI on every pull request, and the SQL of every database change versioned in `supabase/migrations`.
+* **Quality**: unit tests, CI on every pull request, end-to-end smoke tests and an automated accessibility scan (axe-core, WCAG 2.1 AA), and the SQL of every database change versioned in `supabase/migrations`.
 
 ## ✨ Features
 
@@ -37,7 +39,8 @@ It was built as a university project (IUEM — *Comercio Electrónico* and *Inge
 * **Category-aware catalog**, live search, filters and sorting, featured / new / best-seller sections, related products, wishlist, size guide and variant selection with per-variant stock.
 * **Product comparison.** Up to four products side by side (best price highlighted, seller, rating, sizes and colors in stock, specifications), and a *Compare with other businesses* block on each product page (same category, different seller).
 * **Cart and checkout.** Persistent cart, guest and signed-in checkout, promo codes, shipping calculation and a printable receipt. Signed-in buyers keep an **address book** (`/cuenta/direcciones`) and pick a saved address at checkout.
-* **Orders.** Order history with a status stepper, and **per-item shipping and tracking** shown on the receipt.
+* **Orders.** Order history with a status stepper, **per-item shipping and tracking** shown on the receipt, and a star rating for each delivery.
+* **Cart alert.** If a product in the cart changed price or stock, or stopped being available since it was added, the cart and checkout show a notice before paying, and one button brings the cart up to date.
 * **Returns, refunds and disputes.** A buyer can return a shipped item within 30 days; the seller approves or rejects; a rejection can be escalated to Omnara; the admin refunds through Stripe. Buyer, seller and admin talk in a shared thread, and the refund amount is computed in the database (item price minus its share of any discount; shipping excluded).
 * **Reviews and questions.** Only buyers can review a product, and the badge is set by the database, never by the client. Anyone signed in can ask the seller a public question. Admins can hide a review or question without deleting it.
 * **Customer service.** Contact form feeding an admin inbox, and a help center.
@@ -139,8 +142,8 @@ Omnara is a complete teaching marketplace. Known limits and next steps if it wer
 * **Real money movement.** Seller payouts and the 3% commission exist as a *simulated* ledger (no money moves). Splitting a real payment between sellers would need Stripe Connect, which requires an account and onboarding for every seller.
 * **Real carriers.** Labels and tracking are simulated (three demo carriers, `SIM-` numbers). Real rates and labels would need a carrier contract and API.
 * **Restocking on returns** is an explicit action by the seller or an admin (not automatic, because a returned item can arrive damaged). Cancelling a shipment before it ships does restock automatically.
-* **Not built:** in-site notifications (a bell), rating the shipment, shipping fees per seller, and a price alert in the cart. Moderation response times are a policy decision, not code.
-* **Browser (end-to-end) tests.** Unit tests run in CI and the database rules have a re-runnable SQL script (`supabase/tests/database_checks.sql`, always rolled back) that is not part of CI.
+* **Moderation response times** are a policy decision, not code.
+* **Browser tests in CI.** Unit tests run in CI. The Playwright smoke tests, the axe-core accessibility scan (`npm run e2e`) and the database rules script (`supabase/tests/database_checks.sql`, always rolled back) run on demand, because they need a configured Supabase project.
 
 ## 🛠 Technologies Used
 
